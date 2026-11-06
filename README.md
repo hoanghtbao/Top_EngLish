@@ -6,8 +6,6 @@ Nền tảng trực tuyến hỗ trợ học tiếng Anh từ vựng, ngữ phá
 
 - **`top-english-backend/`**: Hệ thống Backend xây dựng bằng NestJS, Mongoose (MongoDB), TypeScript, JWT Authentication.
 - **`top-english-frontend/`**: Ứng dụng Frontend xây dựng bằng Next.js (App Router), React 19, Tailwind CSS, Shadcn UI.
-- **`Top-English_Project_Plan.md`**: Kế hoạch lộ trình chi tiết từng giai đoạn phát triển dự án.
-- **`.agents/`**: Bộ quy chuẩn kỹ thuật và kỹ năng phát triển dự án.
 
 ## Bắt đầu
 
