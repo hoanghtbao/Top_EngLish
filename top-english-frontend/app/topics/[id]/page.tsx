@@ -9,7 +9,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -90,6 +90,7 @@ function TopicDetailInner() {
   const { playClickSound, playSuccessSound } = useSound();
 
   const isTeacherOrAdmin = user && (user.role === "teacher" || user.role === "admin");
+  const searchParams = useSearchParams();
 
   const [topic, setTopic] = useState<Topic | null>(null);
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
@@ -123,6 +124,22 @@ function TopicDetailInner() {
     exampleSentence: "",
     exampleMeaning: "",
   });
+
+  // Tự động chuyển mode tra cứu / soạn từ khi có query params (ví dụ: ?mode=list hoặc ?action=add)
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "list") {
+      setViewMode("list");
+    } else if (mode === "flashcard") {
+      setViewMode("flashcard");
+    }
+
+    const action = searchParams.get("action");
+    if (action === "add" && isTeacherOrAdmin) {
+      setViewMode("list");
+      setShowAddWordModal(true);
+    }
+  }, [searchParams, isTeacherOrAdmin]);
 
   const loadData = useCallback(async () => {
     if (!topicIdOrSlug) return;

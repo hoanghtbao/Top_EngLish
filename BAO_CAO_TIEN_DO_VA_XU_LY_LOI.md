@@ -71,6 +71,12 @@ flowchart LR
    - **Xóa bỏ nút trùng lặp ở thanh tìm kiếm**: Loại bỏ hoàn toàn nút "+ Thêm từ vựng mới" nằm cạnh ô Search. Khu vực này được quy hoạch 100% chuyên trách cho việc tra cứu dữ liệu với nút "X" xóa nhanh.
    - **Cố định nút chính (Global CTA)**: Duy trì một nút duy nhất `+ Thêm từ vựng mới` ở góc trên cùng bên phải cạnh Mode Switcher.
    - **Điều kiện hóa thông minh cho Empty State**: Nút giữa màn hình chỉ hiển thị `+ Soạn từ vựng đầu tiên` khi chủ đề thực sự có 0 từ. Khi người dùng tìm kiếm không ra kết quả, màn hình hiển thị nút `"Xóa bộ lọc tìm kiếm"` thay vì hiển thị nút thêm từ gây hiểu nhầm.
+7. **Phân tầng hành động (Action Hierarchy) & Deep Linking Quản lý Từ vựng**:
+   - **Nút chính (Primary CTA)**: *"Luyện tập Flashcard"* với tông màu xanh mint/teal nổi bật, trải dài thân thiện cho học viên học tập và giáo viên xem trước (preview).
+   - **Nút phụ (Secondary Action)**: Dành riêng cho Giáo viên/Admin thao tác dữ liệu:
+     - Nút icon `✏️` (Chỉnh sửa) đặt ở góc trên bên phải Thumbnail của mỗi thẻ chủ đề.
+     - Nút phụ dạng Outline `"Soạn từ"` (viền mỏng, nền trong suốt) đặt cạnh nút chính, loại bỏ hoàn toàn hiện tượng tranh chấp thị giác.
+   - **Deep Linking URL Params (`?mode=list&action=add`)**: Khi giáo viên click từ ngoài thẻ chủ đề, trang chi tiết tự động kích hoạt `viewMode = "list"` và tự động mở modal thêm từ vựng mới mà không cần thêm thao tác phụ.
 
 ---
 
@@ -164,6 +170,21 @@ Trong suốt quá trình phát triển, đội ngũ đã ghi nhận và giải q
   - **Phủ sóng âm thanh lên Sidebar và Header**:
     Gắn `playClickSound()` vào từng mục menu điều hướng, nút thu gọn sidebar, nút đổi theme Sáng/Tối, nút bật xem Streak Duolingo và nút Đăng xuất.
 
+### Lỗi 7: Nhiễu thị giác (Visual Clutter) và Tranh chấp tầng bậc hành động giữa Học viên & Giáo viên
+- **Hiện tượng**:
+  - Trên mỗi thẻ chủ đề, người dùng bị phân vân khi thấy quá nhiều nút cùng màu xanh mint nổi bật đặt sát nhau.
+  - Trong trang chi tiết từ vựng `/topics/[id]`, xuất hiện cùng lúc 3 nút "+ Thêm từ vựng mới" (Nút 1 góc trên phải, Nút 2 ngang hàng ô Search, Nút 3 ở giữa màn hình Empty State) gây rối mắt.
+- **Nguyên nhân cốt lõi**:
+  - Thiếu quy chuẩn phân cấp hành động (Visual Hierarchy): Chưa tách biệt rõ Primary Action (Học Flashcard) và Secondary Action (Soạn bài/Chỉnh sửa từ vựng).
+  - Ô Search bị quá tải chức năng khi vừa phải gánh ô lọc tìm kiếm, vừa gánh nút tạo mới dữ liệu.
+  - Trạng thái rỗng (Empty State) chưa được lập trình theo điều kiện (Contextual Rendering): Hiển thị nút "Thêm từ mới" ngay cả khi người dùng chỉ đang tìm kiếm từ khóa không tồn tại.
+- **Giải pháp xử lý triệt để**:
+  - **Quy chuẩn 1 Global CTA**: Chỉ giữ lại duy nhất 1 nút chính `+ Thêm từ vựng mới` ở góc trên cùng bên phải trang chi tiết (Vị trí vàng theo chuẩn UI/UX).
+  - **Xóa bỏ nút ở thanh Search**: Trả lại không gian tinh gọn cho ô tìm kiếm, bổ sung nút xóa nhanh `X`.
+  - **Empty State có điều kiện**: Chỉ hiển thị nút `+ Soạn từ vựng đầu tiên` khi chủ đề thực sự có 0 từ vựng. Khi kết quả tìm kiếm rỗng, hiển thị nút `Xóa bộ lọc tìm kiếm`.
+  - **Phân tách trên thẻ Topic Card**: Nút chính `Luyện tập Flashcard` chiếm ưu tiên thị giác (Primary Button); Nút của giáo viên được thiết kế tinh tế dạng Icon Button `✏️` trên Thumbnail và nút Outline phụ `Soạn từ` (chìm hơn, nền trong suốt) để triệt tiêu mọi tranh chấp thị giác.
+  - **Deep Linking**: Hỗ trợ URL params `?mode=list&action=add` tự động mở màn hình soạn bài cho giáo viên.
+
 ---
 
 ## 4. BẢNG THỐNG KÊ CÁC FILE ĐÃ ĐƯỢC ĐỒNG BỘ VÀ KIỂM TRA
@@ -176,6 +197,8 @@ Trong suốt quá trình phát triển, đội ngũ đã ghi nhận và giải q
 | [`components/Sidebar.tsx`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-frontend/components/Sidebar.tsx) | Âm thanh tương tác khi bấm vào các mục điều hướng và nút thu gọn | ✅ Hoàn thiện 100% |
 | [`components/AppHeader.tsx`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-frontend/components/AppHeader.tsx) | Âm thanh khi chuyển theme, mở menu mobile, xem Streak Duolingo, logout | ✅ Hoàn thiện 100% |
 | [`app/page.tsx`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-frontend/app/page.tsx) | Bo tròn viền Hero background trang chủ đồng bộ thiết kế hệ thống | ✅ Hoàn thiện 100% |
+| [`app/topics/page.tsx`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-frontend/app/topics/page.tsx) | Phân tầng nút Primary/Secondary, xử lý Empty state 0 từ, Progress bar học tập, Modal tạo chủ đề cho Giáo viên | ✅ Hoàn thiện 100% |
+| [`app/topics/[id]/page.tsx`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-frontend/app/topics/[id]/page.tsx) | Loại bỏ nút trùng thanh search, Deep linking `?mode=list&action=add`, Empty state thông minh, Quản lý từ vựng cho GV | ✅ Hoàn thiện 100% |
 | [`components/FloatingAiTutor.tsx`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-frontend/components/FloatingAiTutor.tsx) | Sửa tọa độ miệng bot cười, sửa hydration mismatch | ✅ Hoàn thiện 100% |
 | [`top-english-backend/src/ai-assistant/`](file:///D:/LTMaNguonMo_UDA/LapTrinhMaNguonMo2_NestJs/NestJs_UDA/Top_English/top-english-backend/src/ai-assistant/) | Bảo vệ Guardrails, kiểm duyệt chống rò rỉ cơ sở dữ liệu và biến môi trường | ✅ Hoàn thiện 100% |
 
