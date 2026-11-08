@@ -253,7 +253,7 @@ export default function TopicsPage() {
 
   return (
     <AppLayout>
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12 flex flex-col gap-8">
+      <main className="max-w-[1700px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 flex flex-col gap-8">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex flex-col gap-2">
@@ -437,10 +437,10 @@ export default function TopicsPage() {
           </div>
         </div>
 
-        {/* Topics Grid */}
+        {/* Topics Grid - Tối đa 5 chủ đề mỗi hàng trên màn hình lớn */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((n) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
+            {[1, 2, 3, 4, 5].map((n) => (
               <div
                 key={n}
                 className="h-80 rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700"
@@ -468,7 +468,7 @@ export default function TopicsPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
             {topics.map((topic) => {
               const isEmpty = topic.wordCount === 0;
               const learned = progressMap[topic._id] || 0;
@@ -527,16 +527,16 @@ export default function TopicsPage() {
 
                     {/* Topic Title on Banner */}
                     <div className="absolute bottom-3 left-4 right-4">
-                      <h2 className="text-lg sm:text-xl font-black text-white drop-shadow-md leading-snug">
+                      <h2 className="text-base sm:text-lg font-black text-white drop-shadow-md leading-snug line-clamp-1">
                         {topic.title}
                       </h2>
                     </div>
                   </div>
 
                   {/* Topic Body */}
-                  <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between gap-5">
+                  <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between gap-4">
                     {/* Description */}
-                    <p className="text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                    <p className="text-xs sm:text-[13px] font-medium text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
                       {topic.description ||
                         "Hành trang từ vựng thiết yếu và ngữ cảnh ứng dụng thực tế cho chủ đề này."}
                     </p>
@@ -653,24 +653,24 @@ export default function TopicsPage() {
                         <Link
                           href={`/topics/${topic.slug || topic._id}`}
                           onClick={() => playClickSound()}
-                          className="flex-1 h-11 px-4 rounded-2xl font-bold text-xs sm:text-sm bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white dark:hover:text-white flex items-center justify-between border border-emerald-200/80 dark:border-emerald-800/80 hover:border-emerald-600 transition-all duration-200 shadow-xs cursor-pointer group/btn"
+                          className="flex-1 h-10 px-3 rounded-2xl font-bold text-xs bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white dark:hover:text-white flex items-center justify-between border border-emerald-200/80 dark:border-emerald-800/80 hover:border-emerald-600 transition-all duration-200 shadow-xs cursor-pointer group/btn min-w-0"
                           title="Trải nghiệm và xem trước (Preview) Flashcard dưới góc nhìn học viên"
                         >
-                          <span className="flex items-center gap-1.5">
-                            <BookOpen className="size-4" />
-                            <span>Flashcard</span>
+                          <span className="flex items-center gap-1.5 truncate">
+                            <BookOpen className="size-3.5 shrink-0" />
+                            <span className="truncate">Flashcard</span>
                           </span>
-                          <ChevronRight className="size-4 group-hover/btn:translate-x-1.5 transition-transform" />
+                          <ChevronRight className="size-3.5 shrink-0 group-hover/btn:translate-x-1 transition-transform" />
                         </Link>
 
                         {/* Nút phụ (Secondary Action): Dạng Outline chìm hơn, nền trong suốt để tránh tranh chấp thị giác */}
                         <Link
                           href={`/topics/${topic.slug || topic._id}?mode=list`}
                           onClick={() => playClickSound()}
-                          className="h-11 px-3 sm:px-3.5 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+                          className="h-10 px-2.5 sm:px-3 rounded-2xl font-bold text-xs border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
                           title="Quản lý dữ liệu & Soạn bài (Thêm, Sửa, Xóa từ vựng)"
                         >
-                          <Edit3 className="size-3.5" />
+                          <Edit3 className="size-3 shrink-0" />
                           <span className="hidden sm:inline">Soạn từ</span>
                         </Link>
                       </div>
@@ -679,13 +679,13 @@ export default function TopicsPage() {
                       <Link
                         href={`/topics/${topic.slug || topic._id}`}
                         onClick={() => playClickSound()}
-                        className="h-11 px-4 rounded-2xl font-bold text-xs sm:text-sm bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white dark:hover:text-white flex items-center justify-between border border-emerald-200/80 dark:border-emerald-800/80 hover:border-emerald-600 transition-all duration-200 shadow-xs cursor-pointer group/btn"
+                        className="h-10 px-3.5 rounded-2xl font-bold text-xs bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white dark:hover:text-white flex items-center justify-between border border-emerald-200/80 dark:border-emerald-800/80 hover:border-emerald-600 transition-all duration-200 shadow-xs cursor-pointer group/btn"
                       >
                         <span className="flex items-center gap-1.5">
-                          <BookOpen className="size-4" />
+                          <BookOpen className="size-3.5" />
                           <span>Flashcard</span>
                         </span>
-                        <ChevronRight className="size-4 group-hover/btn:translate-x-1.5 transition-transform" />
+                        <ChevronRight className="size-3.5 group-hover/btn:translate-x-1.5 transition-transform" />
                       </Link>
                     )}
                   </div>

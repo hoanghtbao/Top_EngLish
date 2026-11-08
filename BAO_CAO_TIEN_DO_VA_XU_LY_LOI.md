@@ -83,6 +83,15 @@ flowchart LR
    - **Huy hiệu thống kê số lượng chủ đề động**: Mỗi nút cấp độ hiển thị rõ mã CEFR, tên diễn giải tiếng Việt và số lượng chủ đề hiện có (`Tất cả: 4`, `A1: 2`, `A2: 1`, `B1: 1`...).
    - **Màu sắc chỉ thị chuẩn CEFR quốc tế**: Tích hợp chấm tròn định danh màu sắc (A1/A2 xanh lá, B1/B2 xanh biển/hổ phách, C1/C2 tím/hồng).
    - **Thanh tìm kiếm thông minh**: Ô search rộng rãi, tích hợp nút `X` xóa nhanh 1 chạm, bộ đếm kết quả trực quan và nút `Đặt lại` khôi phục bộ lọc mặc định.
+9. **Cấu hình Bố cục Lưới Thẻ Chủ đề tối đa 5 thẻ/hàng (5-Column Responsive Grid)**:
+   - Mở rộng container bao ngoài lên `max-w-[1700px] w-full` để tối ưu hóa không gian hiển thị trên màn hình máy tính và desktop rộng.
+   - Thiết lập lưới co giãn linh hoạt theo phân giải:
+     - Màn hình rộng (>= 1280px / 1440px / 1920px): **Tối đa 5 chủ đề trên mỗi hàng** (`xl:grid-cols-5`).
+     - Laptop / Màn hình trung bình (1024px - 1280px): 4 chủ đề (`lg:grid-cols-4`).
+     - Tablet (768px - 1024px): 3 chủ đề (`md:grid-cols-3`).
+     - Tablet nhỏ (640px - 768px): 2 chủ đề (`sm:grid-cols-2`).
+     - Mobile (< 640px): 1 chủ đề (`grid-cols-1`).
+   - Tinh chỉnh tỷ lệ Typography, độ cao ảnh bìa và nút hành động giúp mỗi thẻ trong hàng 5 thẻ đều sắc nét, gọn gàng và không bị tràn chữ.
 
 ---
 
