@@ -145,6 +145,17 @@ function TopicDetailInner() {
         if (vocabJson.success && Array.isArray(vocabJson.data)) {
           setVocabularies(vocabJson.data);
         }
+
+        // Đồng bộ danh sách từ đã thuộc từ bộ nhớ cục bộ
+        try {
+          const stored = localStorage.getItem(`topenglish_known_words_${topicJson.data._id}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+              setKnownWords(parsed);
+            }
+          }
+        } catch {}
       }
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu thẻ từ vựng:", err);
@@ -225,7 +236,16 @@ function TopicDetailInner() {
     async (id: string) => {
       playClickSound();
       if (!knownWords.includes(id)) {
-        setKnownWords((prev) => [...prev, id]);
+        const nextKnown = [...knownWords, id];
+        setKnownWords(nextKnown);
+        try {
+          if (topic?._id) {
+            localStorage.setItem(`topenglish_known_words_${topic._id}`, JSON.stringify(nextKnown));
+            if (topic.slug) {
+              localStorage.setItem(`topenglish_known_words_${topic.slug}`, JSON.stringify(nextKnown));
+            }
+          }
+        } catch {}
       }
 
       // Ghi nhận ôn tập SRS và cập nhật Streak Realtime kiểu Duolingo
