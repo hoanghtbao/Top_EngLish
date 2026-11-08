@@ -57,6 +57,10 @@ flowchart LR
      - 🌟 **Arpeggio thăng hạng (Success Chime)**: Hợp âm C6 -> E6 -> G6 -> C7 khi hoàn thành phiên ôn tập hoặc mastered từ vựng.
    - Tích hợp bảng cấu hình trực quan tại `/settings`: Toggle Bật/Tắt, thanh trượt âm lượng 0-100%, chọn kiểu âm thanh và nút nghe thử.
    - Kết nối âm thanh đồng bộ toàn bộ mục trên Dashboard, Sidebar menu và Header.
+4. **Công cụ Soạn bài & Thêm từ vựng Flashcard dành cho Giáo viên (Teacher Authoring UI)**:
+   - Trang `/topics`: Bổ sung nút **"+ Tạo chủ đề mới (Dành cho GV)"** và Modal Form soạn chủ đề theo cấp độ CEFR A1 - C2.
+   - Trang `/topics/[id]`: Bổ sung nút **"+ Thêm từ vựng mới"** và Modal Form nhập từ vựng (Từ tiếng Anh, Phiên âm IPA, Từ loại Part of Speech, Nghĩa tiếng Việt, Câu ví dụ ngữ cảnh và Dịch nghĩa).
+   - Tích hợp nút **Sửa** (Pencil) và **Xóa** (Trash2) từ vựng trực tiếp trong chế độ danh sách (List view) với xác nhận an toàn và phản hồi âm thanh tương tác.
 
 ---
 
