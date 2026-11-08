@@ -14,6 +14,7 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  Droplets,
   Eye,
   EyeOff,
   Flame,
@@ -34,10 +35,12 @@ import {
   Upload,
   User as UserIcon,
   Volume2,
+  VolumeX,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
 import { useAuth } from "../../context/auth-context";
 import { useTheme, Theme } from "../../context/theme-context";
+import { useSound } from "../../context/sound-context";
 import { fetchApi } from "../../lib/api-client";
 import UserAvatar from "../../components/UserAvatar";
 import AvatarUploadModal from "../../components/AvatarUploadModal";
@@ -56,6 +59,15 @@ const AVATAR_OPTIONS = [
 export default function SettingsPage() {
   const { user, isAuthenticated, refreshProfile, showToast } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const {
+    soundEnabled,
+    soundVolume,
+    soundPreset,
+    setSoundEnabled,
+    setSoundVolume,
+    setSoundPreset,
+    playClickSound,
+  } = useSound();
 
   const [activeTab, setActiveTab] = useState<"appearance" | "account" | "security">("appearance");
 
@@ -219,7 +231,7 @@ export default function SettingsPage() {
               }`}
             >
               <Palette className="size-4 shrink-0" />
-              <span className="hidden sm:inline">1. Giao Diện Sáng / Tối</span>
+              <span className="hidden sm:inline">1. Giao Diện & Âm Thanh</span>
               <span className="sm:hidden">1. Giao diện</span>
             </button>
             <button
@@ -378,6 +390,198 @@ export default function SettingsPage() {
 
                   <div className="px-3.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
                     Hoạt động ngay lập tức
+                  </div>
+                </div>
+
+                {/* 2. HIỆU ỨNG ÂM THANH TƯƠNG TÁC (INTERACTIVE SOUND EFFECTS) */}
+                <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+                        <Droplets className="size-5 text-teal-500" />
+                        Hiệu Ứng Âm Thanh Tương Tác (Sound Effects)
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Phát âm thanh giọt nước trong trẻo khi click vào các mục, thẻ bài học và nút đánh giá SRS trên Dashboard.
+                      </p>
+                    </div>
+
+                    {/* Quick Toggle On/Off Switch */}
+                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {soundEnabled ? "Đang Bật" : "Đã Tắt"}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={soundEnabled}
+                        onClick={() => {
+                          const next = !soundEnabled;
+                          setSoundEnabled(next);
+                          if (next) playClickSound();
+                        }}
+                        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          soundEnabled ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
+                        }`}
+                        title={soundEnabled ? "Tắt âm thanh tương tác" : "Bật âm thanh tương tác"}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block size-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            soundEnabled ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sound Presets & Volume Configuration */}
+                  <div
+                    className={`flex flex-col gap-5 transition-opacity duration-200 ${
+                      soundEnabled ? "opacity-100" : "opacity-45 pointer-events-none"
+                    }`}
+                  >
+                    {/* 3 SOUND PRESET OPTIONS */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      {/* Preset 1: Water Drop (Giọt nước thanh) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSoundPreset("water-drop");
+                          playClickSound("water-drop");
+                        }}
+                        className={`p-4 rounded-2xl border-2 flex flex-col gap-2.5 text-left transition-all cursor-pointer ${
+                          soundPreset === "water-drop"
+                            ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 ring-2 ring-emerald-500/20 shadow-sm"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="size-10 rounded-xl bg-teal-100 dark:bg-teal-950/80 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl shadow-xs">
+                            💧
+                          </div>
+                          {soundPreset === "water-drop" && (
+                            <div className="size-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                              <Check className="size-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <span>Giọt Nước Thanh Thoát</span>
+                            <span className="px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                              Khuyên dùng
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                            Tiếng giọt nước rớt êm dịu, trong trẻo, mang lại cảm giác thư thái khi học bài.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Preset 2: Bubble Pop */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSoundPreset("bubble-pop");
+                          playClickSound("bubble-pop");
+                        }}
+                        className={`p-4 rounded-2xl border-2 flex flex-col gap-2.5 text-left transition-all cursor-pointer ${
+                          soundPreset === "bubble-pop"
+                            ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 ring-2 ring-emerald-500/20 shadow-sm"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="size-10 rounded-xl bg-sky-100 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xl shadow-xs">
+                            🫧
+                          </div>
+                          {soundPreset === "bubble-pop" && (
+                            <div className="size-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                              <Check className="size-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                            Bọt Nước Pop Vui Nhộn
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                            Tiếng bong bóng vỡ rộn ràng, kích thích năng lượng và sự hào hứng.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Preset 3: Crystal Chime */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSoundPreset("crystal-chime");
+                          playClickSound("crystal-chime");
+                        }}
+                        className={`p-4 rounded-2xl border-2 flex flex-col gap-2.5 text-left transition-all cursor-pointer ${
+                          soundPreset === "crystal-chime"
+                            ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 ring-2 ring-emerald-500/20 shadow-sm"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="size-10 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl shadow-xs">
+                            🔔
+                          </div>
+                          {soundPreset === "crystal-chime" && (
+                            <div className="size-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                              <Check className="size-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                            Chuông Pha Lê Dịu Dàng
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                            Hợp âm ngân vang tinh tế, phù hợp người thích âm sắc nhẹ nhàng.
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* VOLUME SLIDER & PREVIEW BUTTON */}
+                    <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          {soundVolume === 0 ? <VolumeX className="size-4.5" /> : <Volume2 className="size-4.5" />}
+                        </div>
+                        <div className="flex-1 flex flex-col gap-1">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="text-slate-800 dark:text-slate-200">Âm Lượng Click</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">{Math.round(soundVolume * 100)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={soundVolume}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              setSoundVolume(v);
+                            }}
+                            onMouseUp={() => playClickSound()}
+                            onTouchEnd={() => playClickSound()}
+                            className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => playClickSound()}
+                        className="h-10 px-4 rounded-xl bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs shrink-0"
+                      >
+                        <Volume2 className="size-4 text-emerald-600" />
+                        <span>Nghe thử âm thanh</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

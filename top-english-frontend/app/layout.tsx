@@ -12,6 +12,7 @@ import { AuthProvider } from "../context/auth-context";
 import { ThemeProvider } from "../context/theme-context";
 import { SidebarProvider } from "../context/sidebar-context";
 import { BrandProvider } from "../context/brand-context";
+import { SoundProvider } from "../context/sound-context";
 import FloatingAiTutor from "../components/FloatingAiTutor";
 
 const geistSans = Geist({
@@ -48,10 +49,12 @@ export default function RootLayout({
           <ThemeProvider>
             <SidebarProvider>
               <BrandProvider>
-                {children}
-                <Suspense fallback={null}>
-                  <FloatingAiTutor />
-                </Suspense>
+                <SoundProvider>
+                  {children}
+                  <Suspense fallback={null}>
+                    <FloatingAiTutor />
+                  </Suspense>
+                </SoundProvider>
               </BrandProvider>
             </SidebarProvider>
           </ThemeProvider>
