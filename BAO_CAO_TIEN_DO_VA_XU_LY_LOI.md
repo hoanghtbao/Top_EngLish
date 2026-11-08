@@ -71,11 +71,11 @@ flowchart LR
    - **Xóa bỏ nút trùng lặp ở thanh tìm kiếm**: Loại bỏ hoàn toàn nút "+ Thêm từ vựng mới" nằm cạnh ô Search. Khu vực này được quy hoạch 100% chuyên trách cho việc tra cứu dữ liệu với nút "X" xóa nhanh.
    - **Cố định nút chính (Global CTA)**: Duy trì một nút duy nhất `+ Thêm từ vựng mới` ở góc trên cùng bên phải cạnh Mode Switcher.
    - **Điều kiện hóa thông minh cho Empty State**: Nút giữa màn hình chỉ hiển thị `+ Soạn từ vựng đầu tiên` khi chủ đề thực sự có 0 từ. Khi người dùng tìm kiếm không ra kết quả, màn hình hiển thị nút `"Xóa bộ lọc tìm kiếm"` thay vì hiển thị nút thêm từ gây hiểu nhầm.
-7. **Phân tầng hành động (Action Hierarchy) & Deep Linking Quản lý Từ vựng**:
-   - **Nút chính (Primary CTA)**: *"Luyện tập Flashcard"* với tông màu xanh mint/teal nổi bật, trải dài thân thiện cho học viên học tập và giáo viên xem trước (preview).
-   - **Nút phụ (Secondary Action)**: Dành riêng cho Giáo viên/Admin thao tác dữ liệu:
-     - Nút icon `✏️` (Chỉnh sửa) đặt ở góc trên bên phải Thumbnail của mỗi thẻ chủ đề.
-     - Nút phụ dạng Outline `"Soạn từ"` (viền mỏng, nền trong suốt) đặt cạnh nút chính, loại bỏ hoàn toàn hiện tượng tranh chấp thị giác.
+7. **Phân tầng hành động (Action Hierarchy) & Tinh giản tối đa Thẻ chủ đề**:
+   - **Nút chính (Primary CTA)**: Nhãn rút gọn tinh gọn thành *"Flashcard"* với tông màu xanh mint/teal nổi bật kèm icon mở sách `BookOpen`, mang lại cảm giác nhẹ nhàng, hiện đại cho cả học viên và giáo viên.
+   - **Nút phụ (Secondary Action)**: Dành riêng cho Giáo viên/Admin:
+     - Nút Outline `"Soạn từ"` với icon bút chì `Edit3` đặt cạnh nút "Flashcard" ở chân thẻ, nền trong suốt nhẹ nhàng.
+     - Loại bỏ icon bút chì ở góc trên bên phải Thumbnail để trả lại sự sạch sẽ, thoáng đãng cho phần ảnh bìa và nhãn số lượng từ vựng.
    - **Deep Linking URL Params (`?mode=list&action=add`)**: Khi giáo viên click từ ngoài thẻ chủ đề, trang chi tiết tự động kích hoạt `viewMode = "list"` và tự động mở modal thêm từ vựng mới mà không cần thêm thao tác phụ.
 
 ---

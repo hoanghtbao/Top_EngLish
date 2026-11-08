@@ -3,8 +3,8 @@
  * @author HoangBao
  * @description Trang danh sách chủ đề học từ vựng (Topics Catalog) chuẩn UI/UX Pro Max
  * Tích hợp phân tầng hành động rõ ràng:
- * 1. Nút chính (Primary Button): "Luyện tập Flashcard" nổi bật màu xanh ngọc mint/teal
- * 2. Nút phụ (Secondary Action): Icon ✏️ ở góc Thumbnail và Nút Outline "Soạn từ" cạnh nút chính dành riêng cho Giáo viên
+ * 1. Nút chính (Primary Button): "Flashcard" nổi bật màu xanh ngọc mint/teal
+ * 2. Nút phụ (Secondary Action): Nút Outline "Soạn từ" cạnh nút chính dành riêng cho Giáo viên & Admin
  * 3. Trạng thái rỗng (Empty State) thông minh: Mờ đối với học sinh, nút Soạn từ ngay đối với giáo viên
  * 4. Thanh tiến độ học tập (Progress Indicator: Đã thuộc X/Y từ + thanh progress bar)
  * 5. Hiệu ứng tương tác nâng cao (Elevated hover translate-y, dynamic shadow, affordance, sound feedback)
@@ -384,7 +384,7 @@ export default function TopicsPage() {
                       </span>
                     </div>
 
-                    {/* Top Right Badges & Teacher Quick Management Icon */}
+                    {/* Top Right Badges */}
                     <div className="absolute top-3 right-3 flex items-center gap-1.5">
                       {/* Word Count Badge */}
                       {isEmpty ? (
@@ -395,21 +395,6 @@ export default function TopicsPage() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/95 dark:bg-amber-600/95 text-white border border-amber-300/40 backdrop-blur-md shadow-sm">
                           <BookOpen className="size-3.5 text-amber-100" /> {topic.wordCount} từ
                         </span>
-                      )}
-
-                      {/* TEACHER / ADMIN QUICK EDIT ICON BUTTON (NÚT PHỤ ICON TRÊN THUMBNAIL) */}
-                      {isTeacherOrAdmin && (
-                        <Link
-                          href={`/topics/${topic.slug || topic._id}?mode=list`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClickSound();
-                          }}
-                          className="size-7 sm:size-8 rounded-xl bg-white/90 hover:bg-emerald-600 hover:text-white dark:bg-slate-900/90 dark:hover:bg-emerald-500 text-slate-700 dark:text-slate-200 backdrop-blur-md shadow-md border border-white/20 flex items-center justify-center transition-all cursor-pointer active:scale-90"
-                          title="Quản lý & Soạn từ vựng (Thêm, Sửa, Xóa từ vựng)"
-                        >
-                          <Edit3 className="size-3.5 sm:size-4" />
-                        </Link>
                       )}
                     </div>
 
@@ -535,7 +520,7 @@ export default function TopicsPage() {
                         </div>
                       )
                     ) : isTeacherOrAdmin ? (
-                      /* Case C-1: Chủ đề có từ vựng (Giáo viên & Admin) -> Nút chính Luyện tập Flashcard (xanh mint nổi bật) + Nút phụ Outline Soạn từ */
+                      /* Case C-1: Chủ đề có từ vựng (Giáo viên & Admin) -> Nút chính Flashcard (xanh mint nổi bật) + Nút phụ Outline Soạn từ */
                       <div className="flex items-center gap-2">
                         {/* Nút chính (Primary Action): Trải nghiệm và xem trước Flashcard */}
                         <Link
@@ -546,7 +531,7 @@ export default function TopicsPage() {
                         >
                           <span className="flex items-center gap-1.5">
                             <BookOpen className="size-4" />
-                            <span>Luyện tập Flashcard</span>
+                            <span>Flashcard</span>
                           </span>
                           <ChevronRight className="size-4 group-hover/btn:translate-x-1.5 transition-transform" />
                         </Link>
@@ -563,13 +548,16 @@ export default function TopicsPage() {
                         </Link>
                       </div>
                     ) : (
-                      /* Case C-2: Chủ đề có từ vựng (Học viên) -> Nút chính Luyện tập Flashcard trải dài toàn bộ */
+                      /* Case C-2: Chủ đề có từ vựng (Học viên) -> Nút chính Flashcard trải dài toàn bộ */
                       <Link
                         href={`/topics/${topic.slug || topic._id}`}
                         onClick={() => playClickSound()}
                         className="h-11 px-4 rounded-2xl font-bold text-xs sm:text-sm bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white dark:hover:text-white flex items-center justify-between border border-emerald-200/80 dark:border-emerald-800/80 hover:border-emerald-600 transition-all duration-200 shadow-xs cursor-pointer group/btn"
                       >
-                        <span>Luyện tập Flashcard</span>
+                        <span className="flex items-center gap-1.5">
+                          <BookOpen className="size-4" />
+                          <span>Flashcard</span>
+                        </span>
                         <ChevronRight className="size-4 group-hover/btn:translate-x-1.5 transition-transform" />
                       </Link>
                     )}
