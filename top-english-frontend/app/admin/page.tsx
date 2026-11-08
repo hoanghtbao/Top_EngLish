@@ -647,11 +647,11 @@ export default function AdminDashboardPage() {
           <div className="absolute -right-12 -bottom-16 size-72 rounded-full bg-emerald-400/20 blur-3xl pointer-events-none" />
         </section>
 
-        {/* NAVIGATION TABS */}
-        <div className="flex flex-wrap sm:flex-nowrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-1.5 gap-1">
+        {/* NAVIGATION TABS (Responsive 2x2 Grid on Mobile, Flex on Desktop) */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-nowrap border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-1.5 gap-1">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+            className={`min-h-[44px] py-2.5 sm:py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer ${
               activeTab === "overview"
                 ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shadow-sm"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
@@ -662,18 +662,18 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("users")}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+            className={`min-h-[44px] py-2.5 sm:py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer ${
               activeTab === "users"
                 ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shadow-sm"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
             <Users className="size-4 shrink-0" />
-            <span className="truncate">2. Quản Lý Người Dùng ({stats?.users.total || 0})</span>
+            <span className="truncate">2. Người Dùng ({stats?.users.total || 0})</span>
           </button>
           <button
             onClick={() => setActiveTab("content")}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+            className={`min-h-[44px] py-2.5 sm:py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer ${
               activeTab === "content"
                 ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shadow-sm"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
@@ -684,14 +684,14 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("homepage")}
-            className={`flex-1 py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+            className={`min-h-[44px] py-2.5 sm:py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer ${
               activeTab === "homepage"
                 ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shadow-sm"
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
             }`}
           >
             <Palette className="size-4 shrink-0" />
-            <span className="truncate">4. Giao Diện & Ảnh Nền</span>
+            <span className="truncate">4. Giao Diện & Nền</span>
           </button>
         </div>
 
@@ -1009,7 +1009,7 @@ export default function AdminDashboardPage() {
 
             {/* USERS DATA TABLE */}
             <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-xs font-bold text-slate-400 uppercase">
                     <th className="py-3 px-4">Người Dùng</th>

@@ -218,6 +218,19 @@ export default function FloatingAiTutor() {
 
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
+
+    // Trên thiết bị di động (Mobile Phone < 640px): Mở dạng khay nổi bao phủ tối ưu trải nghiệm chạm
+    if (windowWidth < 640) {
+      return {
+        left: "12px",
+        right: "12px",
+        bottom: "16px",
+        width: "auto",
+        height: `${Math.min(560, windowHeight - 96)}px`,
+        maxHeight: "85vh",
+      };
+    }
+
     const chatWidth = Math.min(410, windowWidth - 32);
     const chatHeight = Math.min(560, windowHeight * 0.82);
 

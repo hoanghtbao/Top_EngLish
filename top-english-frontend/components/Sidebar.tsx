@@ -184,20 +184,26 @@ export default function Sidebar() {
             }}
             onMouseLeave={() => setHoveredItem(null)}
             className={`group relative flex items-center ${
-              isCollapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-2.5"
-            } rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              isCollapsed
+                ? "gap-3 px-3 py-2.5 md:justify-center md:px-0 md:py-2"
+                : "gap-3 px-3 py-2.5"
+            } rounded-xl text-xs font-semibold transition-all cursor-pointer min-h-[44px] ${
               isActive
                 ? isCollapsed
-                  ? ""
+                  ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 md:bg-transparent shadow-xs font-bold"
                   : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shadow-xs font-bold"
                 : item.disabled
                 ? "text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-75"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
-            {/* Active Left Indicator Bar (only when sidebar is expanded) */}
-            {isActive && !isCollapsed && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-600 dark:bg-emerald-400 rounded-r-full" />
+            {/* Active Left Indicator Bar */}
+            {isActive && (
+              <span
+                className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-emerald-600 dark:bg-emerald-400 rounded-r-full ${
+                  isCollapsed ? "md:hidden" : ""
+                }`}
+              />
             )}
 
             <div
@@ -210,11 +216,11 @@ export default function Sidebar() {
               <Icon className="size-5" />
             </div>
 
-            {/* Label & Badge: hidden when collapsed */}
+            {/* Label & Badge: hidden when collapsed only on md+ screens */}
             <div
               className={`flex-1 flex items-center justify-between gap-1 overflow-hidden transition-all duration-200 ${
                 isCollapsed
-                  ? "w-0 opacity-0 pointer-events-none"
+                  ? "w-auto opacity-100 md:w-0 md:opacity-0 md:pointer-events-none"
                   : "w-auto opacity-100"
               }`}
             >
@@ -269,10 +275,12 @@ export default function Sidebar() {
 
       const renderNavGroup = (title: string, items: NavItem[]) => (
         <div className="flex flex-col gap-1">
-          {/* Group Title: hidden when collapsed */}
+          {/* Group Title: hidden when collapsed only on md+ */}
           <div
             className={`px-3 py-1.5 text-[10px] font-bold tracking-wider text-slate-400 uppercase transition-opacity duration-200 ${
-              isCollapsed ? "opacity-0 h-0 p-0 overflow-hidden" : "opacity-100"
+              isCollapsed
+                ? "opacity-100 md:opacity-0 md:h-0 md:p-0 md:overflow-hidden"
+                : "opacity-100"
             }`}
           >
             {title}
@@ -284,22 +292,22 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
+      {/* Mobile Backdrop Overlay with tap to dismiss */}
       {isMobileOpen && (
         <div
           onClick={closeMobile}
-          className="md:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 transition-opacity"
+          className="md:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 transition-opacity"
           aria-hidden="true"
         />
       )}
 
       {/* Main Left Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-lg md:shadow-none ${
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl md:shadow-none ${
           isInitialized ? "transition-all duration-300 ease-in-out" : ""
-        } ${
-          /* Responsive widths */
-          isCollapsed ? "w-20" : "w-64"
+        } w-72 max-w-[85vw] ${
+          /* Responsive widths for desktop only */
+          isCollapsed ? "md:w-20" : "md:w-64"
         } ${
           /* Mobile slide-in positioning */
           isMobileOpen
@@ -309,8 +317,8 @@ export default function Sidebar() {
       >
         {/* TOP BRAND HEADER */}
         <div
-          className={`h-16 flex items-center border-b border-slate-200 dark:border-slate-800 shrink-0 transition-all ${
-            isCollapsed ? "justify-center px-2" : "justify-between px-4"
+          className={`h-16 flex items-center border-b border-slate-200 dark:border-slate-800 shrink-0 transition-all justify-between px-4 ${
+            isCollapsed ? "md:justify-center md:px-2" : "md:justify-between md:px-4"
           }`}
         >
           <Link
@@ -323,8 +331,8 @@ export default function Sidebar() {
               <Globe2 className="size-5.5 transition-transform group-hover:rotate-12 duration-300" />
             </div>
             <div
-              className={`transition-all duration-200 overflow-hidden ${
-                isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+              className={`transition-all duration-200 overflow-hidden w-auto opacity-100 ${
+                isCollapsed ? "md:w-0 md:opacity-0" : "md:w-auto md:opacity-100"
               }`}
             >
               <span className="text-base font-extrabold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent block truncate group-hover:from-emerald-500 group-hover:to-teal-400 transition-all">
@@ -336,10 +344,10 @@ export default function Sidebar() {
             </div>
           </Link>
 
-          {/* Mobile close button (only on mobile) */}
+          {/* Mobile close button with 44x44px touch target */}
           <button
             onClick={closeMobile}
-            className="md:hidden size-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="md:hidden size-10 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             aria-label="Đóng thanh điều hướng"
           >
             <X className="size-5" />

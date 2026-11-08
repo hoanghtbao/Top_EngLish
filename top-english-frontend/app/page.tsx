@@ -153,24 +153,24 @@ export default function Home() {
           )}
 
           {/* Action CTAs */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
             <Link
               href="/topics"
-              className="h-11 px-6 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/25 transition cursor-pointer flex items-center gap-2"
+              className="w-full sm:w-auto h-11 px-6 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/25 transition cursor-pointer flex items-center justify-center gap-2"
             >
               <BookOpen className="size-4" />
               <span>Học Từ vựng Flashcard</span>
             </Link>
             <Link
               href="/dashboard"
-              className="h-11 px-6 rounded-xl font-semibold text-sm bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs border border-slate-300/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition cursor-pointer flex items-center gap-2 shadow-xs"
+              className="w-full sm:w-auto h-11 px-6 rounded-xl font-semibold text-sm bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs border border-slate-300/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
             >
               <Brain className="size-4 text-emerald-600 dark:text-emerald-400" />
               <span>Tiến độ & Phòng ôn SRS</span>
             </Link>
             <Link
               href="/quizzes"
-              className="h-11 px-5 rounded-xl font-semibold text-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer flex items-center gap-2"
+              className="w-full sm:w-auto h-11 px-5 rounded-xl font-semibold text-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer flex items-center justify-center gap-2"
             >
               <CheckSquare className="size-4 text-sky-500" />
               <span>Luyện thi Quiz</span>

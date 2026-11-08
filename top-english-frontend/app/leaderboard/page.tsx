@@ -332,7 +332,7 @@ export default function LeaderboardPage() {
             <div className="h-48 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-800" />
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900">
-              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[520px]">
                 <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-4 py-3 w-14 text-center">Hạng</th>

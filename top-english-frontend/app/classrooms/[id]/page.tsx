@@ -870,7 +870,7 @@ function ClassroomDetailContent() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-                <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[620px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     <tr>
                       <th className="px-4 py-3">Học viên</th>

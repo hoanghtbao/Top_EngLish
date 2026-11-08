@@ -169,7 +169,7 @@ export default function AppHeader() {
           <span className="hidden sm:inline text-slate-300 dark:text-slate-700">
             /
           </span>
-          <span className="text-emerald-700 dark:text-emerald-400 font-bold truncate max-w-[200px] sm:max-w-none">
+          <span className="text-emerald-700 dark:text-emerald-400 font-bold truncate max-w-[130px] sm:max-w-none">
             {getPageTitle()}
           </span>
         </div>
@@ -186,20 +186,20 @@ export default function AppHeader() {
               : "Chuyển sang Giao diện Tối (Dark Mode)"
           }
           aria-label="Chuyển đổi giao diện Sáng / Tối"
-          className="size-9.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center transition cursor-pointer shrink-0"
+          className="size-9 sm:size-9.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center transition cursor-pointer shrink-0"
         >
           {resolvedTheme === "dark" ? (
-            <Sun className="size-4.5 text-amber-400 fill-amber-400/20" />
+            <Sun className="size-4 sm:size-4.5 text-amber-400 fill-amber-400/20" />
           ) : (
-            <Moon className="size-4.5 text-slate-700" />
+            <Moon className="size-4 sm:size-4.5 text-slate-700" />
           )}
         </button>
 
-        {/* Settings Quick Link */}
+        {/* Settings Quick Link (Hidden on mobile to save top bar space) */}
         <Link
           href="/settings"
           title="Cài Đặt Hệ Thống & Bảo Mật"
-          className="size-9.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center transition cursor-pointer shrink-0"
+          className="hidden sm:flex size-9.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 items-center justify-center transition cursor-pointer shrink-0"
         >
           <Settings className="size-4.5 text-slate-600 dark:text-slate-400" />
         </Link>
@@ -211,22 +211,24 @@ export default function AppHeader() {
               <button
                 type="button"
                 onClick={toggleStreakPopover}
-                className="hidden sm:inline-flex items-center gap-2 h-9.5 px-3 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/90 dark:hover:bg-slate-700/90 border border-slate-200/80 dark:border-slate-700/80 text-xs transition-all shadow-xs cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1.5 h-9 sm:h-9.5 px-2.5 sm:px-3 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/90 dark:hover:bg-slate-700/90 border border-slate-200/80 dark:border-slate-700/80 text-xs transition-all shadow-xs cursor-pointer shrink-0"
                 title="Chuỗi ngày học liên tục kiểu Duolingo (Bấm để xem chi tiết lịch tuần)"
               >
-                <span className="inline-flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400">
                   <Flame
-                    className={`size-4 ${
+                    className={`size-3.5 sm:size-4 ${
                       user.streak > 0
                         ? "fill-amber-500 text-amber-500 animate-pulse"
                         : "text-slate-400"
                     }`}
                   />
-                  <span>{user.streak} ngày</span>
+                  <span>
+                    {user.streak} <span className="hidden sm:inline">ngày</span>
+                  </span>
                 </span>
-                <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-600" />
+                <span className="hidden sm:inline h-3.5 w-px bg-slate-300 dark:bg-slate-600" />
                 <span
-                  className={`inline-flex items-center gap-1.5 font-bold transition-all duration-300 ${
+                  className={`hidden sm:inline-flex items-center gap-1.5 font-bold transition-all duration-300 ${
                     highlightXP
                       ? "text-emerald-500 dark:text-emerald-300 scale-110 drop-shadow font-black"
                       : "text-emerald-600 dark:text-emerald-400"
@@ -239,7 +241,7 @@ export default function AppHeader() {
 
               {/* DUOLINGO STREAK POPOVER */}
               {showStreakPopover && (
-                <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150">
+                <div className="fixed sm:absolute left-4 sm:left-auto right-4 sm:right-0 top-16 sm:top-12 z-50 w-auto sm:w-80 max-w-sm mx-auto sm:mx-0 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150">
                   {/* Header Popover */}
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2">

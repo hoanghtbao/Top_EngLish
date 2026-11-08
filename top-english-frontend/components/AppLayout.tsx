@@ -19,9 +19,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Left Sidebar */}
       <Sidebar />
 
-      {/* Main Content Area: Dynamic Left Margin according to Collapse State */}
+      {/* Main Content Area: Dynamic Left Margin according to Collapse State & Safe Mobile Clipping */}
       <div
-        className={`flex-1 flex flex-col ${
+        className={`flex-1 flex flex-col min-w-0 overflow-x-hidden ${
           isInitialized ? "transition-all duration-300 ease-in-out" : ""
         } ${isCollapsed ? "md:pl-20" : "md:pl-64"}`}
       >
@@ -29,7 +29,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         <AppHeader />
 
         {/* Page Children Content */}
-        <div className="flex-1 w-full">{children}</div>
+        <div className="flex-1 w-full min-w-0">{children}</div>
       </div>
     </div>
   );

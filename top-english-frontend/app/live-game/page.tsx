@@ -216,7 +216,7 @@ export default function LiveGameLobbyPage() {
             </div>
 
             {/* Quick Stats Banner */}
-            <div className="flex md:flex-col gap-3 shrink-0">
+            <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 sm:gap-3 shrink-0">
               <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl">
                 <Trophy className="size-6 text-amber-300" />
                 <div>
@@ -245,25 +245,27 @@ export default function LiveGameLobbyPage() {
           <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <button
               onClick={() => setActiveTab("join")}
-              className={`flex-1 py-4 px-6 text-sm sm:text-base font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`flex-1 py-3.5 sm:py-4 px-3 sm:px-6 text-xs sm:text-base font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
                 activeTab === "join"
                   ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
-              <Swords className="size-5" />
-              1. Tham Gia Trận Đấu (Học Viên)
+              <Swords className="size-4 sm:size-5 shrink-0" />
+              <span className="hidden sm:inline">1. Tham Gia Trận Đấu (Học Viên)</span>
+              <span className="sm:hidden">1. Vào Phòng Đấu</span>
             </button>
             <button
               onClick={() => setActiveTab("create")}
-              className={`flex-1 py-4 px-6 text-sm sm:text-base font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`flex-1 py-3.5 sm:py-4 px-3 sm:px-6 text-xs sm:text-base font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
                 activeTab === "create"
                   ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
-              <PlusCircle className="size-5" />
-              2. Tạo Phòng Đấu Mới (Host / Giáo Viên)
+              <PlusCircle className="size-4 sm:size-5 shrink-0" />
+              <span className="hidden sm:inline">2. Tạo Phòng Đấu Mới (Host / Giáo Viên)</span>
+              <span className="sm:hidden">2. Tạo Phòng Mới</span>
             </button>
           </div>
 

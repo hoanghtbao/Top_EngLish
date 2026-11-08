@@ -499,8 +499,8 @@ function QuizTakingInner() {
             />
           </div>
 
-          {/* Quick Question Jump Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+          {/* Quick Question Jump Pills with 40px touch target */}
+          <div className="flex items-center gap-2 overflow-x-auto py-1.5 scrollbar-none">
             {questions.map((q, idx) => {
               const isAnswered =
                 userAnswers[q._id] && userAnswers[q._id].trim() !== "";
@@ -510,7 +510,7 @@ function QuizTakingInner() {
                 <button
                   key={q._id}
                   onClick={() => setCurrentIdx(idx)}
-                  className={`size-9 rounded-xl text-xs font-black transition cursor-pointer shrink-0 flex items-center justify-center ${
+                  className={`size-10 min-w-[40px] rounded-xl text-xs font-black transition cursor-pointer shrink-0 flex items-center justify-center ${
                     isCurrent
                       ? "ring-2 ring-emerald-500 ring-offset-2 bg-emerald-600 text-white shadow-sm"
                       : isAnswered

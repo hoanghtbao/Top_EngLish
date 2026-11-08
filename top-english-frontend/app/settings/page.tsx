@@ -208,40 +208,43 @@ export default function SettingsPage() {
 
         {/* SETTINGS TABS CONTAINER */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          {/* Tab Navigation Header */}
+          {/* Tab Navigation Header (Responsive Compact on Mobile) */}
           <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50">
             <button
               onClick={() => setActiveTab("appearance")}
-              className={`flex-1 py-4 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`flex-1 py-3.5 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
                 activeTab === "appearance"
                   ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
-              <Palette className="size-4" />
-              1. Giao Diện Sáng / Tối
+              <Palette className="size-4 shrink-0" />
+              <span className="hidden sm:inline">1. Giao Diện Sáng / Tối</span>
+              <span className="sm:hidden">1. Giao diện</span>
             </button>
             <button
               onClick={() => setActiveTab("account")}
-              className={`flex-1 py-4 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`flex-1 py-3.5 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
                 activeTab === "account"
                   ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
-              <UserIcon className="size-4" />
-              2. Thông Tin Tài Khoản
+              <UserIcon className="size-4 shrink-0" />
+              <span className="hidden sm:inline">2. Thông Tin Tài Khoản</span>
+              <span className="sm:hidden">2. Tài khoản</span>
             </button>
             <button
               onClick={() => setActiveTab("security")}
-              className={`flex-1 py-4 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`flex-1 py-3.5 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
                 activeTab === "security"
                   ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
                   : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
-              <Lock className="size-4" />
-              3. Bảo Mật & Đổi Mật Khẩu
+              <Lock className="size-4 shrink-0" />
+              <span className="hidden sm:inline">3. Bảo Mật & Mật Khẩu</span>
+              <span className="sm:hidden">3. Bảo mật</span>
             </button>
           </div>
 

@@ -304,16 +304,16 @@ function DashboardContent() {
             Hệ thống lặp lại ngắt quãng (Spaced Repetition System) cá nhân hóa lộ
             trình ghi nhớ từ vựng và theo dõi chuỗi ngày học của riêng bạn.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
             <Link
               href="/login"
-              className="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition shadow-md shadow-emerald-600/20 flex items-center gap-2"
+              className="w-full sm:w-auto h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2"
             >
               Đăng nhập ngay <ArrowRight className="size-4" />
             </Link>
             <Link
               href="/register"
-              className="h-11 px-6 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-sm transition"
+              className="w-full sm:w-auto h-11 px-6 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-sm transition flex items-center justify-center"
             >
               Tạo tài khoản mới
             </Link>
@@ -916,7 +916,7 @@ function DashboardContent() {
             </div>
           ) : (
             <div className="overflow-x-auto no-scrollbar">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[620px]">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
                     <th className="pb-3 font-semibold">Tên bài kiểm tra</th>
