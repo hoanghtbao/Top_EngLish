@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -26,6 +26,7 @@ import {
   Layers,
   Lock,
   Plus,
+  RotateCcw,
   Search,
   Sparkles,
   Trophy,
@@ -47,13 +48,13 @@ interface Topic {
 }
 
 const CEFR_LEVELS = [
-  { key: "ALL", label: "Tất cả cấp độ" },
-  { key: "A1", label: "A1 - Cơ bản" },
-  { key: "A2", label: "A2 - Sơ cấp" },
-  { key: "B1", label: "B1 - Trung cấp" },
-  { key: "B2", label: "B2 - Trung cao" },
-  { key: "C1", label: "C1 - Cao cấp" },
-  { key: "C2", label: "C2 - Tinh thông" },
+  { key: "ALL", label: "Tất cả", subLabel: "Mọi cấp độ", dotColor: "bg-slate-400" },
+  { key: "A1", label: "A1", subLabel: "Cơ bản", dotColor: "bg-emerald-500" },
+  { key: "A2", label: "A2", subLabel: "Sơ cấp", dotColor: "bg-sky-500" },
+  { key: "B1", label: "B1", subLabel: "Trung cấp", dotColor: "bg-amber-500" },
+  { key: "B2", label: "B2", subLabel: "Trung cao", dotColor: "bg-indigo-500" },
+  { key: "C1", label: "C1", subLabel: "Cao cấp", dotColor: "bg-purple-500" },
+  { key: "C2", label: "C2", subLabel: "Tinh thông", dotColor: "bg-rose-500" },
 ];
 
 export default function TopicsPage() {
@@ -65,9 +66,40 @@ export default function TopicsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedLevel, setSelectedLevel] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [levelCounts, setLevelCounts] = useState<Record<string, number>>({});
 
   // Bảng tiến độ học tập (Map topicId -> số từ đã thuộc)
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+
+  // Thống kê tổng số lượng chủ đề cho mỗi cấp độ CEFR
+  const fetchLevelSummary = useCallback(async () => {
+    try {
+      const res = await fetchApi<Topic[]>("/topics");
+      if (res.success && Array.isArray(res.data)) {
+        const counts: Record<string, number> = {
+          ALL: res.data.length,
+          A1: 0,
+          A2: 0,
+          B1: 0,
+          B2: 0,
+          C1: 0,
+          C2: 0,
+        };
+        res.data.forEach((t) => {
+          if (counts[t.level] !== undefined) {
+            counts[t.level]++;
+          }
+        });
+        setLevelCounts(counts);
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLevelSummary();
+  }, [fetchLevelSummary]);
 
   // --- MODAL TẠO CHỦ ĐỀ DÀNH CHO GIÁO VIÊN & ADMIN ---
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -188,6 +220,7 @@ export default function TopicsPage() {
           image: "",
         });
         fetchTopics();
+        fetchLevelSummary();
       } else {
         setErrorMessage(res.message || "Không thể tạo chủ đề. Vui lòng thử lại!");
       }
@@ -271,42 +304,136 @@ export default function TopicsPage() {
           </div>
         )}
 
-        {/* Filter & Search Bar */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          {/* CEFR Level Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
-            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-slate-400 mr-1 pl-1">
-              <Filter className="size-3.5" /> Cấp độ:
-            </span>
-            {CEFR_LEVELS.map((lvl) => (
-              <button
-                key={lvl.key}
-                onClick={() => {
-                  playClickSound();
-                  setSelectedLevel(lvl.key);
-                }}
-                className={`h-10 px-3.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedLevel === lvl.key
-                    ? "bg-emerald-600 text-white shadow-xs shadow-emerald-600/30"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                }`}
-              >
-                {lvl.label}
-              </button>
-            ))}
+        {/* FILTER & SEARCH CONTROL HUB (UI/UX PRO MAX) */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-xs flex flex-col gap-4 transition-all">
+          {/* TẦNG 1: THANH TÌM KIẾM CHỦ ĐỀ & BỘ ĐẾM KẾT QUẢ */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Search Input Box */}
+            <div className="relative flex-1 group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+              <input
+                id="search-topics"
+                type="text"
+                placeholder="Tra cứu theo tên chủ đề, từ vựng hoặc ngữ cảnh..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-11 pl-10.5 pr-10 text-xs sm:text-sm rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-500 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+              />
+              {/* Nút X xóa nhanh tìm kiếm */}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    setSearchQuery("");
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 size-6 rounded-full bg-slate-200/80 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
+                  title="Xóa từ khóa tìm kiếm"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Thống kê kết quả & Nút đặt lại */}
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
+              <div className="px-3 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 border border-slate-200/60 dark:border-slate-700/60">
+                <Sparkles className="size-3.5 text-emerald-500" />
+                <span>
+                  {loading ? "Đang lọc..." : `Tìm thấy ${topics.length} chủ đề`}
+                </span>
+              </div>
+
+              {(selectedLevel !== "ALL" || searchQuery.trim() !== "") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    setSelectedLevel("ALL");
+                    setSearchQuery("");
+                  }}
+                  className="h-9 px-3 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  title="Đặt lại toàn bộ bộ lọc về mặc định"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>Đặt lại</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Search Input */}
-          <div className="relative min-w-[260px] lg:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
-            <input
-              id="search-topics"
-              type="text"
-              placeholder="Tìm kiếm chủ đề..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition text-slate-900 dark:text-slate-100"
-            />
+          {/* TẦNG 2: BỘ LỌC CẤP ĐỘ CEFR ĐỘC LẬP - TỰ ĐỘNG WRAP KHÔNG BAO GIỜ BỊ CHE */}
+          <div className="flex flex-col gap-2 pt-3.5 border-t border-slate-100 dark:border-slate-800/70">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <GraduationCap className="size-3.5 text-emerald-500" />
+                <span>Cấp độ chuẩn CEFR:</span>
+              </div>
+
+              {selectedLevel !== "ALL" && (
+                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/50 dark:border-emerald-800/50">
+                  Đang lọc: {CEFR_LEVELS.find((l) => l.key === selectedLevel)?.label} ({CEFR_LEVELS.find((l) => l.key === selectedLevel)?.subLabel})
+                </span>
+              )}
+            </div>
+
+            {/* CEFR Level Chips - Hàng nút rộng rãi, tự động xuống dòng mượt mà khi màn hình hẹp */}
+            <div className="flex flex-wrap items-center gap-2">
+              {CEFR_LEVELS.map((lvl) => {
+                const isSelected = selectedLevel === lvl.key;
+                const count = levelCounts[lvl.key];
+
+                return (
+                  <button
+                    key={lvl.key}
+                    type="button"
+                    onClick={() => {
+                      playClickSound();
+                      setSelectedLevel(lvl.key);
+                    }}
+                    className={`h-9.5 px-3.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer active:scale-95 select-none ${
+                      isSelected
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-500/20"
+                        : "bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white border border-slate-200/70 dark:border-slate-700/70"
+                    }`}
+                  >
+                    {/* Level Color Dot Indicator */}
+                    <span
+                      className={`size-2 rounded-full shrink-0 transition-colors ${
+                        isSelected ? "bg-white" : lvl.dotColor
+                      }`}
+                    />
+
+                    <span>{lvl.label}</span>
+                    {lvl.subLabel && (
+                      <span
+                        className={`text-[11px] font-medium hidden sm:inline ${
+                          isSelected
+                            ? "text-emerald-100"
+                            : "text-slate-400 dark:text-slate-500"
+                        }`}
+                      >
+                        • {lvl.subLabel}
+                      </span>
+                    )}
+
+                    {typeof count === "number" && (
+                      <span
+                        className={`ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-black transition-colors ${
+                          isSelected
+                            ? "bg-white/25 text-white"
+                            : count > 0
+                            ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
+                            : "bg-slate-200/80 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

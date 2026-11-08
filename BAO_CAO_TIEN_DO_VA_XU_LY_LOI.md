@@ -77,6 +77,12 @@ flowchart LR
      - Nút Outline `"Soạn từ"` với icon bút chì `Edit3` đặt cạnh nút "Flashcard" ở chân thẻ, nền trong suốt nhẹ nhàng.
      - Loại bỏ icon bút chì ở góc trên bên phải Thumbnail để trả lại sự sạch sẽ, thoáng đãng cho phần ảnh bìa và nhãn số lượng từ vựng.
    - **Deep Linking URL Params (`?mode=list&action=add`)**: Khi giáo viên click từ ngoài thẻ chủ đề, trang chi tiết tự động kích hoạt `viewMode = "list"` và tự động mở modal thêm từ vựng mới mà không cần thêm thao tác phụ.
+8. **Tái thiết kế Thanh Cấp độ & Ô Tìm kiếm chuẩn UI/UX Pro Max (Filter & Search Control Hub)**:
+   - **Khắc phục triệt để lỗi che khuất chữ**: Phân tách kiến trúc 2 tầng (Two-Tier Architecture) độc lập giữa Thanh tìm kiếm (Tầng 1) và Cấp độ CEFR (Tầng 2), chấm dứt hoàn toàn tình trạng nút "C2 - Tinh thông" bị ô Search chèn ép.
+   - **Thích ứng tự động (Flex-wrap)**: Bố cục co giãn linh hoạt 100% bề rộng, tự động xuống dòng êm ái trên laptop có sidebar, tablet và mobile mà không bị tràn khung hay che khuất.
+   - **Huy hiệu thống kê số lượng chủ đề động**: Mỗi nút cấp độ hiển thị rõ mã CEFR, tên diễn giải tiếng Việt và số lượng chủ đề hiện có (`Tất cả: 4`, `A1: 2`, `A2: 1`, `B1: 1`...).
+   - **Màu sắc chỉ thị chuẩn CEFR quốc tế**: Tích hợp chấm tròn định danh màu sắc (A1/A2 xanh lá, B1/B2 xanh biển/hổ phách, C1/C2 tím/hồng).
+   - **Thanh tìm kiếm thông minh**: Ô search rộng rãi, tích hợp nút `X` xóa nhanh 1 chạm, bộ đếm kết quả trực quan và nút `Đặt lại` khôi phục bộ lọc mặc định.
 
 ---
 
@@ -184,6 +190,20 @@ Trong suốt quá trình phát triển, đội ngũ đã ghi nhận và giải q
   - **Empty State có điều kiện**: Chỉ hiển thị nút `+ Soạn từ vựng đầu tiên` khi chủ đề thực sự có 0 từ vựng. Khi kết quả tìm kiếm rỗng, hiển thị nút `Xóa bộ lọc tìm kiếm`.
   - **Phân tách trên thẻ Topic Card**: Nút chính `Luyện tập Flashcard` chiếm ưu tiên thị giác (Primary Button); Nút của giáo viên được thiết kế tinh tế dạng Icon Button `✏️` trên Thumbnail và nút Outline phụ `Soạn từ` (chìm hơn, nền trong suốt) để triệt tiêu mọi tranh chấp thị giác.
   - **Deep Linking**: Hỗ trợ URL params `?mode=list&action=add` tự động mở màn hình soạn bài cho giáo viên.
+
+### Lỗi 8: Nút bộ lọc cấp độ CEFR ("C2 - Tinh thông") bị che khuất và đè lấp bởi ô Tìm kiếm
+- **Hiện tượng**:
+  - Khi người dùng xem danh mục chủ đề trên máy tính hoặc laptop (1366px - 1440px), nút "C2 - Tinh thông" bị co ngắn thành "C2 - Tinh thô...", nửa bên phải bị đè dưới ô Search.
+  - Thanh cuộn ngang bị ẩn (`scrollbar-none`) khiến người dùng không biết nội dung bị tràn và tưởng giao diện bị cắt xén, lỗi hiển thị.
+- **Nguyên nhân cốt lõi**:
+  - Container sử dụng `flex-col lg:flex-row items-stretch lg:items-center justify-between` ép cả 7 nút cấp độ có văn bản dài và 1 ô tìm kiếm có kích thước cố định `lg:w-72` vào chung 1 hàng ngang.
+  - Khi có thanh Sidebar điều hướng chiếm 260px, diện tích khả dụng của khung nội dung chính bị rút ngắn còn ~700px - 750px, không thể đủ chỗ cho chuỗi 7 nút cấp độ (~840px) cùng ô Search (288px), dẫn đến va chạm và tràn ngoài khung nhìn.
+- **Giải pháp xử lý triệt để (UI/UX Pro Max)**:
+  - **Tái cấu trúc Trung tâm điều khiển 2 tầng (Two-Tier Control Hub)**:
+    - **Tầng 1 (Toàn bề rộng)**: Ô tìm kiếm toàn màn hình có nút `X` xóa nhanh, tích hợp huy hiệu số lượng kết quả trực quan và nút `Đặt lại` khôi phục bộ lọc.
+    - **Tầng 2 (Toàn bề rộng)**: Thanh điều hướng 7 cấp độ CEFR với `flex-wrap gap-2`.
+  - **Tự động co giãn & Xuống dòng mượt mà**: Các nút cấp độ sở hữu 100% không gian hiển thị, tự động bẻ dòng thanh thoát khi thu nhỏ màn hình mà không bao giờ bị cắt chữ hay che khuất.
+  - **Bổ sung huy hiệu số lượng chủ đề động & chấm màu CEFR**: Hiển thị rõ số lượng chủ đề thực tế cho từng cấp độ (vd: Tất cả `4`, A1 `2`, A2 `1`...), tăng tính trực quan và khả năng định hướng học tập.
 
 ---
 
