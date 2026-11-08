@@ -870,46 +870,68 @@ function TopicDetailInner() {
         {/* VIEW MODE 2: VOCABULARY LIST TABLE */}
         {viewMode === "list" && (
           <div className="flex flex-col gap-4">
-            {/* Search within topic & Quick Add Button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative max-w-md w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
-                <input
-                  id="search-vocab"
-                  type="text"
-                  placeholder="Tra từ hoặc nghĩa tiếng Việt trong chủ đề..."
-                  value={listSearch}
-                  onChange={(e) => setListSearch(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition text-slate-900 dark:text-slate-100"
-                />
-              </div>
-
-              {isTeacherOrAdmin && (
+            {/* Search within topic (Clean & Dedicated Search Bar) */}
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+              <input
+                id="search-vocab"
+                type="text"
+                placeholder="Tra từ hoặc nghĩa tiếng Việt trong chủ đề..."
+                value={listSearch}
+                onChange={(e) => setListSearch(e.target.value)}
+                className="w-full h-11 pl-10 pr-9 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition text-slate-900 dark:text-slate-100 shadow-xs"
+              />
+              {listSearch && (
                 <button
                   type="button"
-                  onClick={openAddModal}
-                  className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
+                  onClick={() => setListSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 size-5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition cursor-pointer"
+                  title="Xóa tìm kiếm"
                 >
-                  <Plus className="size-4" />
-                  <span>Thêm từ vựng mới</span>
+                  <X className="size-3.5" />
                 </button>
               )}
             </div>
 
-            {filteredVocabularies.length === 0 ? (
-              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-3">
-                <p className="text-xs font-semibold text-slate-400">
-                  Không tìm thấy từ vựng nào khớp với từ khóa &quot;{listSearch}&quot;.
+            {/* Condition 1: Chủ đề thực sự chưa có từ nào */}
+            {vocabularies.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-8 flex flex-col items-center gap-3">
+                <BookOpen className="size-12 text-slate-300 dark:text-slate-700" />
+                <p className="text-sm font-semibold text-slate-500">
+                  Chủ đề này chưa có thẻ từ vựng nào.
                 </p>
                 {isTeacherOrAdmin && (
                   <button
                     type="button"
                     onClick={openAddModal}
-                    className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    className="h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm shadow-emerald-600/30 transition cursor-pointer"
                   >
-                    <Plus className="size-4" /> Thêm từ mới vào chủ đề
+                    <Plus className="size-4 stroke-[3]" />
+                    <span>Soạn từ vựng đầu tiên</span>
                   </button>
                 )}
+              </div>
+            ) : filteredVocabularies.length === 0 ? (
+              /* Condition 2: Chủ đề có từ nhưng tìm kiếm không khớp */
+              <div className="text-center py-14 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-3">
+                <div className="size-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                  <Search className="size-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    Không tìm thấy từ vựng nào
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Không có từ vựng nào khớp với từ khóa &quot;{listSearch}&quot;.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setListSearch("")}
+                  className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Xóa bộ lọc tìm kiếm
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
