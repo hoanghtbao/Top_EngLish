@@ -29,6 +29,7 @@ import { useAuth } from "../context/auth-context";
 import { useSidebar } from "../context/sidebar-context";
 import { useTheme } from "../context/theme-context";
 import { useBrand } from "../context/brand-context";
+import { useSound } from "../context/sound-context";
 import { fetchApi } from "../lib/api-client";
 import { WeeklyActivityDay } from "./StreakModal";
 import UserAvatar from "./UserAvatar";
@@ -40,6 +41,7 @@ export default function AppHeader() {
   const { toggleMobile } = useSidebar();
   const { resolvedTheme, toggleTheme } = useTheme();
   const { brandSettings } = useBrand();
+  const { playClickSound } = useSound();
 
   const [showStreakPopover, setShowStreakPopover] = useState(false);
   const [streakData, setStreakData] = useState<{
@@ -150,7 +152,10 @@ export default function AppHeader() {
       <div className="flex items-center gap-3">
         {/* Mobile menu trigger */}
         <button
-          onClick={toggleMobile}
+          onClick={() => {
+            playClickSound();
+            toggleMobile();
+          }}
           className="md:hidden size-10 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           aria-label="Mở menu điều hướng"
         >
@@ -179,7 +184,10 @@ export default function AppHeader() {
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Theme Quick Switcher (Light / Dark) */}
         <button
-          onClick={toggleTheme}
+          onClick={() => {
+            playClickSound();
+            toggleTheme();
+          }}
           title={
             resolvedTheme === "dark"
               ? "Chuyển sang Giao diện Sáng (Light Mode)"
@@ -198,6 +206,7 @@ export default function AppHeader() {
         {/* Settings Quick Link (Hidden on mobile to save top bar space) */}
         <Link
           href="/settings"
+          onClick={() => playClickSound()}
           title="Cài Đặt Hệ Thống & Bảo Mật"
           className="hidden sm:flex size-9.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 items-center justify-center transition cursor-pointer shrink-0"
         >
@@ -210,7 +219,10 @@ export default function AppHeader() {
             <div className="relative" ref={popoverRef}>
               <button
                 type="button"
-                onClick={toggleStreakPopover}
+                onClick={() => {
+                  playClickSound();
+                  toggleStreakPopover();
+                }}
                 className="inline-flex items-center gap-1.5 h-9 sm:h-9.5 px-2.5 sm:px-3 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/90 dark:hover:bg-slate-700/90 border border-slate-200/80 dark:border-slate-700/80 text-xs transition-all shadow-xs cursor-pointer shrink-0"
                 title="Chuỗi ngày học liên tục kiểu Duolingo (Bấm để xem chi tiết lịch tuần)"
               >
@@ -376,7 +388,10 @@ export default function AppHeader() {
               </Link>
 
               <button
-                onClick={() => logout()}
+                onClick={() => {
+                  playClickSound();
+                  logout();
+                }}
                 title="Đăng xuất khỏi tài khoản"
                 aria-label="Đăng xuất"
                 className="size-9 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 flex items-center justify-center transition cursor-pointer"

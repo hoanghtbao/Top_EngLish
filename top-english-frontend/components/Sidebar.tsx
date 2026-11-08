@@ -30,6 +30,7 @@ import {
 import { useAuth } from "../context/auth-context";
 import { useSidebar } from "../context/sidebar-context";
 import { useBrand } from "../context/brand-context";
+import { useSound } from "../context/sound-context";
 
 interface NavItem {
   label: string;
@@ -47,6 +48,7 @@ export default function Sidebar() {
   const { isCollapsed, isMobileOpen, isInitialized, toggleCollapse, closeMobile } =
     useSidebar();
   const { brandSettings } = useBrand();
+  const { playClickSound } = useSound();
 
   const [hoveredItem, setHoveredItem] = useState<{
     label: string;
@@ -254,6 +256,7 @@ export default function Sidebar() {
               href={item.href}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => playClickSound()}
               title={isCollapsed ? item.label : undefined}
             >
               {itemContent}
@@ -265,7 +268,10 @@ export default function Sidebar() {
           <Link
             key={item.label}
             href={item.href}
-            onClick={() => closeMobile()}
+            onClick={() => {
+              playClickSound();
+              closeMobile();
+            }}
             title={isCollapsed ? item.label : undefined}
           >
             {itemContent}
@@ -375,7 +381,10 @@ export default function Sidebar() {
           {/* Nút thu gọn / mở rộng sidebar */}
           <div className="hidden md:flex pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
             <button
-              onClick={toggleCollapse}
+              onClick={() => {
+                playClickSound();
+                toggleCollapse();
+              }}
               className="w-full h-9 flex items-center justify-center gap-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-xs font-semibold transition cursor-pointer"
               title={
                 isCollapsed

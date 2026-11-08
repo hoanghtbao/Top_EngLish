@@ -31,7 +31,7 @@ const STORAGE_KEY_PRESET = "topenglish_sound_preset";
 
 export function SoundProvider({ children }: { children: React.ReactNode }) {
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(true);
-  const [soundVolume, setSoundVolumeState] = useState<number>(0.7);
+  const [soundVolume, setSoundVolumeState] = useState<number>(0.75);
   const [soundPreset, setSoundPresetState] = useState<SoundPreset>("water-drop");
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -95,65 +95,46 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Khởi tạo AudioContext an toàn và resume khi có tương tác người dùng
-  const getAudioContext = useCallback((): AudioContext | null => {
-    if (typeof window === "undefined") return null;
-
-    if (!audioCtxRef.current) {
-      const AudioCtxClass =
-        window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtxClass) {
-        audioCtxRef.current = new AudioCtxClass();
-      }
-    }
-
-    if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume().catch(() => {});
-    }
-
-    return audioCtxRef.current;
-  }, []);
-
   // 1. TỔNG HỢP ÂM THANH GIỌT NƯỚC THANH THOÁT (Pure Water Droplet Sound)
   const synthesizeWaterDrop = useCallback((ctx: AudioContext, vol: number) => {
     const now = ctx.currentTime;
 
-    // Giọt nước chính (Chirp hình sin từ 1050Hz vọt lên 2300Hz rồi ngân nhẹ)
+    // Giọt nước chính (Chirp hình sin từ 1050Hz vọt lên 2350Hz rồi ngân nhẹ)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
 
     osc1.type = "sine";
     osc1.frequency.setValueAtTime(1050, now);
     osc1.frequency.exponentialRampToValueAtTime(2350, now + 0.035);
-    osc1.frequency.exponentialRampToValueAtTime(1450, now + 0.11);
+    osc1.frequency.exponentialRampToValueAtTime(1450, now + 0.12);
 
     gain1.gain.setValueAtTime(0.0001, now);
-    gain1.gain.linearRampToValueAtTime(vol * 0.45, now + 0.007);
-    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    gain1.gain.linearRampToValueAtTime(vol * 0.65, now + 0.007);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
 
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
 
     osc1.start(now);
-    osc1.stop(now + 0.15);
+    osc1.stop(now + 0.16);
 
     // Họa âm phụ (Tạo độ trong vắt như giọt pha lê rơi xuống mặt nước)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
 
     osc2.type = "sine";
-    osc2.frequency.setValueAtTime(2600, now + 0.01);
+    osc2.frequency.setValueAtTime(2600, now + 0.008);
     osc2.frequency.exponentialRampToValueAtTime(3400, now + 0.045);
 
-    gain2.gain.setValueAtTime(0.0001, now + 0.01);
-    gain2.gain.linearRampToValueAtTime(vol * 0.18, now + 0.016);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+    gain2.gain.setValueAtTime(0.0001, now + 0.008);
+    gain2.gain.linearRampToValueAtTime(vol * 0.28, now + 0.016);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
 
     osc2.connect(gain2);
     gain2.connect(ctx.destination);
 
-    osc2.start(now + 0.01);
-    osc2.stop(now + 0.12);
+    osc2.start(now + 0.008);
+    osc2.stop(now + 0.13);
   }, []);
 
   // 2. TỔNG HỢP ÂM THANH BỌT NƯỚC POP VUI NHỘN (Bubble Pop)
@@ -167,14 +148,14 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     osc.frequency.exponentialRampToValueAtTime(950, now + 0.05);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(vol * 0.4, now + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+    gain.gain.linearRampToValueAtTime(vol * 0.6, now + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.1);
+    osc.stop(now + 0.11);
   }, []);
 
   // 3. TỔNG HỢP ÂM THANH CHUÔNG PHA LÊ (Crystal Chime)
@@ -190,7 +171,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       osc.frequency.setValueAtTime(freq, now + idx * 0.025);
 
       gain.gain.setValueAtTime(0.0001, now + idx * 0.025);
-      gain.gain.linearRampToValueAtTime(vol * 0.28, now + idx * 0.025 + 0.01);
+      gain.gain.linearRampToValueAtTime(vol * 0.4, now + idx * 0.025 + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.025 + 0.25);
 
       osc.connect(gain);
@@ -214,7 +195,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       osc.frequency.setValueAtTime(freq, now + idx * 0.045);
 
       gain.gain.setValueAtTime(0.0001, now + idx * 0.045);
-      gain.gain.linearRampToValueAtTime(vol * 0.22, now + idx * 0.045 + 0.01);
+      gain.gain.linearRampToValueAtTime(vol * 0.35, now + idx * 0.045 + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.045 + 0.22);
 
       osc.connect(gain);
@@ -225,49 +206,77 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Phát âm thanh theo preset đã cài đặt
-  const playClickSound = useCallback(
-    (customPreset?: SoundPreset) => {
+  // Bộ điều phối phát âm an toàn với tự động resume AudioContext khi có tương tác
+  const executeAudio = useCallback(
+    (playFn: (ctx: AudioContext, vol: number) => void) => {
+      if (typeof window === "undefined") return;
       if (!soundEnabled || soundVolume <= 0) return;
 
-      const ctx = getAudioContext();
-      if (!ctx) return;
-
-      const preset = customPreset || soundPreset;
-
       try {
-        if (preset === "bubble-pop") {
-          synthesizeBubblePop(ctx, soundVolume);
-        } else if (preset === "crystal-chime") {
-          synthesizeCrystalChime(ctx, soundVolume);
-        } else {
-          // Mặc định: Giọt nước thanh (water-drop)
-          synthesizeWaterDrop(ctx, soundVolume);
+        const AudioCtxClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtxClass) return;
+
+        if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+          audioCtxRef.current = new AudioCtxClass();
         }
-      } catch {
-        // Ignored
+
+        const ctx = audioCtxRef.current;
+
+        const run = () => {
+          try {
+            playFn(ctx, soundVolume);
+          } catch (e) {
+            console.warn("[Sound Engine] Lỗi khi tạo sóng âm:", e);
+          }
+        };
+
+        if (ctx.state === "suspended") {
+          ctx
+            .resume()
+            .then(() => {
+              run();
+            })
+            .catch(() => {
+              run();
+            });
+        } else {
+          run();
+        }
+      } catch (err) {
+        console.warn("[Sound Engine] Lỗi AudioContext:", err);
       }
     },
-    [soundEnabled, soundVolume, soundPreset, getAudioContext, synthesizeBubblePop, synthesizeCrystalChime, synthesizeWaterDrop]
+    [soundEnabled, soundVolume]
+  );
+
+  // Phát âm thanh theo preset đã cài đặt (mặc định theo thiết lập ở Settings)
+  const playClickSound = useCallback(
+    (customPreset?: SoundPreset) => {
+      const activePreset = customPreset || soundPreset;
+
+      if (activePreset === "bubble-pop") {
+        executeAudio(synthesizeBubblePop);
+      } else if (activePreset === "crystal-chime") {
+        executeAudio(synthesizeCrystalChime);
+      } else {
+        // Mặc định: Giọt nước thanh thoát (water-drop)
+        executeAudio(synthesizeWaterDrop);
+      }
+    },
+    [soundPreset, executeAudio, synthesizeBubblePop, synthesizeCrystalChime, synthesizeWaterDrop]
   );
 
   // Phát riêng âm giọt nước
   const playWaterDrop = useCallback(() => {
-    if (!soundEnabled || soundVolume <= 0) return;
-    const ctx = getAudioContext();
-    if (ctx) {
-      synthesizeWaterDrop(ctx, soundVolume);
-    }
-  }, [soundEnabled, soundVolume, getAudioContext, synthesizeWaterDrop]);
+    executeAudio(synthesizeWaterDrop);
+  }, [executeAudio, synthesizeWaterDrop]);
 
   // Phát âm hoàn thành / thưởng XP
   const playSuccessSound = useCallback(() => {
-    if (!soundEnabled || soundVolume <= 0) return;
-    const ctx = getAudioContext();
-    if (ctx) {
-      synthesizeSuccess(ctx, soundVolume);
-    }
-  }, [soundEnabled, soundVolume, getAudioContext, synthesizeSuccess]);
+    executeAudio(synthesizeSuccess);
+  }, [executeAudio, synthesizeSuccess]);
 
   return (
     <SoundContext.Provider

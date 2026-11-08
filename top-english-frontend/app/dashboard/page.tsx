@@ -245,7 +245,7 @@ function DashboardContent() {
       if (res.data?.isMastered) {
         playSuccessSound();
       } else {
-        playWaterDrop();
+        playClickSound();
       }
 
       // Cập nhật XP & Streak tức thì lên Header và toàn hệ thống qua AuthContext
@@ -373,9 +373,17 @@ function DashboardContent() {
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Card 1: Streak */}
           <div
-            onClick={() => playWaterDrop()}
-            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.98]"
-            title="Chuỗi ngày học liên tục (Bấm để nghe âm thanh giọt nước)"
+            role="button"
+            tabIndex={0}
+            onClick={() => playClickSound()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                playClickSound();
+              }
+            }}
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+            title="Chuỗi ngày học liên tục (Bấm để nghe âm thanh tương tác)"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">Chuỗi ngày</span>
@@ -396,9 +404,17 @@ function DashboardContent() {
 
           {/* Card 2: Total XP */}
           <div
-            onClick={() => playWaterDrop()}
-            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-teal-400 hover:shadow-md active:scale-[0.98]"
-            title="Kinh nghiệm tích lũy (Bấm để nghe âm thanh giọt nước)"
+            role="button"
+            tabIndex={0}
+            onClick={() => playClickSound()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                playClickSound();
+              }
+            }}
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-teal-400 hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            title="Kinh nghiệm tích lũy (Bấm để nghe âm thanh tương tác)"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">Kinh nghiệm</span>
@@ -419,9 +435,17 @@ function DashboardContent() {
 
           {/* Card 3: Vocab Mastered */}
           <div
-            onClick={() => playWaterDrop()}
-            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-emerald-400 hover:shadow-md active:scale-[0.98]"
-            title="Từ vựng thành thạo (Bấm để nghe âm thanh giọt nước)"
+            role="button"
+            tabIndex={0}
+            onClick={() => playClickSound()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                playClickSound();
+              }
+            }}
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-emerald-400 hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            title="Từ vựng thành thạo (Bấm để nghe âm thanh tương tác)"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">Từ thành thạo</span>
@@ -442,9 +466,17 @@ function DashboardContent() {
 
           {/* Card 4: Grammar Completed */}
           <div
-            onClick={() => playWaterDrop()}
-            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-sky-400 hover:shadow-md active:scale-[0.98]"
-            title="Tiến độ ngữ pháp (Bấm để nghe âm thanh giọt nước)"
+            role="button"
+            tabIndex={0}
+            onClick={() => playClickSound()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                playClickSound();
+              }
+            }}
+            className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-sky-400 hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+            title="Tiến độ ngữ pháp (Bấm để nghe âm thanh tương tác)"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">Ngữ pháp</span>
@@ -465,9 +497,17 @@ function DashboardContent() {
 
           {/* Card 5: Quizzes Average */}
           <div
-            onClick={() => playWaterDrop()}
-            className="col-span-2 sm:col-span-1 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-purple-400 hover:shadow-md active:scale-[0.98]"
-            title="Điểm thi trung bình (Bấm để nghe âm thanh giọt nước)"
+            role="button"
+            tabIndex={0}
+            onClick={() => playClickSound()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                playClickSound();
+              }
+            }}
+            className="col-span-2 sm:col-span-1 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-2 cursor-pointer transition-all hover:border-purple-400 hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            title="Điểm thi trung bình (Bấm để nghe âm thanh tương tác)"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">Điểm thi TB</span>
@@ -588,11 +628,20 @@ function DashboardContent() {
 
                   {/* 3D Flashcard Presentation */}
                   <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
-                      playWaterDrop();
+                      playClickSound();
                       setIsFlipped(!isFlipped);
                     }}
-                    className="min-h-[280px] p-6 sm:p-8 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600/60 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col items-center justify-center text-center gap-4 cursor-pointer select-none transition-all group relative active:scale-[0.99]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        playClickSound();
+                        setIsFlipped(!isFlipped);
+                      }
+                    }}
+                    className="min-h-[280px] p-6 sm:p-8 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600/60 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col items-center justify-center text-center gap-4 cursor-pointer select-none transition-all group relative active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   >
                     <span className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
                       {currentWordItem.isNew ? (
@@ -777,9 +826,17 @@ function DashboardContent() {
               <div className="flex flex-col gap-3">
                 {/* Level 0-1: Learning */}
                 <div
-                  onClick={() => playWaterDrop()}
-                  className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-amber-400 dark:hover:border-amber-700 active:scale-[0.99]"
-                  title="Hộp Leitner 0 - 1 (Bấm để nghe âm thanh giọt nước)"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => playClickSound()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      playClickSound();
+                    }
+                  }}
+                  className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-amber-400 dark:hover:border-amber-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  title="Hộp Leitner 0 - 1 (Bấm để nghe âm thanh tương tác)"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="size-2 rounded-full bg-amber-500" />
@@ -799,9 +856,17 @@ function DashboardContent() {
 
                 {/* Level 2-3: Reviewing */}
                 <div
-                  onClick={() => playWaterDrop()}
-                  className="p-3 rounded-xl bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/60 dark:border-sky-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-sky-400 dark:hover:border-sky-700 active:scale-[0.99]"
-                  title="Hộp Leitner 2 - 3 (Bấm để nghe âm thanh giọt nước)"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => playClickSound()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      playClickSound();
+                    }
+                  }}
+                  className="p-3 rounded-xl bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/60 dark:border-sky-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-sky-400 dark:hover:border-sky-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                  title="Hộp Leitner 2 - 3 (Bấm để nghe âm thanh tương tác)"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="size-2 rounded-full bg-sky-500" />
@@ -821,9 +886,17 @@ function DashboardContent() {
 
                 {/* Level 4: Mastered */}
                 <div
-                  onClick={() => playWaterDrop()}
-                  className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-emerald-400 dark:hover:border-emerald-700 active:scale-[0.99]"
-                  title="Hộp Leitner 4 (Bấm để nghe âm thanh giọt nước)"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => playClickSound()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      playClickSound();
+                    }
+                  }}
+                  className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-emerald-400 dark:hover:border-emerald-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  title="Hộp Leitner 4 (Bấm để nghe âm thanh tương tác)"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="size-2 rounded-full bg-emerald-500" />
@@ -860,7 +933,7 @@ function DashboardContent() {
               <div className="flex flex-col gap-2.5">
                 <Link
                   href="/topics"
-                  onClick={() => playWaterDrop()}
+                  onClick={() => playClickSound()}
                   className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 flex items-center justify-between transition group active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3">
@@ -881,7 +954,7 @@ function DashboardContent() {
 
                 <Link
                   href="/grammar"
-                  onClick={() => playWaterDrop()}
+                  onClick={() => playClickSound()}
                   className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-teal-500 hover:bg-teal-50/40 dark:hover:bg-teal-950/20 flex items-center justify-between transition group active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3">
@@ -902,7 +975,7 @@ function DashboardContent() {
 
                 <Link
                   href="/quizzes"
-                  onClick={() => playWaterDrop()}
+                  onClick={() => playClickSound()}
                   className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-sky-500 hover:bg-sky-50/40 dark:hover:bg-sky-950/20 flex items-center justify-between transition group active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3">
@@ -1029,7 +1102,7 @@ function DashboardContent() {
                         <td className="py-3.5 text-right">
                           <Link
                             href={`/quizzes/${sub.quizId?._id || ""}`}
-                            onClick={() => playWaterDrop()}
+                            onClick={() => playClickSound()}
                             className="inline-flex items-center gap-1 font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition cursor-pointer"
                           >
                             Thi lại <ArrowRight className="size-3" />
