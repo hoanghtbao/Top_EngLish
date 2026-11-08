@@ -48,3 +48,7 @@ coverage/
 # Planning & roadmap documents
 Top-English_Project_Plan.md
 *.plan.md
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
