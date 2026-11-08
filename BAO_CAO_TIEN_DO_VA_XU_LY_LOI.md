@@ -67,6 +67,10 @@ flowchart LR
      - Đối với Giáo viên / Admin: Chuyển thành nút nổi bật `"Thêm từ vựng ngay"` để giáo viên bấm vào soạn bài lập tức.
    - **Thanh tiến độ học tập (Progress Indicator - Retention Weapon)**: Thêm chỉ số `"Đã thuộc X/Y từ"` kèm thanh tiến độ mảnh (progress bar) đổi màu xanh ngọc bích mượt mà khi người học thuộc từ, đạt 100% khi thành thạo cả chủ đề.
    - **Hiệu ứng tương tác nâng cao (Elevated Hover & Affordance)**: Thêm `hover:-translate-y-1.5`, đổ bóng 3D mềm mại (`hover:shadow-2xl`), zoom nhẹ ảnh bìa và âm thanh phản hồi giọt nước khi click.
+6. **Khắc phục hiện tượng nhiễu thị giác (Declutter Visual Clutter)**:
+   - **Xóa bỏ nút trùng lặp ở thanh tìm kiếm**: Loại bỏ hoàn toàn nút "+ Thêm từ vựng mới" nằm cạnh ô Search. Khu vực này được quy hoạch 100% chuyên trách cho việc tra cứu dữ liệu với nút "X" xóa nhanh.
+   - **Cố định nút chính (Global CTA)**: Duy trì một nút duy nhất `+ Thêm từ vựng mới` ở góc trên cùng bên phải cạnh Mode Switcher.
+   - **Điều kiện hóa thông minh cho Empty State**: Nút giữa màn hình chỉ hiển thị `+ Soạn từ vựng đầu tiên` khi chủ đề thực sự có 0 từ. Khi người dùng tìm kiếm không ra kết quả, màn hình hiển thị nút `"Xóa bộ lọc tìm kiếm"` thay vì hiển thị nút thêm từ gây hiểu nhầm.
 
 ---
 
