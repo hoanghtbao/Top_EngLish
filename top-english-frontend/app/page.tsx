@@ -91,8 +91,9 @@ export default function Home() {
   return (
     <AppLayout>
 
-      {/* Hero Section with Admin Custom Background */}
-      <section className="relative overflow-hidden border-b border-slate-200/80 dark:border-slate-800/80 py-16 md:py-24">
+      {/* Hero Section with Rounded Background Container */}
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6">
+        <section className="relative overflow-hidden rounded-3xl sm:rounded-[2.5rem] border border-slate-200/80 dark:border-slate-800/80 shadow-md py-14 sm:py-20 md:py-24 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
         {/* Dynamic Background Image uploaded/configured from Admin */}
         {brandSettings.isEnabled && brandSettings.backgroundUrl && (
           <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -178,6 +179,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+    </div>
 
       {/* Main Content Features */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-16 flex flex-col gap-12 sm:gap-16">
