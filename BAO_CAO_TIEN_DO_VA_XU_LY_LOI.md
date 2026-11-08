@@ -61,6 +61,12 @@ flowchart LR
    - Trang `/topics`: Bổ sung nút **"+ Tạo chủ đề mới (Dành cho GV)"** và Modal Form soạn chủ đề theo cấp độ CEFR A1 - C2.
    - Trang `/topics/[id]`: Bổ sung nút **"+ Thêm từ vựng mới"** và Modal Form nhập từ vựng (Từ tiếng Anh, Phiên âm IPA, Từ loại Part of Speech, Nghĩa tiếng Việt, Câu ví dụ ngữ cảnh và Dịch nghĩa).
    - Tích hợp nút **Sửa** (Pencil) và **Xóa** (Trash2) từ vựng trực tiếp trong chế độ danh sách (List view) với xác nhận an toàn và phản hồi âm thanh tương tác.
+5. **Cải tiến UX chuyên sâu cho Thẻ Chủ Đề Từ Vựng (Topics UX Optimization)**:
+   - **Xử lý trạng thái rỗng (Empty States)**: Khi chủ đề có 0 từ (ví dụ chủ đề mới tạo hoặc đang chuẩn bị):
+     - Đối với Học viên: Làm mờ nút bấm (`disabled`), đổi chữ thành `"Đang cập nhật từ vựng"` kèm nhãn `"Sắp ra mắt"`, ngăn chặn hành động click vào flashcard rỗng.
+     - Đối với Giáo viên / Admin: Chuyển thành nút nổi bật `"Thêm từ vựng ngay"` để giáo viên bấm vào soạn bài lập tức.
+   - **Thanh tiến độ học tập (Progress Indicator - Retention Weapon)**: Thêm chỉ số `"Đã thuộc X/Y từ"` kèm thanh tiến độ mảnh (progress bar) đổi màu xanh ngọc bích mượt mà khi người học thuộc từ, đạt 100% khi thành thạo cả chủ đề.
+   - **Hiệu ứng tương tác nâng cao (Elevated Hover & Affordance)**: Thêm `hover:-translate-y-1.5`, đổ bóng 3D mềm mại (`hover:shadow-2xl`), zoom nhẹ ảnh bìa và âm thanh phản hồi giọt nước khi click.
 
 ---
 
