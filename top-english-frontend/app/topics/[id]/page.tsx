@@ -7,7 +7,7 @@
 
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   Edit2,
+  FileJson,
   GraduationCap,
   List,
   Plus,
@@ -25,6 +26,7 @@ import {
   Sparkles,
   Trash2,
   Trophy,
+  Upload,
   Volume2,
   X,
 } from "lucide-react";
@@ -66,6 +68,37 @@ const PARTS_OF_SPEECH = [
   { value: "conjunction", label: "Liên từ (Conjunction - conj.)" },
   { value: "phrase", label: "Cụm từ / Thành ngữ (Phrase / Idiom)" },
 ];
+
+const SAMPLE_JSON_TEMPLATE = `[
+  {
+    "word": "Collaborate",
+    "phonetic": "/kəˈlæb.ə.reɪt/",
+    "partOfSpeech": "verb",
+    "meaning": "Hợp tác, cộng tác làm việc chung",
+    "exampleSentence": "Our design and engineering teams collaborate closely every day.",
+    "exampleMeaning": "Nhóm thiết kế và kỹ thuật của chúng tôi hợp tác chặt chẽ mỗi ngày."
+  },
+  {
+    "word": "Efficiency",
+    "phonetic": "/ɪˈfɪʃ.ən.si/",
+    "partOfSpeech": "noun",
+    "meaning": "Hiệu suất, năng suất làm việc",
+    "exampleSentence": "Automation significantly improves operational efficiency.",
+    "exampleMeaning": "Tự động hóa cải thiện đáng kể hiệu suất vận hành."
+  }
+]`;
+
+function normalizePartOfSpeech(raw?: string): string {
+  const val = (raw || "").trim().toLowerCase();
+  if (val === "n" || val === "n." || val === "noun") return "noun";
+  if (val === "v" || val === "v." || val === "verb") return "verb";
+  if (val === "adj" || val === "adj." || val === "adjective") return "adjective";
+  if (val === "adv" || val === "adv." || val === "adverb") return "adverb";
+  if (val === "prep" || val === "prep." || val === "preposition") return "preposition";
+  if (val === "conj" || val === "conj." || val === "conjunction") return "conjunction";
+  if (val === "phrase" || val === "idiom") return "phrase";
+  return "noun";
+}
 
 function TopicDetailSkeleton() {
   return (
@@ -112,6 +145,8 @@ function TopicDetailInner() {
 
   // --- TEACHER & ADMIN AUTHORING MODAL STATES ---
   const [showAddWordModal, setShowAddWordModal] = useState<boolean>(false);
+  const [addModalTab, setAddModalTab] = useState<"single" | "json">("single");
+  const [jsonInput, setJsonInput] = useState<string>("");
   const [showEditWordModal, setShowEditWordModal] = useState<boolean>(false);
   const [editingWord, setEditingWord] = useState<Vocabulary | null>(null);
   const [isAuthoringSubmitting, setIsAuthoringSubmitting] = useState<boolean>(false);
@@ -126,6 +161,92 @@ function TopicDetailInner() {
     exampleSentence: "",
     exampleMeaning: "",
   });
+
+  // Phân tích và kiểm tra tính hợp lệ của JSON nhập hàng loạt theo thời gian thực
+  const parsedJsonPreview = useMemo(() => {
+    const raw = jsonInput.trim();
+    if (!raw) {
+      return { items: [], error: null as string | null };
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      const list: any[] = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.items)
+        ? parsed.items
+        : Array.isArray(parsed?.vocabularies)
+        ? parsed.vocabularies
+        : null;
+
+      if (!list) {
+        return {
+          items: [],
+          error: 'JSON phải là một mảng [...] hoặc object chứa mảng "items" / "vocabularies".',
+        };
+      }
+
+      if (list.length === 0) {
+        return { items: [], error: "Danh sách từ vựng trong JSON đang rỗng." };
+      }
+
+      if (list.length > 200) {
+        return { items: [], error: "Mỗi lần chỉ hỗ trợ nhập tối đa 200 từ vựng." };
+      }
+
+      const normalized: Array<{
+        word: string;
+        phonetic?: string;
+        partOfSpeech: string;
+        meaning: string;
+        exampleSentence?: string;
+        exampleMeaning?: string;
+      }> = [];
+
+      for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (!entry || typeof entry !== "object") {
+          return { items: [], error: `Phần tử thứ ${i + 1} không phải là đối tượng JSON hợp lệ.` };
+        }
+        const word = typeof entry.word === "string" ? entry.word.trim() : "";
+        const meaning = typeof entry.meaning === "string" ? entry.meaning.trim() : "";
+        if (!word || !meaning) {
+          return {
+            items: [],
+            error: `Mục thứ ${i + 1} bị thiếu trường bắt buộc "word" (từ tiếng Anh) hoặc "meaning" (nghĩa tiếng Việt).`,
+          };
+        }
+
+        normalized.push({
+          word,
+          phonetic: typeof entry.phonetic === "string" ? entry.phonetic.trim() : undefined,
+          partOfSpeech: normalizePartOfSpeech(
+            typeof entry.partOfSpeech === "string" ? entry.partOfSpeech : undefined
+          ),
+          meaning,
+          exampleSentence:
+            typeof entry.exampleSentence === "string"
+              ? entry.exampleSentence.trim()
+              : typeof entry.example === "string"
+              ? entry.example.trim()
+              : undefined,
+          exampleMeaning:
+            typeof entry.exampleMeaning === "string"
+              ? entry.exampleMeaning.trim()
+              : typeof entry.exampleTranslation === "string"
+              ? entry.exampleTranslation.trim()
+              : undefined,
+        });
+      }
+
+      return { items: normalized, error: null };
+    } catch (err: any) {
+      return {
+        items: [],
+        error: `Cú pháp JSON không hợp lệ: ${err?.message || "Vui lòng kiểm tra dấu ngoặc/dấu phẩy."}`,
+      };
+    }
+  }, [jsonInput]);
 
   // Tự động chuyển mode tra cứu / soạn từ khi có query params (ví dụ: ?mode=list hoặc ?action=add)
   useEffect(() => {
@@ -338,6 +459,8 @@ function TopicDetailInner() {
   const openAddModal = () => {
     playClickSound();
     setAuthoringError(null);
+    setAddModalTab("single");
+    setJsonInput("");
     setWordForm({
       word: "",
       phonetic: "",
@@ -347,6 +470,68 @@ function TopicDetailInner() {
       exampleMeaning: "",
     });
     setShowAddWordModal(true);
+  };
+
+  // Đọc file .json từ máy tính
+  const handleJsonFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = typeof event.target?.result === "string" ? event.target.result : "";
+      setJsonInput(content);
+      setAuthoringError(null);
+      playClickSound();
+    };
+    reader.readAsText(file, "UTF-8");
+    e.target.value = "";
+  };
+
+  // Submit nhập hàng loạt từ vựng bằng JSON
+  const handleBulkImportJson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topic?._id) return;
+    if (parsedJsonPreview.error || parsedJsonPreview.items.length === 0) {
+      setAuthoringError(
+        parsedJsonPreview.error || "Vui lòng dán nội dung JSON hoặc tải lên file .json hợp lệ!"
+      );
+      return;
+    }
+
+    try {
+      setIsAuthoringSubmitting(true);
+      setAuthoringError(null);
+
+      const res = await fetchApi<{ insertedCount: number; vocabularies: Vocabulary[] }>(
+        "/vocabularies/bulk",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            topicId: topic._id,
+            items: parsedJsonPreview.items,
+          }),
+        }
+      );
+
+      if (res.success && res.data) {
+        playSuccessSound();
+        const added = Array.isArray(res.data.vocabularies) ? res.data.vocabularies : [];
+        const count = res.data.insertedCount ?? added.length;
+        setAuthoringSuccess(`Đã nhập thành công ${count} từ vựng từ dữ liệu JSON!`);
+        setShowAddWordModal(false);
+        setJsonInput("");
+        setVocabularies((prev) => [...prev, ...added]);
+        setTopic((prev) => (prev ? { ...prev, wordCount: prev.wordCount + count } : prev));
+      } else {
+        setAuthoringError(res.message || "Không thể nhập từ vựng từ JSON. Vui lòng thử lại!");
+      }
+    } catch (err: any) {
+      console.error("Lỗi khi import JSON từ vựng:", err);
+      setAuthoringError(err.message || "Nhập JSON thất bại. Vui lòng kiểm tra định dạng dữ liệu!");
+    } finally {
+      setIsAuthoringSubmitting(false);
+    }
   };
 
   // Mở modal sửa từ vựng
@@ -1059,30 +1244,71 @@ function TopicDetailInner() {
           </div>
         )}
 
-        {/* MODAL: THÊM TỪ VỰNG MỚI (DÀNH CHO GIÁO VIÊN & ADMIN) */}
+        {/* MODAL: THÊM TỪ VỰNG MỚI (HỖ TRỢ NHẬP TỪNG TỪ & NHẬP HÀNG LOẠT BẰNG JSON) */}
         {showAddWordModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+            <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <div className="size-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <Plus className="size-5 stroke-[3]" />
+                    {addModalTab === "json" ? (
+                      <FileJson className="size-5" />
+                    ) : (
+                      <Plus className="size-5 stroke-[3]" />
+                    )}
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                       Thêm Từ Vựng Mới
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Chủ đề: <span className="font-semibold text-emerald-600">{topic.title}</span> ({topic.level})
+                      Chủ đề: <span className="font-semibold text-emerald-600">{topic.title}</span>{" "}
+                      ({topic.category === "TOEIC" ? `TOEIC ${topic.targetScore || ""}` : topic.category === "IELTS" ? `IELTS ${topic.targetScore || ""}` : topic.level})
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAddWordModal(false)}
-                  className="size-8 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition"
+                  className="size-8 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition cursor-pointer"
                 >
                   <X className="size-5" />
+                </button>
+              </div>
+
+              {/* CHUYỂN CHẾ ĐỘ: NHẬP TỪNG TỪ / NHẬP HÀNG LOẠT BẰNG JSON */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/70">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    setAuthoringError(null);
+                    setAddModalTab("single");
+                  }}
+                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                    addModalTab === "single"
+                      ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Plus className="size-3.5" />
+                  Nhập từng từ (Form)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    setAuthoringError(null);
+                    setAddModalTab("json");
+                  }}
+                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                    addModalTab === "json"
+                      ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <FileJson className="size-3.5" />
+                  Nhập hàng loạt bằng JSON
                 </button>
               </div>
 
@@ -1092,110 +1318,243 @@ function TopicDetailInner() {
                 </div>
               )}
 
-              <form onSubmit={handleCreateVocabulary} className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {addModalTab === "single" ? (
+                <form onSubmit={handleCreateVocabulary} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Từ tiếng Anh <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ví dụ: Innovation"
+                        value={wordForm.word}
+                        onChange={(e) => setWordForm({ ...wordForm, word: e.target.value })}
+                        className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Phiên âm quốc tế IPA
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: /ˌɪn.əˈveɪ.ʃən/"
+                        value={wordForm.phonetic}
+                        onChange={(e) => setWordForm({ ...wordForm, phonetic: e.target.value })}
+                        className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Từ tiếng Anh <span className="text-rose-500">*</span>
+                      Từ loại <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={wordForm.partOfSpeech}
+                      onChange={(e) => setWordForm({ ...wordForm, partOfSpeech: e.target.value })}
+                      className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      {PARTS_OF_SPEECH.map((pos) => (
+                        <option key={pos.value} value={pos.value}>
+                          {pos.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Nghĩa tiếng Việt <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ví dụ: Innovation"
-                      value={wordForm.word}
-                      onChange={(e) => setWordForm({ ...wordForm, word: e.target.value })}
+                      placeholder="Ví dụ: Sự đổi mới, sự sáng tạo mang tính đột phá"
+                      value={wordForm.meaning}
+                      onChange={(e) => setWordForm({ ...wordForm, meaning: e.target.value })}
                       className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Phiên âm quốc tế IPA
+                      Câu ví dụ minh họa (Tiếng Anh)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Ví dụ: Technological innovation is changing how we learn languages."
+                      value={wordForm.exampleSentence}
+                      onChange={(e) => setWordForm({ ...wordForm, exampleSentence: e.target.value })}
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Dịch nghĩa câu ví dụ (Tiếng Việt)
                     </label>
                     <input
                       type="text"
-                      placeholder="Ví dụ: /ˌɪn.əˈveɪ.ʃən/"
-                      value={wordForm.phonetic}
-                      onChange={(e) => setWordForm({ ...wordForm, phonetic: e.target.value })}
-                      className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Ví dụ: Sự đổi mới công nghệ đang thay đổi cách chúng ta học ngôn ngữ."
+                      value={wordForm.exampleMeaning}
+                      onChange={(e) => setWordForm({ ...wordForm, exampleMeaning: e.target.value })}
+                      className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Từ loại <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={wordForm.partOfSpeech}
-                    onChange={(e) => setWordForm({ ...wordForm, partOfSpeech: e.target.value })}
-                    className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                  >
-                    {PARTS_OF_SPEECH.map((pos) => (
-                      <option key={pos.value} value={pos.value}>
-                        {pos.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddWordModal(false)}
+                      className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isAuthoringSubmitting}
+                      className="h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 cursor-pointer"
+                    >
+                      {isAuthoringSubmitting ? "Đang lưu..." : "Thêm Từ Vựng"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleBulkImportJson} className="flex flex-col gap-4">
+                  {/* Thanh công cụ JSON: Tải file .json hoặc chèn JSON mẫu */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/70">
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Hỗ trợ mảng JSON các đối tượng có trường <code className="font-bold text-emerald-600 dark:text-emerald-400">word</code> &amp; <code className="font-bold text-emerald-600 dark:text-emerald-400">meaning</code> (tối đa 200 từ/lần).
+                    </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Nghĩa tiếng Việt <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: Sự đổi mới, sự sáng tạo mang tính đột phá"
-                    value={wordForm.meaning}
-                    onChange={(e) => setWordForm({ ...wordForm, meaning: e.target.value })}
-                    className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="h-8.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer transition shadow-2xs">
+                        <Upload className="size-3.5 text-emerald-600" />
+                        <span>Chọn file .json</span>
+                        <input
+                          type="file"
+                          accept=".json,application/json"
+                          onChange={handleJsonFileUpload}
+                          className="hidden"
+                        />
+                      </label>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Câu ví dụ minh họa (Tiếng Anh)
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Ví dụ: Technological innovation is changing how we learn languages."
-                    value={wordForm.exampleSentence}
-                    onChange={(e) => setWordForm({ ...wordForm, exampleSentence: e.target.value })}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                  />
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickSound();
+                          setJsonInput(SAMPLE_JSON_TEMPLATE);
+                          setAuthoringError(null);
+                        }}
+                        className="h-8.5 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition cursor-pointer"
+                      >
+                        Chèn JSON mẫu
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Dịch nghĩa câu ví dụ (Tiếng Việt)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ví dụ: Sự đổi mới công nghệ đang thay đổi cách chúng ta học ngôn ngữ."
-                    value={wordForm.exampleMeaning}
-                    onChange={(e) => setWordForm({ ...wordForm, exampleMeaning: e.target.value })}
-                    className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
+                  {/* Khung nhập JSON */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Nội dung JSON <span className="text-rose-500">*</span>
+                      </label>
+                      {jsonInput.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setJsonInput("")}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-rose-500 transition cursor-pointer"
+                        >
+                          Xóa trắng
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      rows={8}
+                      spellCheck={false}
+                      placeholder={SAMPLE_JSON_TEMPLATE}
+                      value={jsonInput}
+                      onChange={(e) => setJsonInput(e.target.value)}
+                      className="p-3.5 rounded-2xl bg-slate-950 text-emerald-300 border border-slate-800 text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+                    />
+                  </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddWordModal(false)}
-                    className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isAuthoringSubmitting}
-                    className="h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 cursor-pointer"
-                  >
-                    {isAuthoringSubmitting ? "Đang lưu..." : "Thêm Từ Vựng"}
-                  </button>
-                </div>
-              </form>
+                  {/* Trạng thái kiểm tra & xem trước JSON */}
+                  {jsonInput.trim() && parsedJsonPreview.error && (
+                    <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                      {parsedJsonPreview.error}
+                    </div>
+                  )}
+
+                  {!parsedJsonPreview.error && parsedJsonPreview.items.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="size-4" />
+                          JSON hợp lệ! Sẵn sàng nhập {parsedJsonPreview.items.length} từ vựng
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/70">
+                          Xem trước
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+                        {parsedJsonPreview.items.slice(0, 6).map((item, idx) => (
+                          <div
+                            key={`${item.word}-${idx}`}
+                            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/60 flex flex-col gap-0.5 text-[11px]"
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                {item.word}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 shrink-0">
+                                {item.partOfSpeech}
+                              </span>
+                            </div>
+                            <span className="text-slate-500 dark:text-slate-400 truncate">
+                              {item.meaning}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {parsedJsonPreview.items.length > 6 && (
+                        <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 italic">
+                          ... và {parsedJsonPreview.items.length - 6} từ vựng khác.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddWordModal(false)}
+                      className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={
+                        isAuthoringSubmitting ||
+                        !!parsedJsonPreview.error ||
+                        parsedJsonPreview.items.length === 0
+                      }
+                      className="h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 cursor-pointer"
+                    >
+                      <FileJson className="size-3.5" />
+                      {isAuthoringSubmitting
+                        ? "Đang nhập JSON..."
+                        : `Import ${parsedJsonPreview.items.length || ""} từ vựng`}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         )}

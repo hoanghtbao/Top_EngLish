@@ -21,6 +21,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 import { VocabularyService } from './vocabulary.service';
 import { CreateVocabularyDto } from './dto/create-vocabulary.dto';
 import { UpdateVocabularyDto } from './dto/update-vocabulary.dto';
+import { BulkCreateVocabularyDto } from './dto/bulk-create-vocabulary.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -49,6 +50,20 @@ export class VocabularyController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy từ vựng' })
   async findOne(@Param('id') id: string) {
     return this.vocabularyService.findById(id);
+  }
+
+  @Post('bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Thêm hàng loạt từ vựng bằng dữ liệu JSON (Yêu cầu ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 201, description: 'Danh sách từ vựng đã được nhập thành công' })
+  async createBulk(
+    @Body() bulkCreateVocabularyDto: BulkCreateVocabularyDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.vocabularyService.createBulk(bulkCreateVocabularyDto, userId);
   }
 
   @Post()

@@ -16,6 +16,7 @@ import { Model, Types } from 'mongoose';
 import { Vocabulary, VocabularyDocument } from './schemas/vocabulary.schema';
 import { CreateVocabularyDto } from './dto/create-vocabulary.dto';
 import { UpdateVocabularyDto } from './dto/update-vocabulary.dto';
+import { BulkCreateVocabularyDto } from './dto/bulk-create-vocabulary.dto';
 import { Topic, TopicDocument } from '../topics/schemas/topic.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Role } from '../users/enums/role.enum';
@@ -673,6 +674,49 @@ export class VocabularyService implements OnModuleInit {
     await this.topicModel.findByIdAndUpdate(createVocabularyDto.topicId, { $inc: { wordCount: 1 } });
 
     return saved;
+  }
+
+  /**
+   * Thêm hàng loạt thẻ từ vựng vào chủ đề từ danh sách JSON
+   */
+  async createBulk(
+    bulkDto: BulkCreateVocabularyDto,
+    userId: string,
+  ): Promise<{ insertedCount: number; vocabularies: VocabularyDocument[] }> {
+    if (!Types.ObjectId.isValid(bulkDto.topicId)) {
+      throw new BadRequestException('ID chủ đề không hợp lệ');
+    }
+
+    const topic = await this.topicModel.findById(bulkDto.topicId);
+    if (!topic) {
+      throw new NotFoundException(`Không tìm thấy chủ đề có ID ${bulkDto.topicId}`);
+    }
+
+    const topicObjectId = new Types.ObjectId(bulkDto.topicId);
+    const creatorObjectId = new Types.ObjectId(userId);
+
+    const docsToInsert = bulkDto.items.map((item) => ({
+      topicId: topicObjectId,
+      word: item.word.trim(),
+      phonetic: item.phonetic?.trim() || '',
+      partOfSpeech: item.partOfSpeech || PartOfSpeech.NOUN,
+      meaning: item.meaning.trim(),
+      exampleSentence: item.exampleSentence?.trim() || '',
+      exampleMeaning: item.exampleMeaning?.trim() || '',
+      audioUrl: item.audioUrl?.trim() || '',
+      createdBy: creatorObjectId,
+    }));
+
+    const inserted = await this.vocabularyModel.insertMany(docsToInsert);
+
+    // Đồng bộ lại chính xác tổng số từ của chủ đề
+    const totalCount = await this.vocabularyModel.countDocuments({ topicId: topicObjectId });
+    await this.topicModel.findByIdAndUpdate(bulkDto.topicId, { wordCount: totalCount });
+
+    return {
+      insertedCount: inserted.length,
+      vocabularies: inserted as unknown as VocabularyDocument[],
+    };
   }
 
   /**
