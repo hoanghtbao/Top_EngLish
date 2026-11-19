@@ -7,6 +7,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { EnglishLevel } from '../enums/english-level.enum';
+import { TopicCategory } from '../enums/topic-category.enum';
 
 export class CreateTopicDto {
   @ApiProperty({ example: 'Technology & AI', description: 'Tên chủ đề từ vựng' })
@@ -29,8 +30,18 @@ export class CreateTopicDto {
   @IsString()
   image?: string;
 
-  @ApiProperty({ enum: EnglishLevel, example: EnglishLevel.B1, description: 'Trình độ CEFR' })
+  @ApiPropertyOptional({ enum: TopicCategory, example: TopicCategory.GENERAL, description: 'Phân loại lộ trình (GENERAL, TOEIC, IELTS)' })
+  @IsOptional()
+  @IsEnum(TopicCategory, { message: 'Lộ trình phải là một trong các giá trị: GENERAL, TOEIC, IELTS' })
+  category?: TopicCategory;
+
+  @ApiPropertyOptional({ enum: EnglishLevel, example: EnglishLevel.B1, description: 'Trình độ CEFR (A1 - C2)' })
+  @IsOptional()
   @IsEnum(EnglishLevel, { message: 'Trình độ phải là một trong các mức: A1, A2, B1, B2, C1, C2' })
-  @IsNotEmpty({ message: 'Trình độ không được để trống' })
-  level: EnglishLevel;
+  level?: EnglishLevel;
+
+  @ApiPropertyOptional({ example: '600+', description: 'Mục tiêu TOEIC (450+, 600+, 750+, 900+) hoặc Band điểm IELTS (Band 5.5, Band 6.5, Band 7.5+)' })
+  @IsOptional()
+  @IsString()
+  targetScore?: string;
 }

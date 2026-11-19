@@ -15,13 +15,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  Award,
   BookOpen,
+  Briefcase,
   CheckCircle2,
   ChevronRight,
   Clock,
   Edit3,
   Eye,
-  Filter,
   GraduationCap,
   Layers,
   Lock,
@@ -37,15 +38,56 @@ import { fetchApi } from "../../lib/api-client";
 import { useAuth } from "../../context/auth-context";
 import { useSound } from "../../context/sound-context";
 
+type TopicCategory = "GENERAL" | "TOEIC" | "IELTS";
+
 interface Topic {
   _id: string;
   title: string;
   slug: string;
   description: string;
   image: string | null;
+  category?: TopicCategory;
   level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+  targetScore?: string;
   wordCount: number;
 }
+
+const TOPIC_TRACKS: Array<{
+  key: TopicCategory;
+  label: string;
+  shortDesc: string;
+  filterHeading: string;
+  accentActive: string;
+  badgeBg: string;
+}> = [
+  {
+    key: "GENERAL",
+    label: "Từ vựng hàng ngày",
+    shortDesc: "Giao tiếp & CEFR",
+    filterHeading: "Cấp độ chuẩn CEFR:",
+    accentActive:
+      "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25",
+    badgeBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300",
+  },
+  {
+    key: "TOEIC",
+    label: "Chuyên đề TOEIC",
+    shortDesc: "Thương mại & Công sở",
+    filterHeading: "Mục tiêu TOEIC:",
+    accentActive:
+      "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25",
+    badgeBg: "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300",
+  },
+  {
+    key: "IELTS",
+    label: "Chuyên đề IELTS",
+    shortDesc: "Học thuật & Band điểm",
+    filterHeading: "Band điểm IELTS:",
+    accentActive:
+      "bg-gradient-to-r from-purple-600 to-rose-500 text-white shadow-md shadow-purple-600/25",
+    badgeBg: "bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300",
+  },
+];
 
 const CEFR_LEVELS = [
   { key: "ALL", label: "Tất cả", subLabel: "Mọi cấp độ", dotColor: "bg-slate-400" },
@@ -57,6 +99,21 @@ const CEFR_LEVELS = [
   { key: "C2", label: "C2", subLabel: "Tinh thông", dotColor: "bg-rose-500" },
 ];
 
+const TOEIC_TARGETS = [
+  { key: "ALL", label: "Tất cả", subLabel: "Mọi mục tiêu", dotColor: "bg-slate-400" },
+  { key: "450+", label: "450+", subLabel: "Nền tảng", dotColor: "bg-amber-400" },
+  { key: "600+", label: "600+", subLabel: "Trung cấp", dotColor: "bg-amber-500" },
+  { key: "750+", label: "750+", subLabel: "Thành thạo", dotColor: "bg-orange-500" },
+  { key: "900+", label: "900+", subLabel: "Xuất sắc", dotColor: "bg-red-500" },
+];
+
+const IELTS_BANDS = [
+  { key: "ALL", label: "Tất cả", subLabel: "Mọi band điểm", dotColor: "bg-slate-400" },
+  { key: "Band 5.5", label: "Band 5.5", subLabel: "Cơ bản", dotColor: "bg-purple-400" },
+  { key: "Band 6.5", label: "Band 6.5", subLabel: "Khá giỏi", dotColor: "bg-purple-600" },
+  { key: "Band 7.5+", label: "Band 7.5+", subLabel: "Chuyên sâu", dotColor: "bg-rose-500" },
+];
+
 export default function TopicsPage() {
   const { user } = useAuth();
   const { playClickSound, playSuccessSound } = useSound();
@@ -64,33 +121,20 @@ export default function TopicsPage() {
 
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedLevel, setSelectedLevel] = useState<string>("ALL");
+  const [selectedTrack, setSelectedTrack] = useState<TopicCategory>("GENERAL");
+  const [selectedSubFilter, setSelectedSubFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [levelCounts, setLevelCounts] = useState<Record<string, number>>({});
+  const [allTopicsCache, setAllTopicsCache] = useState<Topic[]>([]);
 
   // Bảng tiến độ học tập (Map topicId -> số từ đã thuộc)
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
 
-  // Thống kê tổng số lượng chủ đề cho mỗi cấp độ CEFR
+  // Tải danh sách tổng để đếm số lượng chủ đề theo từng Tab và từng cấp độ con
   const fetchLevelSummary = useCallback(async () => {
     try {
       const res = await fetchApi<Topic[]>("/topics");
       if (res.success && Array.isArray(res.data)) {
-        const counts: Record<string, number> = {
-          ALL: res.data.length,
-          A1: 0,
-          A2: 0,
-          B1: 0,
-          B2: 0,
-          C1: 0,
-          C2: 0,
-        };
-        res.data.forEach((t) => {
-          if (counts[t.level] !== undefined) {
-            counts[t.level]++;
-          }
-        });
-        setLevelCounts(counts);
+        setAllTopicsCache(res.data);
       }
     } catch {
       // Ignored
@@ -101,6 +145,33 @@ export default function TopicsPage() {
     fetchLevelSummary();
   }, [fetchLevelSummary]);
 
+  // Tính số lượng theo từng Tab lộ trình
+  const trackCounts: Record<TopicCategory, number> = {
+    GENERAL: allTopicsCache.filter((t) => !t.category || t.category === "GENERAL").length,
+    TOEIC: allTopicsCache.filter((t) => t.category === "TOEIC").length,
+    IELTS: allTopicsCache.filter((t) => t.category === "IELTS").length,
+  };
+
+  // Tính số lượng bộ lọc con trong Tab hiện tại
+  const currentTrackTopics = allTopicsCache.filter((t) =>
+    selectedTrack === "GENERAL" ? !t.category || t.category === "GENERAL" : t.category === selectedTrack
+  );
+
+  const subFilterCounts: Record<string, number> = { ALL: currentTrackTopics.length };
+  if (selectedTrack === "GENERAL") {
+    CEFR_LEVELS.slice(1).forEach((l) => {
+      subFilterCounts[l.key] = currentTrackTopics.filter((t) => t.level === l.key).length;
+    });
+  } else if (selectedTrack === "TOEIC") {
+    TOEIC_TARGETS.slice(1).forEach((t) => {
+      subFilterCounts[t.key] = currentTrackTopics.filter((item) => item.targetScore === t.key).length;
+    });
+  } else {
+    IELTS_BANDS.slice(1).forEach((b) => {
+      subFilterCounts[b.key] = currentTrackTopics.filter((item) => item.targetScore === b.key).length;
+    });
+  }
+
   // --- MODAL TẠO CHỦ ĐỀ DÀNH CHO GIÁO VIÊN & ADMIN ---
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -108,18 +179,27 @@ export default function TopicsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [newTopic, setNewTopic] = useState({
     title: "",
+    category: "GENERAL" as TopicCategory,
     level: "A2" as "A1" | "A2" | "B1" | "B2" | "C1" | "C2",
+    targetScore: "600+",
     description: "",
     image: "",
   });
 
-  const fetchTopics = async () => {
+  const fetchTopics = useCallback(async () => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams();
-      if (selectedLevel !== "ALL") {
-        queryParams.append("level", selectedLevel);
+      queryParams.append("category", selectedTrack);
+
+      if (selectedSubFilter !== "ALL") {
+        if (selectedTrack === "GENERAL") {
+          queryParams.append("level", selectedSubFilter);
+        } else {
+          queryParams.append("targetScore", selectedSubFilter);
+        }
       }
+
       if (searchQuery.trim()) {
         queryParams.append("search", searchQuery.trim());
       }
@@ -136,15 +216,15 @@ export default function TopicsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTrack, selectedSubFilter, searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchTopics();
-    }, 200);
+    }, 180);
 
     return () => clearTimeout(timer);
-  }, [selectedLevel, searchQuery]);
+  }, [fetchTopics]);
 
   // Đồng bộ tiến độ đã thuộc từ localStorage
   useEffect(() => {
@@ -187,16 +267,35 @@ export default function TopicsPage() {
       setIsSubmitting(true);
       setErrorMessage(null);
 
+      // Map CEFR level tương ứng khi giáo viên tạo TOEIC / IELTS
+      let mappedLevel = newTopic.level;
+      if (newTopic.category === "TOEIC") {
+        if (newTopic.targetScore === "450+") mappedLevel = "A2";
+        else if (newTopic.targetScore === "600+") mappedLevel = "B1";
+        else if (newTopic.targetScore === "750+") mappedLevel = "B2";
+        else mappedLevel = "C1";
+      } else if (newTopic.category === "IELTS") {
+        if (newTopic.targetScore === "Band 5.5") mappedLevel = "B1";
+        else if (newTopic.targetScore === "Band 6.5") mappedLevel = "B2";
+        else mappedLevel = "C1";
+      }
+
       const payload: {
         title: string;
+        category: TopicCategory;
         level: string;
+        targetScore?: string;
         description?: string;
         image?: string;
       } = {
         title: newTopic.title.trim(),
-        level: newTopic.level,
+        category: newTopic.category,
+        level: mappedLevel,
       };
 
+      if (newTopic.category !== "GENERAL" && newTopic.targetScore) {
+        payload.targetScore = newTopic.targetScore;
+      }
       if (newTopic.description.trim()) {
         payload.description = newTopic.description.trim();
       }
@@ -212,10 +311,14 @@ export default function TopicsPage() {
       if (res.success && res.data) {
         playSuccessSound();
         setSuccessMessage(`Đã tạo thành công chủ đề "${res.data.title}"!`);
+        setSelectedTrack(newTopic.category);
+        setSelectedSubFilter("ALL");
         setShowCreateModal(false);
         setNewTopic({
           title: "",
+          category: newTopic.category,
           level: "A2",
+          targetScore: newTopic.category === "IELTS" ? "Band 6.5" : "600+",
           description: "",
           image: "",
         });
@@ -235,21 +338,55 @@ export default function TopicsPage() {
   const getLevelBadge = (level: string) => {
     switch (level) {
       case "A1":
-        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800";
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/85 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800";
       case "A2":
-        return "bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border-sky-300 dark:border-sky-800";
+        return "bg-sky-100 text-sky-800 dark:bg-sky-950/85 dark:text-sky-300 border-sky-300 dark:border-sky-800";
       case "B1":
-        return "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800";
+        return "bg-teal-100 text-teal-800 dark:bg-teal-950/85 dark:text-teal-300 border-teal-300 dark:border-teal-800";
       case "B2":
-        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800";
+        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/85 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800";
       case "C1":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300 dark:border-purple-800";
+        return "bg-purple-100 text-purple-800 dark:bg-purple-950/85 dark:text-purple-300 border-purple-300 dark:border-purple-800";
       case "C2":
-        return "bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800";
+        return "bg-rose-100 text-rose-800 dark:bg-rose-950/85 dark:text-rose-300 border-rose-300 dark:border-rose-800";
       default:
         return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700";
     }
   };
+
+  const getTopicCornerBadge = (topic: Topic) => {
+    if (topic.category === "TOEIC") {
+      return {
+        label: topic.targetScore ? `TOEIC ${topic.targetScore}` : "TOEIC",
+        classes:
+          "bg-amber-100/95 text-amber-900 dark:bg-amber-950/90 dark:text-amber-300 border-amber-300 dark:border-amber-700",
+        type: "TOEIC" as const,
+      };
+    }
+    if (topic.category === "IELTS") {
+      const isHighBand = topic.targetScore?.includes("7.5");
+      return {
+        label: topic.targetScore ? `IELTS ${topic.targetScore}` : "IELTS",
+        classes: isHighBand
+          ? "bg-rose-100/95 text-rose-900 dark:bg-rose-950/90 dark:text-rose-300 border-rose-300 dark:border-rose-700"
+          : "bg-purple-100/95 text-purple-900 dark:bg-purple-950/90 dark:text-purple-300 border-purple-300 dark:border-purple-700",
+        type: "IELTS" as const,
+      };
+    }
+    return {
+      label: `CEFR ${topic.level}`,
+      classes: getLevelBadge(topic.level),
+      type: "GENERAL" as const,
+    };
+  };
+
+  const activeTrackInfo = TOPIC_TRACKS.find((t) => t.key === selectedTrack) || TOPIC_TRACKS[0];
+  const activeSubFilters =
+    selectedTrack === "GENERAL"
+      ? CEFR_LEVELS
+      : selectedTrack === "TOEIC"
+      ? TOEIC_TARGETS
+      : IELTS_BANDS;
 
   return (
     <AppLayout>
@@ -259,13 +396,13 @@ export default function TopicsPage() {
           <div className="flex flex-col gap-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 w-fit">
               <Sparkles className="size-3.5" />
-              Thư viện từ vựng chuẩn CEFR
+              Thư viện từ vựng đa lộ trình
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               Chủ Đề Học Từ Vựng
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-              Lựa chọn chủ đề phù hợp với trình độ của bạn để bắt đầu học với thẻ Flashcard 3D, phiên âm IPA quốc tế và ví dụ ngữ cảnh sinh động.
+              Lựa chọn lộ trình phù hợp (Giao tiếp hàng ngày CEFR, TOEIC hoặc IELTS) để bắt đầu học với thẻ Flashcard 3D, phiên âm IPA quốc tế và ví dụ ngữ cảnh sinh động.
             </p>
           </div>
 
@@ -277,6 +414,16 @@ export default function TopicsPage() {
                 onClick={() => {
                   playClickSound();
                   setErrorMessage(null);
+                  setNewTopic((prev) => ({
+                    ...prev,
+                    category: selectedTrack,
+                    targetScore:
+                      selectedTrack === "IELTS"
+                        ? "Band 6.5"
+                        : selectedTrack === "TOEIC"
+                        ? "600+"
+                        : prev.targetScore,
+                  }));
                   setShowCreateModal(true);
                 }}
                 className="h-11 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition cursor-pointer"
@@ -304,8 +451,77 @@ export default function TopicsPage() {
           </div>
         )}
 
-        {/* FILTER & SEARCH CONTROL HUB (UI/UX PRO MAX) */}
+        {/* FILTER & SEARCH CONTROL HUB (UI/UX PRO MAX - 3 LỘ TRÌNH: HÀNG NGÀY / TOEIC / IELTS) */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-xs flex flex-col gap-4 transition-all">
+          {/* THANH TAB LỚN (SEGMENTED CONTROL) CHỌN MẢNG LỘ TRÌNH */}
+          <div
+            role="tablist"
+            aria-label="Chọn lộ trình từ vựng"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60"
+          >
+            {TOPIC_TRACKS.map((track) => {
+              const isActive = selectedTrack === track.key;
+              const count = trackCounts[track.key];
+              const TrackIcon =
+                track.key === "TOEIC"
+                  ? Briefcase
+                  : track.key === "IELTS"
+                  ? Award
+                  : BookOpen;
+
+              return (
+                <button
+                  key={track.key}
+                  role="tab"
+                  aria-selected={isActive}
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    setSelectedTrack(track.key);
+                    setSelectedSubFilter("ALL");
+                  }}
+                  className={`min-h-[48px] px-4 py-2.5 rounded-xl text-left transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] ${
+                    isActive
+                      ? track.accentActive
+                      : "text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700/70 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`size-8.5 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-white dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 shadow-2xs"
+                      }`}
+                    >
+                      <TrackIcon className="size-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs sm:text-sm font-extrabold truncate">
+                        {track.label}
+                      </span>
+                      <span
+                        className={`text-[11px] truncate ${
+                          isActive ? "text-white/85" : "text-slate-400 dark:text-slate-500"
+                        }`}
+                      >
+                        {track.shortDesc}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-black shrink-0 ${
+                      isActive ? "bg-white/25 text-white" : track.badgeBg
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* TẦNG 1: THANH TÌM KIẾM CHỦ ĐỀ & BỘ ĐẾM KẾT QUẢ */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             {/* Search Input Box */}
@@ -314,7 +530,7 @@ export default function TopicsPage() {
               <input
                 id="search-topics"
                 type="text"
-                placeholder="Tra cứu theo tên chủ đề, từ vựng hoặc ngữ cảnh..."
+                placeholder={`Tra cứu chủ đề trong ${activeTrackInfo.label.toLowerCase()}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-11 pl-10.5 pr-10 text-xs sm:text-sm rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-500 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
@@ -344,12 +560,12 @@ export default function TopicsPage() {
                 </span>
               </div>
 
-              {(selectedLevel !== "ALL" || searchQuery.trim() !== "") && (
+              {(selectedSubFilter !== "ALL" || searchQuery.trim() !== "") && (
                 <button
                   type="button"
                   onClick={() => {
                     playClickSound();
-                    setSelectedLevel("ALL");
+                    setSelectedSubFilter("ALL");
                     setSearchQuery("");
                   }}
                   className="h-9 px-3 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
@@ -362,26 +578,55 @@ export default function TopicsPage() {
             </div>
           </div>
 
-          {/* TẦNG 2: BỘ LỌC CẤP ĐỘ CEFR ĐỘC LẬP - TỰ ĐỘNG WRAP KHÔNG BAO GIỜ BỊ CHE */}
+          {/* TẦNG 2: BỘ LỌC CON THEO TỪNG TAB (CEFR / MỤC TIÊU TOEIC / BAND ĐIỂM IELTS) */}
           <div className="flex flex-col gap-2 pt-3.5 border-t border-slate-100 dark:border-slate-800/70">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                <GraduationCap className="size-3.5 text-emerald-500" />
-                <span>Cấp độ chuẩn CEFR:</span>
+                {selectedTrack === "TOEIC" ? (
+                  <Briefcase className="size-3.5 text-amber-500" />
+                ) : selectedTrack === "IELTS" ? (
+                  <Award className="size-3.5 text-purple-500" />
+                ) : (
+                  <GraduationCap className="size-3.5 text-emerald-500" />
+                )}
+                <span>{activeTrackInfo.filterHeading}</span>
               </div>
 
-              {selectedLevel !== "ALL" && (
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/50 dark:border-emerald-800/50">
-                  Đang lọc: {CEFR_LEVELS.find((l) => l.key === selectedLevel)?.label} ({CEFR_LEVELS.find((l) => l.key === selectedLevel)?.subLabel})
+              {selectedSubFilter !== "ALL" && (
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                    selectedTrack === "TOEIC"
+                      ? "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200/60 dark:border-amber-800/50"
+                      : selectedTrack === "IELTS"
+                      ? "text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border-purple-200/60 dark:border-purple-800/50"
+                      : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/50 dark:border-emerald-800/50"
+                  }`}
+                >
+                  Đang lọc: {activeSubFilters.find((l) => l.key === selectedSubFilter)?.label} (
+                  {activeSubFilters.find((l) => l.key === selectedSubFilter)?.subLabel})
                 </span>
               )}
             </div>
 
-            {/* CEFR Level Chips - Hàng nút rộng rãi, tự động xuống dòng mượt mà khi màn hình hẹp */}
+            {/* Sub-filter Chips - Tự động xuống dòng mượt mà không bao giờ bị che */}
             <div className="flex flex-wrap items-center gap-2">
-              {CEFR_LEVELS.map((lvl) => {
-                const isSelected = selectedLevel === lvl.key;
-                const count = levelCounts[lvl.key];
+              {activeSubFilters.map((lvl) => {
+                const isSelected = selectedSubFilter === lvl.key;
+                const count = subFilterCounts[lvl.key];
+
+                const activeButtonClass =
+                  selectedTrack === "TOEIC"
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 ring-2 ring-amber-500/20"
+                    : selectedTrack === "IELTS"
+                    ? "bg-gradient-to-r from-purple-600 to-rose-500 text-white shadow-sm shadow-purple-600/30 ring-2 ring-purple-500/20"
+                    : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-500/20";
+
+                const activeCountBadge =
+                  selectedTrack === "TOEIC"
+                    ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300"
+                    : selectedTrack === "IELTS"
+                    ? "bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300"
+                    : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300";
 
                 return (
                   <button
@@ -389,15 +634,14 @@ export default function TopicsPage() {
                     type="button"
                     onClick={() => {
                       playClickSound();
-                      setSelectedLevel(lvl.key);
+                      setSelectedSubFilter(lvl.key);
                     }}
                     className={`h-9.5 px-3.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer active:scale-95 select-none ${
                       isSelected
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-500/20"
+                        ? activeButtonClass
                         : "bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white border border-slate-200/70 dark:border-slate-700/70"
                     }`}
                   >
-                    {/* Level Color Dot Indicator */}
                     <span
                       className={`size-2 rounded-full shrink-0 transition-colors ${
                         isSelected ? "bg-white" : lvl.dotColor
@@ -408,9 +652,7 @@ export default function TopicsPage() {
                     {lvl.subLabel && (
                       <span
                         className={`text-[11px] font-medium hidden sm:inline ${
-                          isSelected
-                            ? "text-emerald-100"
-                            : "text-slate-400 dark:text-slate-500"
+                          isSelected ? "text-white/85" : "text-slate-400 dark:text-slate-500"
                         }`}
                       >
                         • {lvl.subLabel}
@@ -423,7 +665,7 @@ export default function TopicsPage() {
                           isSelected
                             ? "bg-white/25 text-white"
                             : count > 0
-                            ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
+                            ? activeCountBadge
                             : "bg-slate-200/80 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
                         }`}
                       >
@@ -454,17 +696,17 @@ export default function TopicsPage() {
             </div>
             <h3 className="text-lg font-bold">Không tìm thấy chủ đề phù hợp</h3>
             <p className="text-xs text-slate-500 max-w-sm">
-              Không có chủ đề nào phù hợp với bộ lọc hoặc từ khóa &quot;{searchQuery}&quot;. Hãy thử xóa bộ lọc để xem tất cả.
+              Không có chủ đề nào trong mảng {activeTrackInfo.label} khớp với bộ lọc hoặc từ khóa &quot;{searchQuery}&quot;.
             </p>
             <button
               onClick={() => {
                 playClickSound();
-                setSelectedLevel("ALL");
+                setSelectedSubFilter("ALL");
                 setSearchQuery("");
               }}
               className="mt-2 h-11 px-5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer"
             >
-              Xem tất cả chủ đề
+              Xem tất cả trong {activeTrackInfo.label}
             </button>
           </div>
         ) : (
@@ -475,6 +717,7 @@ export default function TopicsPage() {
               const percent = isEmpty
                 ? 0
                 : Math.min(100, Math.round((learned / topic.wordCount) * 100));
+              const cornerBadge = getTopicCornerBadge(topic);
 
               return (
                 <div
@@ -493,21 +736,34 @@ export default function TopicsPage() {
                         className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-emerald-600 to-teal-500 text-white">
+                      <div
+                        className={`w-full h-full flex items-center justify-center text-white ${
+                          topic.category === "TOEIC"
+                            ? "bg-gradient-to-tr from-amber-500 to-orange-500"
+                            : topic.category === "IELTS"
+                            ? "bg-gradient-to-tr from-purple-600 to-rose-500"
+                            : "bg-gradient-to-tr from-emerald-600 to-teal-500"
+                        }`}
+                      >
                         <BookOpen className="size-12 opacity-40" />
                       </div>
                     )}
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
 
-                    {/* Level Badge - Top Left */}
+                    {/* Track / Level Badge - Top Left */}
                     <div className="absolute top-3 left-3">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black border uppercase shadow-sm backdrop-blur-md ${getLevelBadge(
-                          topic.level
-                        )}`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black border uppercase shadow-sm backdrop-blur-md ${cornerBadge.classes}`}
                       >
-                        <GraduationCap className="size-3.5" /> CEFR {topic.level}
+                        {cornerBadge.type === "TOEIC" ? (
+                          <Briefcase className="size-3.5" />
+                        ) : cornerBadge.type === "IELTS" ? (
+                          <Award className="size-3.5" />
+                        ) : (
+                          <GraduationCap className="size-3.5" />
+                        )}
+                        {cornerBadge.label}
                       </span>
                     </div>
 
@@ -747,29 +1003,96 @@ export default function TopicsPage() {
                   />
                 </div>
 
-                {/* Cấp độ CEFR */}
+                {/* Lộ trình học */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Trình độ chuẩn CEFR <span className="text-rose-500">*</span>
+                    Lộ trình từ vựng <span className="text-rose-500">*</span>
                   </label>
                   <select
-                    value={newTopic.level}
-                    onChange={(e) =>
+                    value={newTopic.category}
+                    onChange={(e) => {
+                      const cat = e.target.value as TopicCategory;
                       setNewTopic({
                         ...newTopic,
-                        level: e.target.value as "A1" | "A2" | "B1" | "B2" | "C1" | "C2",
-                      })
-                    }
+                        category: cat,
+                        targetScore:
+                          cat === "IELTS" ? "Band 6.5" : cat === "TOEIC" ? "600+" : "",
+                      });
+                    }}
                     className="h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <option value="A1">A1 - Cơ bản (Mới bắt đầu)</option>
-                    <option value="A2">A2 - Sơ cấp (Giao tiếp đơn giản)</option>
-                    <option value="B1">B1 - Trung cấp (Tự tin học tập & làm việc)</option>
-                    <option value="B2">B2 - Trung cao (Lưu loát, tự nhiên)</option>
-                    <option value="C1">C1 - Cao cấp (Học thuật, chuyên môn)</option>
-                    <option value="C2">C2 - Tinh thông (Như người bản xứ)</option>
+                    <option value="GENERAL">Từ vựng hàng ngày (Chuẩn CEFR)</option>
+                    <option value="TOEIC">Chuyên đề TOEIC (Mục tiêu điểm)</option>
+                    <option value="IELTS">Chuyên đề IELTS (Band điểm)</option>
                   </select>
                 </div>
+
+                {/* Cấp độ / Mục tiêu tương ứng theo lộ trình */}
+                {newTopic.category === "GENERAL" ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Trình độ chuẩn CEFR <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={newTopic.level}
+                      onChange={(e) =>
+                        setNewTopic({
+                          ...newTopic,
+                          level: e.target.value as "A1" | "A2" | "B1" | "B2" | "C1" | "C2",
+                        })
+                      }
+                      className="h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="A1">A1 - Cơ bản (Mới bắt đầu)</option>
+                      <option value="A2">A2 - Sơ cấp (Giao tiếp đơn giản)</option>
+                      <option value="B1">B1 - Trung cấp (Tự tin học tập & làm việc)</option>
+                      <option value="B2">B2 - Trung cao (Lưu loát, tự nhiên)</option>
+                      <option value="C1">C1 - Cao cấp (Học thuật, chuyên môn)</option>
+                      <option value="C2">C2 - Tinh thông (Như người bản xứ)</option>
+                    </select>
+                  </div>
+                ) : newTopic.category === "TOEIC" ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Mục tiêu TOEIC <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={newTopic.targetScore}
+                      onChange={(e) =>
+                        setNewTopic({
+                          ...newTopic,
+                          targetScore: e.target.value,
+                        })
+                      }
+                      className="h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                    >
+                      <option value="450+">450+ (Nền tảng văn phòng)</option>
+                      <option value="600+">600+ (Giao tiếp & thương mại)</option>
+                      <option value="750+">750+ (Chuyên môn thành thạo)</option>
+                      <option value="900+">900+ (Điều hành & nâng cao)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Band điểm IELTS <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={newTopic.targetScore}
+                      onChange={(e) =>
+                        setNewTopic({
+                          ...newTopic,
+                          targetScore: e.target.value,
+                        })
+                      }
+                      className="h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                    >
+                      <option value="Band 5.5">Band 5.5 (Nền tảng học thuật)</option>
+                      <option value="Band 6.5">Band 6.5 (Khá giỏi - Đại học)</option>
+                      <option value="Band 7.5+">Band 7.5+ (Chuyên sâu & Nghiên cứu)</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Mô tả ngắn */}
                 <div className="flex flex-col gap-1.5">

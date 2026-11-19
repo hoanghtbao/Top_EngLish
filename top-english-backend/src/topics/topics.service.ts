@@ -17,6 +17,7 @@ import { Topic, TopicDocument } from './schemas/topic.schema';
 import { CreateTopicDto } from './dto/create-topic.dto';
 import { UpdateTopicDto } from './dto/update-topic.dto';
 import { EnglishLevel } from './enums/english-level.enum';
+import { TopicCategory } from './enums/topic-category.enum';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Role } from '../users/enums/role.enum';
 
@@ -30,49 +31,138 @@ export class TopicsService implements OnModuleInit {
   ) {}
 
   /**
-   * Tự động khởi tạo dữ liệu mẫu 3 chủ đề tiếng Anh nếu collection rỗng
+   * Tự động khởi tạo dữ liệu mẫu cho 3 lộ trình (Hàng ngày CEFR, TOEIC, IELTS) nếu chưa tồn tại
    */
   async onModuleInit() {
-    const count = await this.topicModel.countDocuments();
-    if (count === 0) {
-      const admin = await this.userModel.findOne({ role: Role.ADMIN });
-      if (!admin) {
-        this.logger.warn('⚠️ Không tìm thấy tài khoản Admin để gán quyền tạo chủ đề mẫu');
-        return;
-      }
+    const admin = await this.userModel.findOne({ role: Role.ADMIN });
+    if (!admin) {
+      this.logger.warn('⚠️ Không tìm thấy tài khoản Admin để gán quyền tạo chủ đề mẫu');
+      return;
+    }
 
-      const sampleTopics = [
-        {
-          title: 'Daily Life & Routine',
-          slug: 'daily-life-and-routine',
-          description: 'Từ vựng thông dụng về thói quen sinh hoạt hằng ngày, ăn uống và việc nhà.',
-          level: EnglishLevel.A1,
-          image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&auto=format&fit=crop&q=80',
-          wordCount: 0,
-          createdBy: admin._id,
-        },
-        {
-          title: 'Travel & Adventure',
-          slug: 'travel-and-adventure',
-          description: 'Hành trang từ vựng thiết yếu cho sân bay, khách sạn, khám phá văn hóa và du lịch.',
-          level: EnglishLevel.A2,
-          image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop&q=80',
-          wordCount: 0,
-          createdBy: admin._id,
-        },
-        {
-          title: 'Technology & AI',
-          slug: 'technology-and-ai',
-          description: 'Từ vựng chuyên ngành công nghệ thông tin, trí tuệ nhân tạo và điện toán đám mây.',
-          level: EnglishLevel.B1,
-          image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
-          wordCount: 0,
-          createdBy: admin._id,
-        },
-      ];
+    const sampleTopics = [
+      {
+        title: 'Daily Life & Routine',
+        slug: 'daily-life-and-routine',
+        description: 'Từ vựng thông dụng về thói quen sinh hoạt hằng ngày, ăn uống và việc nhà.',
+        category: TopicCategory.GENERAL,
+        level: EnglishLevel.A1,
+        targetScore: '',
+        image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Travel & Adventure',
+        slug: 'travel-and-adventure',
+        description: 'Hành trang từ vựng thiết yếu cho sân bay, khách sạn, khám phá văn hóa và du lịch.',
+        category: TopicCategory.GENERAL,
+        level: EnglishLevel.A2,
+        targetScore: '',
+        image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Technology & AI',
+        slug: 'technology-and-ai',
+        description: 'Từ vựng chuyên ngành công nghệ thông tin, trí tuệ nhân tạo và điện toán đám mây.',
+        category: TopicCategory.GENERAL,
+        level: EnglishLevel.B1,
+        targetScore: '',
+        image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      // --- CHUYÊN ĐỀ TOEIC ---
+      {
+        title: 'Office & Meetings',
+        slug: 'toeic-office-and-meetings',
+        description: 'Từ vựng giao tiếp văn phòng, đặt lịch hẹn, hội họp và báo cáo công việc chuẩn TOEIC.',
+        category: TopicCategory.TOEIC,
+        level: EnglishLevel.A2,
+        targetScore: '450+',
+        image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Finance & Contracts',
+        slug: 'toeic-finance-and-contracts',
+        description: 'Thuật ngữ tài chính, hóa đơn, hợp đồng thương mại và đàm phán doanh nghiệp.',
+        category: TopicCategory.TOEIC,
+        level: EnglishLevel.B1,
+        targetScore: '600+',
+        image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Logistics & Supply Chain',
+        slug: 'toeic-logistics-and-supply',
+        description: 'Từ vựng vận chuyển, kho bãi, xuất nhập khẩu và quản trị chuỗi cung ứng.',
+        category: TopicCategory.TOEIC,
+        level: EnglishLevel.B2,
+        targetScore: '750+',
+        image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Executive Strategy',
+        slug: 'toeic-executive-strategy',
+        description: 'Từ vựng nâng cao về chiến lược điều hành, sáp nhập doanh nghiệp và kiểm toán.',
+        category: TopicCategory.TOEIC,
+        level: EnglishLevel.C1,
+        targetScore: '900+',
+        image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      // --- CHUYÊN ĐỀ IELTS ---
+      {
+        title: 'Education & Research',
+        slug: 'ielts-education-and-research',
+        description: 'Từ vựng học thuật về giáo dục, phương pháp giảng dạy và nghiên cứu khoa học.',
+        category: TopicCategory.IELTS,
+        level: EnglishLevel.B1,
+        targetScore: 'Band 5.5',
+        image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Environment & Climate',
+        slug: 'ielts-environment-and-climate',
+        description: 'Từ vựng đắt giá cho IELTS Writing & Speaking về biến đổi khí hậu và hệ sinh thái.',
+        category: TopicCategory.IELTS,
+        level: EnglishLevel.B2,
+        targetScore: 'Band 6.5',
+        image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+      {
+        title: 'Urbanization & Society',
+        slug: 'ielts-urbanization-and-society',
+        description: 'Từ vựng học thuật nâng cao về đô thị hóa, chính sách xã hội và phát triển bền vững.',
+        category: TopicCategory.IELTS,
+        level: EnglishLevel.C1,
+        targetScore: 'Band 7.5+',
+        image: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&auto=format&fit=crop&q=80',
+        wordCount: 0,
+        createdBy: admin._id,
+      },
+    ];
 
-      await this.topicModel.insertMany(sampleTopics);
-      this.logger.log('🌱 Đã tự động khởi tạo 3 chủ đề từ vựng mẫu (A1, A2, B1)');
+    const existingSlugs = new Set(
+      (await this.topicModel.find({}, { slug: 1 }).lean().exec()).map((t) => t.slug),
+    );
+
+    const toInsert = sampleTopics.filter((t) => !existingSlugs.has(t.slug));
+    if (toInsert.length > 0) {
+      await this.topicModel.insertMany(toInsert);
+      this.logger.log(`🌱 Đã tự động khởi tạo ${toInsert.length} chủ đề từ vựng mẫu (CEFR, TOEIC, IELTS)`);
     }
   }
 
@@ -90,19 +180,47 @@ export class TopicsService implements OnModuleInit {
   }
 
   /**
-   * Lấy danh sách chủ đề theo bộ lọc trình độ và tìm kiếm từ khóa
+   * Lấy danh sách chủ đề theo bộ lọc lộ trình, trình độ, mục tiêu và tìm kiếm từ khóa
    */
-  async findAll(query?: { level?: EnglishLevel; search?: string }): Promise<TopicDocument[]> {
-    const filter: Record<string, any> = {};
+  async findAll(query?: {
+    category?: TopicCategory;
+    level?: EnglishLevel;
+    targetScore?: string;
+    search?: string;
+  }): Promise<TopicDocument[]> {
+    const andConditions: Record<string, any>[] = [];
+
+    if (query?.category) {
+      if (query.category === TopicCategory.GENERAL) {
+        // Hỗ trợ các chủ đề cũ chưa có trường category được xem là GENERAL (CEFR)
+        andConditions.push({
+          $or: [
+            { category: TopicCategory.GENERAL },
+            { category: { $exists: false } },
+            { category: null },
+          ],
+        });
+      } else {
+        andConditions.push({ category: query.category });
+      }
+    }
 
     if (query?.level) {
-      filter.level = query.level;
+      andConditions.push({ level: query.level });
+    }
+
+    if (query?.targetScore) {
+      andConditions.push({ targetScore: query.targetScore });
     }
 
     if (query?.search) {
       const searchRegex = new RegExp(query.search.trim(), 'i');
-      filter.$or = [{ title: searchRegex }, { description: searchRegex }];
+      andConditions.push({
+        $or: [{ title: searchRegex }, { description: searchRegex }],
+      });
     }
+
+    const filter = andConditions.length > 0 ? { $and: andConditions } : {};
 
     return this.topicModel.find(filter).populate('createdBy', 'fullName email').sort({ createdAt: -1 }).exec();
   }

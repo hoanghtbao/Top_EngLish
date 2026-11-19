@@ -22,6 +22,7 @@ import { TopicsService } from './topics.service';
 import { CreateTopicDto } from './dto/create-topic.dto';
 import { UpdateTopicDto } from './dto/update-topic.dto';
 import { EnglishLevel } from './enums/english-level.enum';
+import { TopicCategory } from './enums/topic-category.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -34,15 +35,19 @@ export class TopicsController {
   constructor(private readonly topicsService: TopicsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách các chủ đề từ vựng (Có lọc theo trình độ và tìm kiếm)' })
-  @ApiQuery({ name: 'level', enum: EnglishLevel, required: false, description: 'Trình độ tiếng Anh (A1, A2, B1, B2, C1, C2)' })
+  @ApiOperation({ summary: 'Lấy danh sách các chủ đề từ vựng (Có lọc theo lộ trình, trình độ, mục tiêu và tìm kiếm)' })
+  @ApiQuery({ name: 'category', enum: TopicCategory, required: false, description: 'Lộ trình từ vựng (GENERAL, TOEIC, IELTS)' })
+  @ApiQuery({ name: 'level', enum: EnglishLevel, required: false, description: 'Trình độ tiếng Anh CEFR (A1, A2, B1, B2, C1, C2)' })
+  @ApiQuery({ name: 'targetScore', type: String, required: false, description: 'Mục tiêu TOEIC (450+, 600+...) hoặc Band điểm IELTS (Band 5.5, Band 6.5...)' })
   @ApiQuery({ name: 'search', type: String, required: false, description: 'Từ khóa tìm kiếm tiêu đề hoặc mô tả' })
   @ApiResponse({ status: 200, description: 'Danh sách chủ đề được trả về thành công' })
   async findAll(
+    @Query('category') category?: TopicCategory,
     @Query('level') level?: EnglishLevel,
+    @Query('targetScore') targetScore?: string,
     @Query('search') search?: string,
   ) {
-    return this.topicsService.findAll({ level, search });
+    return this.topicsService.findAll({ category, level, targetScore, search });
   }
 
   @Get(':idOrSlug')

@@ -7,6 +7,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { EnglishLevel } from '../enums/english-level.enum';
+import { TopicCategory } from '../enums/topic-category.enum';
 import { User } from '../../users/schemas/user.schema';
 
 export type TopicDocument = Topic & Document;
@@ -25,8 +26,14 @@ export class Topic {
   @Prop({ default: null })
   image: string;
 
+  @Prop({ type: String, enum: TopicCategory, default: TopicCategory.GENERAL })
+  category: TopicCategory;
+
   @Prop({ type: String, enum: EnglishLevel, default: EnglishLevel.A1 })
   level: EnglishLevel;
+
+  @Prop({ default: '', trim: true })
+  targetScore: string;
 
   @Prop({ default: 0 })
   wordCount: number;
@@ -37,6 +44,6 @@ export class Topic {
 
 export const TopicSchema = SchemaFactory.createForClass(Topic);
 
-// Đánh index tối ưu cho lọc theo trình độ và danh sách theo thời gian
-TopicSchema.index({ level: 1, createdAt: -1 });
+// Đánh index tối ưu cho lọc theo lộ trình, trình độ và danh sách theo thời gian
+TopicSchema.index({ category: 1, level: 1, targetScore: 1, createdAt: -1 });
 TopicSchema.index({ title: 'text', description: 'text' });

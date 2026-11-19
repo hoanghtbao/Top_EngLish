@@ -39,7 +39,9 @@ interface Topic {
   title: string;
   slug: string;
   description: string;
+  category?: "GENERAL" | "TOEIC" | "IELTS";
   level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+  targetScore?: string;
   wordCount: number;
 }
 
@@ -601,9 +603,26 @@ function TopicDetailInner() {
         {/* Topic Header Summary */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 uppercase">
-                <GraduationCap className="size-3" /> CEFR {topic.level}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border uppercase ${
+                  topic.category === "TOEIC"
+                    ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700"
+                    : topic.category === "IELTS"
+                    ? "bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700"
+                    : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                }`}
+              >
+                <GraduationCap className="size-3" />{" "}
+                {topic.category === "TOEIC"
+                  ? topic.targetScore
+                    ? `TOEIC ${topic.targetScore}`
+                    : "TOEIC"
+                  : topic.category === "IELTS"
+                  ? topic.targetScore
+                    ? `IELTS ${topic.targetScore}`
+                    : "IELTS"
+                  : `CEFR ${topic.level}`}
               </span>
               <h1 className="text-xl sm:text-2xl font-extrabold">{topic.title}</h1>
             </div>
