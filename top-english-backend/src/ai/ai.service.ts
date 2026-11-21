@@ -1174,6 +1174,13 @@ Return ONLY a valid JSON object with an "items" array of exactly ${requestedCoun
       level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
       summary: string;
       formula: { positive: string; negative: string; question: string };
+      structures: Array<{
+        badge: string;
+        label: string;
+        pattern: string;
+        color: string;
+        note?: string;
+      }>;
       usage: string[];
       signals: string[];
       examples: Array<{ en: string; vi: string; note?: string }>;
@@ -1192,7 +1199,7 @@ Return ONLY a valid JSON object with an "items" array of exactly ${requestedCoun
     const hasKey = !!this.getApiKey();
 
     if (hasKey) {
-      const systemRule = `You are a senior English grammar curriculum designer for TopEnglish teachers. Create structured, accurate, concise bilingual (English-Vietnamese) grammar lessons tailored for teaching.`;
+      const systemRule = `You are a senior English grammar curriculum designer for TopEnglish teachers. Create structured, accurate, concise bilingual (English-Vietnamese) grammar lessons tailored for teaching. Always choose the formula structures that naturally match the grammar topic (do NOT force + / - / ? onto topics like Comparisons, Conditionals, Relative Clauses, Reported Speech, Gerunds/Infinitives, etc.).`;
       const prompt = `Create a complete structured English grammar lesson draft for a teacher based on:
 Topic/Prompt: "${topic}"
 Target CEFR Level: ${detectedLevel}
@@ -1201,14 +1208,23 @@ ${dto.extraInstructions?.trim() ? `Extra Notes: "${dto.extraInstructions.trim()}
 
 Return ONLY a valid JSON object matching this exact schema:
 {
-  "title": "Vietnamese + English lesson title (e.g. Câu Bị Động (Passive Voice))",
-  "category": "Short English category (e.g. Tenses, Passive Voice, Conditionals, Modal Verbs, Relative Clauses, Reported Speech)",
+  "title": "Vietnamese + English lesson title",
+  "category": "Short English category (e.g. Tenses, Passive Voice, Conditionals, Comparisons, Relative Clauses, Reported Speech, Modal Verbs, Gerunds & Infinitives)",
   "level": "${detectedLevel}",
   "summary": "1-2 clear sentences in Vietnamese summarizing what learners gain from this lesson",
+  "structures": [
+    {
+      "badge": "Short badge fitting the rule (+, -, ?, =, >, ★, If, 1, A...)",
+      "label": "Clear Vietnamese name of this grammar structure form (e.g. Thể Khẳng định, So sánh hơn, Câu điều kiện chuẩn, Rút gọn chủ động...)",
+      "pattern": "Exact formula string",
+      "color": "emerald | rose | sky | amber | indigo | purple",
+      "note": "Optional short note in Vietnamese"
+    }
+  ],
   "formula": {
-    "positive": "Clear affirmative formula (+)",
-    "negative": "Clear negative formula (-)",
-    "question": "Clear interrogative formula (?)"
+    "positive": "Primary/affirmative formula or empty string if not +/-/?",
+    "negative": "Negative formula or empty string if not applicable",
+    "question": "Question formula or empty string if not applicable"
   },
   "usage": ["3-4 concise Vietnamese bullet points explaining main uses"],
   "signals": ["4-8 key words / structural markers / signal words"],
@@ -1222,8 +1238,21 @@ Return ONLY a valid JSON object matching this exact schema:
 }`;
 
       const result = await this.callGemini(prompt, true, systemRule);
-      if (result && result.title && result.formula) {
+      if (result && result.title && (Array.isArray(result.structures) || result.formula)) {
         const resLevel = validLevels.includes(result.level) ? result.level : detectedLevel;
+        const allowedColors = ['emerald', 'rose', 'sky', 'amber', 'indigo', 'purple'];
+        const structures = Array.isArray(result.structures)
+          ? result.structures
+              .filter((s: any) => s?.label && s?.pattern)
+              .map((s: any) => ({
+                badge: String(s.badge || '•').trim().slice(0, 6),
+                label: String(s.label).trim(),
+                pattern: String(s.pattern).trim(),
+                color: allowedColors.includes(s.color) ? s.color : 'emerald',
+                note: s.note ? String(s.note).trim() : '',
+              }))
+          : [];
+
         return {
           provider: 'Google Gemini 2.5 Flash',
           lesson: {
@@ -1232,10 +1261,11 @@ Return ONLY a valid JSON object matching this exact schema:
             level: resLevel,
             summary: String(result.summary || '').trim(),
             formula: {
-              positive: String(result.formula?.positive || '').trim(),
+              positive: String(result.formula?.positive || structures[0]?.pattern || '').trim(),
               negative: String(result.formula?.negative || '').trim(),
               question: String(result.formula?.question || '').trim(),
             },
+            structures,
             usage: Array.isArray(result.usage) ? result.usage.map(String).filter(Boolean) : [],
             signals: Array.isArray(result.signals) ? result.signals.map(String).filter(Boolean) : [],
             examples: Array.isArray(result.examples)
@@ -1274,6 +1304,22 @@ Return ONLY a valid JSON object matching this exact schema:
           negative: 'S + Auxiliary + not + V + O',
           question: 'Auxiliary + S + V + O?',
         },
+        structures: [
+          {
+            badge: '1',
+            label: 'Cấu trúc chuẩn',
+            pattern: 'S + Auxiliary / V + O',
+            color: 'emerald',
+            note: 'Dạng cấu trúc cốt lõi của chủ điểm',
+          },
+          {
+            badge: '2',
+            label: 'Dạng phủ định / Biến thể',
+            pattern: 'S + Auxiliary + not + V + O',
+            color: 'rose',
+            note: 'Lưu ý vị trí trợ động từ hoặc từ nối',
+          },
+        ],
         usage: [
           `Diễn đạt cấu trúc chính xác cho chủ điểm ${topic}.`,
           'Áp dụng trong câu giao tiếp, viết email và bài đọc TOEIC/IELTS.',

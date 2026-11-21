@@ -34,6 +34,14 @@ export interface GrammarExerciseItem {
   explanation?: string;
 }
 
+export interface GrammarStructureItem {
+  badge: string;
+  label: string;
+  pattern: string;
+  color?: string;
+  note?: string;
+}
+
 export interface GrammarLessonData {
   _id?: string;
   title: string;
@@ -47,6 +55,7 @@ export interface GrammarLessonData {
     negative?: string;
     question?: string;
   };
+  structures?: GrammarStructureItem[];
   usage?: string[];
   signals?: string[];
   examples?: GrammarExampleItem[];
@@ -67,13 +76,90 @@ const CATEGORY_SUGGESTIONS = [
   "Tenses",
   "Passive Voice",
   "Conditionals",
-  "Modal Verbs",
+  "Comparisons",
   "Relative Clauses",
   "Reported Speech",
-  "Comparisons",
+  "Modal Verbs",
   "Gerunds & Infinitives",
   "Prepositions",
+  "Inversion & Emphasis",
 ];
+
+const FORMULA_PRESETS: Array<{ name: string; items: GrammarStructureItem[] }> = [
+  {
+    name: "3 thể (+ / - / ?)",
+    items: [
+      { badge: "+", label: "Thể Khẳng định", pattern: "", color: "emerald", note: "" },
+      { badge: "-", label: "Thể Phủ định", pattern: "", color: "rose", note: "" },
+      { badge: "?", label: "Thể Nghi vấn", pattern: "", color: "sky", note: "" },
+    ],
+  },
+  {
+    name: "Điều kiện (If)",
+    items: [
+      { badge: "If", label: "Cấu trúc chuẩn", pattern: "If + S + V(...), S + will/would + V", color: "emerald", note: "" },
+      { badge: "!", label: "Biến thể với Unless", pattern: "Unless + S + V(khẳng định), ...", color: "amber", note: "Unless = If ... not" },
+      { badge: "⇄", label: "Dạng Đảo ngữ", pattern: "Should / Were / Had + S + ..., ...", color: "indigo", note: "Trang trọng hơn khi lược bỏ If" },
+    ],
+  },
+  {
+    name: "So sánh",
+    items: [
+      { badge: "=", label: "So sánh bằng", pattern: "S + V + as + adj/adv + as + O", color: "emerald", note: "" },
+      { badge: ">", label: "So sánh hơn", pattern: "S + V + adj-er / more + adj + than + O", color: "sky", note: "" },
+      { badge: "★", label: "So sánh nhất", pattern: "S + V + the + adj-est / most + adj + (N)", color: "amber", note: "" },
+      { badge: "↗", label: "So sánh kép", pattern: "The + adj-er/more..., the + adj-er/more...", color: "purple", note: "Càng... càng..." },
+    ],
+  },
+  {
+    name: "Mệnh đề quan hệ",
+    items: [
+      { badge: "👤", label: "Chỉ người (who / whom)", pattern: "N (person) + who/whom + (S) + V...", color: "emerald", note: "" },
+      { badge: "📦", label: "Chỉ vật / Sở hữu", pattern: "N (thing) + which/that... | N + whose + N", color: "sky", note: "" },
+      { badge: "✂", label: "Rút gọn mệnh đề", pattern: "N + V-ing (chủ động) / V3-ed (bị động) / to V", color: "indigo", note: "" },
+    ],
+  },
+  {
+    name: "Tường thuật",
+    items: [
+      { badge: "💬", label: "Câu trần thuật", pattern: "S + said/told O + (that) + S + V(lùi thì)", color: "emerald", note: "" },
+      { badge: "?", label: "Câu hỏi Yes/No & Wh-", pattern: "S + asked + O + if/whether/Wh- + S + V(lùi thì)", color: "sky", note: "" },
+      { badge: "!", label: "Mệnh lệnh / Đề nghị", pattern: "S + told/asked + O + (not) to V", color: "amber", note: "" },
+    ],
+  },
+];
+
+const BADGE_COLOR_CLASSES: Record<string, string> = {
+  emerald: "bg-emerald-600",
+  rose: "bg-rose-600",
+  sky: "bg-sky-600",
+  amber: "bg-amber-500",
+  indigo: "bg-indigo-600",
+  purple: "bg-purple-600",
+};
+
+function hydrateStructuresFromLesson(lesson: GrammarLessonData): GrammarStructureItem[] {
+  if (Array.isArray(lesson.structures) && lesson.structures.length > 0) {
+    return lesson.structures.map((s) => ({
+      badge: s.badge || "•",
+      label: s.label || "Cấu trúc",
+      pattern: s.pattern || "",
+      color: s.color || "emerald",
+      note: s.note || "",
+    }));
+  }
+  const derived: GrammarStructureItem[] = [];
+  if (lesson.formula?.positive) {
+    derived.push({ badge: "+", label: "Thể Khẳng định", pattern: lesson.formula.positive, color: "emerald", note: "" });
+  }
+  if (lesson.formula?.negative) {
+    derived.push({ badge: "-", label: "Thể Phủ định", pattern: lesson.formula.negative, color: "rose", note: "" });
+  }
+  if (lesson.formula?.question) {
+    derived.push({ badge: "?", label: "Thể Nghi vấn", pattern: lesson.formula.question, color: "sky", note: "" });
+  }
+  return derived.length > 0 ? derived : FORMULA_PRESETS[0].items.map((x) => ({ ...x }));
+}
 
 export function GrammarEditorModal({
   isOpen,
@@ -90,10 +176,10 @@ export function GrammarEditorModal({
   const [status, setStatus] = useState<"draft" | "published">("published");
   const [summary, setSummary] = useState("");
 
-  // Formula
-  const [positive, setPositive] = useState("");
-  const [negative, setNegative] = useState("");
-  const [question, setQuestion] = useState("");
+  // Dynamic Flexible Structures (works for ALL grammar types!)
+  const [structures, setStructures] = useState<GrammarStructureItem[]>(
+    FORMULA_PRESETS[0].items.map((x) => ({ ...x }))
+  );
 
   // Usage, Signals & Content
   const [usageText, setUsageText] = useState("");
@@ -132,9 +218,7 @@ export function GrammarEditorModal({
       setLevel(editingLesson.level || "B1");
       setStatus(editingLesson.status || "published");
       setSummary(editingLesson.summary || "");
-      setPositive(editingLesson.formula?.positive || "");
-      setNegative(editingLesson.formula?.negative || "");
-      setQuestion(editingLesson.formula?.question || "");
+      setStructures(hydrateStructuresFromLesson(editingLesson));
       setUsageText((editingLesson.usage || []).join("\n"));
       setSignalsText((editingLesson.signals || []).join(", "));
       setContent(editingLesson.content || "");
@@ -163,9 +247,7 @@ export function GrammarEditorModal({
       setLevel("B1");
       setStatus("published");
       setSummary("");
-      setPositive("");
-      setNegative("");
-      setQuestion("");
+      setStructures(FORMULA_PRESETS[0].items.map((x) => ({ ...x })));
       setUsageText("");
       setSignalsText("");
       setContent("");
@@ -198,6 +280,7 @@ export function GrammarEditorModal({
           level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
           summary: string;
           formula: { positive: string; negative: string; question: string };
+          structures?: GrammarStructureItem[];
           usage: string[];
           signals: string[];
           examples: GrammarExampleItem[];
@@ -219,9 +302,7 @@ export function GrammarEditorModal({
         setCategory(d.category || category);
         setLevel(d.level || level);
         setSummary(d.summary || "");
-        setPositive(d.formula?.positive || "");
-        setNegative(d.formula?.negative || "");
-        setQuestion(d.formula?.question || "");
+        setStructures(hydrateStructuresFromLesson(d));
         setUsageText((d.usage || []).join("\n"));
         setSignalsText((d.signals || []).join(", "));
         setContent(d.content || "");
@@ -261,7 +342,11 @@ export function GrammarEditorModal({
           category: category.trim(),
           level,
           summary: summary.trim(),
-          formula: { positive, negative, question },
+          formula: {
+            positive: structures[0]?.pattern || "",
+            negative: structures[1]?.pattern || "",
+            question: structures[2]?.pattern || "",
+          },
           usage: usageText
             .split("\n")
             .map((s) => s.trim())
@@ -326,16 +411,31 @@ export function GrammarEditorModal({
       }))
       .filter((ex) => ex.question && ex.correctAnswer);
 
+    const cleanStructures = structures
+      .map((s) => ({
+        badge: (s.badge || "•").trim(),
+        label: s.label.trim(),
+        pattern: s.pattern.trim(),
+        color: s.color || "emerald",
+        note: s.note?.trim() || "",
+      }))
+      .filter((s) => s.label && s.pattern);
+
+    const posItem = cleanStructures.find((s) => s.badge === "+") || cleanStructures[0];
+    const negItem = cleanStructures.find((s) => s.badge === "-");
+    const qItem = cleanStructures.find((s) => s.badge === "?");
+
     const payload = {
       title: title.trim(),
       category: category.trim(),
       level,
       status,
       summary: summary.trim(),
+      structures: cleanStructures,
       formula: {
-        positive: positive.trim(),
-        negative: negative.trim(),
-        question: question.trim(),
+        positive: posItem?.pattern || "",
+        negative: negItem?.pattern || "",
+        question: qItem?.pattern || "",
       },
       usage: usageText
         .split("\n")
@@ -445,7 +545,7 @@ export function GrammarEditorModal({
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Compass className="size-3.5" /> 1. Khung &amp; Công thức (+ / - / ?)
+            <Compass className="size-3.5" /> 1. Khung &amp; Công thức ({structures.length})
           </button>
           <button
             type="button"
@@ -569,48 +669,143 @@ export function GrammarEditorModal({
                 />
               </div>
 
-              {/* 3-Form Formulas */}
+              {/* Universal Flexible Formula Builder */}
               <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/70 flex flex-col gap-3">
-                <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
-                  Công thức 3 dạng (+ / - / ?)
-                </span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide block">
+                      Công thức &amp; Cấu trúc ngữ pháp linh hoạt
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Chọn mẫu có sẵn phù hợp chuyên đề hoặc tự thêm các dạng công thức riêng
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStructures([
+                        ...structures,
+                        {
+                          badge: String(structures.length + 1),
+                          label: "",
+                          pattern: "",
+                          color: "emerald",
+                          note: "",
+                        },
+                      ])
+                    }
+                    className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="size-3.5" /> Thêm công thức
+                  </button>
+                </div>
+
+                {/* Preset Template Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-400 mr-1">Mẫu nhanh:</span>
+                  {FORMULA_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setStructures(preset.items.map((x) => ({ ...x })))}
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer transition"
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="grid grid-cols-1 gap-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="size-7 rounded-lg bg-emerald-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                      +
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Khẳng định: S + be + V3/ed (+ by O)"
-                      value={positive}
-                      onChange={(e) => setPositive(e.target.value)}
-                      className="flex-1 h-9.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="size-7 rounded-lg bg-rose-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                      -
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Phủ định: S + be + not + V3/ed (+ by O)"
-                      value={negative}
-                      onChange={(e) => setNegative(e.target.value)}
-                      className="flex-1 h-9.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="size-7 rounded-lg bg-sky-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                      ?
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Nghi vấn: Be + S + V3/ed (+ by O)?"
-                      value={question}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      className="flex-1 h-9.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white"
-                    />
-                  </div>
+                  {structures.map((st, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col gap-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          placeholder="Ký hiệu"
+                          title="Ký hiệu (+, -, ?, =, >, If, 1...)"
+                          value={st.badge}
+                          onChange={(e) => {
+                            const next = [...structures];
+                            next[idx] = { ...next[idx], badge: e.target.value };
+                            setStructures(next);
+                          }}
+                          className={`w-12 h-8.5 text-center rounded-lg text-xs font-black text-white ${
+                            BADGE_COLOR_CLASSES[st.color || "emerald"] || "bg-emerald-600"
+                          }`}
+                        />
+
+                        <input
+                          type="text"
+                          placeholder="Tên dạng (VD: Thể khẳng định, So sánh hơn, Đảo ngữ If...)"
+                          value={st.label}
+                          onChange={(e) => {
+                            const next = [...structures];
+                            next[idx] = { ...next[idx], label: e.target.value };
+                            setStructures(next);
+                          }}
+                          className="flex-1 min-w-[160px] h-8.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                        />
+
+                        <select
+                          value={st.color || "emerald"}
+                          onChange={(e) => {
+                            const next = [...structures];
+                            next[idx] = { ...next[idx], color: e.target.value };
+                            setStructures(next);
+                          }}
+                          className="h-8.5 px-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold cursor-pointer"
+                        >
+                          <option value="emerald">Xanh lá</option>
+                          <option value="rose">Đỏ hồng</option>
+                          <option value="sky">Xanh dương</option>
+                          <option value="amber">Vàng cam</option>
+                          <option value="indigo">Chàm</option>
+                          <option value="purple">Tím</option>
+                        </select>
+
+                        {structures.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStructures(structures.filter((_, i) => i !== idx))
+                            }
+                            className="p-1.5 text-rose-500 hover:text-rose-700 cursor-pointer"
+                            title="Xóa công thức này"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Công thức (VD: S + V + adj-er + than + O)"
+                        value={st.pattern}
+                        onChange={(e) => {
+                          const next = [...structures];
+                          next[idx] = { ...next[idx], pattern: e.target.value };
+                          setStructures(next);
+                        }}
+                        className="h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white"
+                      />
+
+                      <input
+                        type="text"
+                        placeholder="Ghi chú ngắn cho công thức này (tùy chọn)..."
+                        value={st.note || ""}
+                        onChange={(e) => {
+                          const next = [...structures];
+                          next[idx] = { ...next[idx], note: e.target.value };
+                          setStructures(next);
+                        }}
+                        className="h-8 px-3 rounded-lg bg-slate-50/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-600 dark:text-slate-300"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 

@@ -38,6 +38,7 @@ import {
   GrammarEditorModal,
   GrammarExerciseItem,
   GrammarLessonData,
+  GrammarStructureItem,
 } from "../../../components/GrammarEditorModal";
 import { AssignGrammarModal } from "../../../components/AssignGrammarModal";
 import { useAuth } from "../../../context/auth-context";
@@ -354,8 +355,66 @@ function GrammarDetailInner() {
   const activeClassroom = classProgress?.classrooms.find(
     (c) => c.classroomId === selectedClassId
   );
+
+  const LIGHT_THEMES: Record<string, { box: string; badge: string; title: string }> = {
+    emerald: {
+      box: "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
+      badge: "bg-emerald-600",
+      title: "text-emerald-900 dark:text-emerald-300",
+    },
+    rose: {
+      box: "bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800",
+      badge: "bg-rose-600",
+      title: "text-rose-900 dark:text-rose-300",
+    },
+    sky: {
+      box: "bg-sky-50/60 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800",
+      badge: "bg-sky-600",
+      title: "text-sky-900 dark:text-sky-300",
+    },
+    amber: {
+      box: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
+      badge: "bg-amber-500",
+      title: "text-amber-900 dark:text-amber-300",
+    },
+    indigo: {
+      box: "bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800",
+      badge: "bg-indigo-600",
+      title: "text-indigo-900 dark:text-indigo-300",
+    },
+    purple: {
+      box: "bg-purple-50/60 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800",
+      badge: "bg-purple-600",
+      title: "text-purple-900 dark:text-purple-300",
+    },
+  };
+
+  const DARK_THEMES: Record<string, { box: string; badge: string }> = {
+    emerald: { box: "bg-emerald-950/60 border-emerald-500/50 text-emerald-300", badge: "bg-emerald-500" },
+    rose: { box: "bg-rose-950/60 border-rose-500/50 text-rose-300", badge: "bg-rose-500" },
+    sky: { box: "bg-sky-950/60 border-sky-500/50 text-sky-300", badge: "bg-sky-500" },
+    amber: { box: "bg-amber-950/60 border-amber-500/50 text-amber-300", badge: "bg-amber-500" },
+    indigo: { box: "bg-indigo-950/60 border-indigo-500/50 text-indigo-300", badge: "bg-indigo-500" },
+    purple: { box: "bg-purple-950/60 border-purple-500/50 text-purple-300", badge: "bg-purple-500" },
+  };
+
+  const lessonStructures: GrammarStructureItem[] =
+    Array.isArray(lesson.structures) && lesson.structures.length > 0
+      ? lesson.structures
+      : [
+          ...(lesson.formula?.positive
+            ? [{ badge: "+", label: "Thể Khẳng định (Affirmative)", pattern: lesson.formula.positive, color: "emerald" }]
+            : []),
+          ...(lesson.formula?.negative
+            ? [{ badge: "-", label: "Thể Phủ định (Negative)", pattern: lesson.formula.negative, color: "rose" }]
+            : []),
+          ...(lesson.formula?.question
+            ? [{ badge: "?", label: "Thể Nghi vấn (Interrogative)", pattern: lesson.formula.question, color: "sky" }]
+            : []),
+        ];
+
   const PRESENTATION_SLIDES = [
-    "1. Công thức 3 thể",
+    "1. Công thức & Cấu trúc",
     "2. Cách dùng & Dấu hiệu",
     "3. Ví dụ song ngữ",
     "4. Lỗi thường gặp",
@@ -420,58 +479,40 @@ function GrammarDetailInner() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-5">
-                  {[
-                    {
-                      key: "positive",
-                      badge: "+",
-                      title: "Thể Khẳng định (Affirmative)",
-                      value: lesson.formula?.positive,
-                      boxClass: "bg-emerald-950/60 border-emerald-500/50 text-emerald-300",
-                      badgeClass: "bg-emerald-500",
-                    },
-                    {
-                      key: "negative",
-                      badge: "-",
-                      title: "Thể Phủ định (Negative)",
-                      value: lesson.formula?.negative,
-                      boxClass: "bg-rose-950/60 border-rose-500/50 text-rose-300",
-                      badgeClass: "bg-rose-500",
-                    },
-                    {
-                      key: "question",
-                      badge: "?",
-                      title: "Thể Nghi vấn (Interrogative)",
-                      value: lesson.formula?.question,
-                      boxClass: "bg-sky-950/60 border-sky-500/50 text-sky-300",
-                      badgeClass: "bg-sky-500",
-                    },
-                  ].map((item) => {
-                    const visible = revealedFormulas[item.key] ?? true;
+                  {lessonStructures.map((item, idx) => {
+                    const key = `st-${idx}`;
+                    const visible = revealedFormulas[key] ?? true;
+                    const theme = DARK_THEMES[item.color || "emerald"] || DARK_THEMES.emerald;
                     return (
                       <div
-                        key={item.key}
-                        className={`p-6 sm:p-7 rounded-3xl border-2 flex items-center justify-between gap-4 ${item.boxClass}`}
+                        key={key}
+                        className={`p-6 sm:p-7 rounded-3xl border-2 flex items-center justify-between gap-4 ${theme.box}`}
                       >
                         <div className="flex items-center gap-4 min-w-0">
                           <span
-                            className={`size-11 rounded-2xl ${item.badgeClass} text-white text-xl font-black flex items-center justify-center shrink-0`}
+                            className={`size-11 rounded-2xl ${theme.badge} text-white text-xl font-black flex items-center justify-center shrink-0`}
                           >
-                            {item.badge}
+                            {item.badge || idx + 1}
                           </span>
                           <div className="min-w-0">
-                            <div className="text-xs sm:text-sm font-bold uppercase opacity-80">
-                              {item.title}
+                            <div className="text-xs sm:text-sm font-bold uppercase opacity-85">
+                              {item.label}
                             </div>
                             <div className="text-xl sm:text-3xl font-mono font-black text-white mt-1 break-words">
-                              {visible ? item.value || "Chưa cập nhật" : "•••••••••••••• (Đang ẩn để học sinh trả lời)"}
+                              {visible ? item.pattern : "•••••••••••••• (Đang ẩn để học sinh trả lời)"}
                             </div>
+                            {visible && item.note && (
+                              <p className="text-xs sm:text-sm text-slate-300 mt-1.5">
+                                💡 {item.note}
+                              </p>
+                            )}
                           </div>
                         </div>
 
                         <button
                           type="button"
                           onClick={() =>
-                            setRevealedFormulas((prev) => ({ ...prev, [item.key]: !visible }))
+                            setRevealedFormulas((prev) => ({ ...prev, [key]: !visible }))
                           }
                           className="h-10 px-4 rounded-xl bg-slate-900/80 border border-slate-700 text-xs font-bold text-slate-200 inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                         >
@@ -929,51 +970,44 @@ function GrammarDetailInner() {
           <div className="flex flex-col gap-6">
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col gap-6 shadow-xs">
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <Compass className="size-5 text-emerald-600" /> Công thức ngữ pháp 3 thể
+                <Compass className="size-5 text-emerald-600" /> Công thức &amp; Cấu trúc ngữ pháp
               </h2>
 
               <div className="grid grid-cols-1 gap-4">
-                <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="size-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-black">
-                      +
-                    </span>
-                    <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wide">
-                      Thể Khẳng định (Affirmative)
-                    </span>
-                  </div>
-                  <code className="text-sm sm:text-base font-mono font-bold text-slate-900 dark:text-slate-100 pl-8">
-                    {lesson.formula?.positive || "Chưa cập nhật"}
-                  </code>
-                </div>
-
-                <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="size-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-black">
-                      -
-                    </span>
-                    <span className="text-xs font-bold text-rose-900 dark:text-rose-300 uppercase tracking-wide">
-                      Thể Phủ định (Negative)
-                    </span>
-                  </div>
-                  <code className="text-sm sm:text-base font-mono font-bold text-slate-900 dark:text-slate-100 pl-8">
-                    {lesson.formula?.negative || "Chưa cập nhật"}
-                  </code>
-                </div>
-
-                <div className="p-4 sm:p-5 rounded-2xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="size-6 rounded-full bg-sky-600 text-white flex items-center justify-center text-xs font-black">
-                      ?
-                    </span>
-                    <span className="text-xs font-bold text-sky-900 dark:text-sky-300 uppercase tracking-wide">
-                      Thể Nghi vấn (Interrogative)
-                    </span>
-                  </div>
-                  <code className="text-sm sm:text-base font-mono font-bold text-slate-900 dark:text-slate-100 pl-8">
-                    {lesson.formula?.question || "Chưa cập nhật"}
-                  </code>
-                </div>
+                {lessonStructures.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic">
+                    Chưa cập nhật công thức cho bài học này.
+                  </p>
+                ) : (
+                  lessonStructures.map((st, idx) => {
+                    const theme = LIGHT_THEMES[st.color || "emerald"] || LIGHT_THEMES.emerald;
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-4 sm:p-5 rounded-2xl border flex flex-col gap-1.5 ${theme.box}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`size-6 rounded-full ${theme.badge} text-white flex items-center justify-center text-xs font-black shrink-0`}
+                          >
+                            {st.badge || idx + 1}
+                          </span>
+                          <span className={`text-xs font-bold uppercase tracking-wide ${theme.title}`}>
+                            {st.label}
+                          </span>
+                        </div>
+                        <code className="text-sm sm:text-base font-mono font-bold text-slate-900 dark:text-slate-100 pl-8 break-words">
+                          {st.pattern}
+                        </code>
+                        {st.note && (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 pl-8">
+                            💡 {st.note}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 

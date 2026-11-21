@@ -24,6 +24,24 @@ export class GrammarFormula {
 }
 
 @Schema({ _id: false })
+export class GrammarStructureItem {
+  @Prop({ default: '+' })
+  badge: string;
+
+  @Prop({ required: true })
+  label: string;
+
+  @Prop({ required: true })
+  pattern: string;
+
+  @Prop({ default: 'emerald' })
+  color?: string;
+
+  @Prop({ default: '' })
+  note?: string;
+}
+
+@Schema({ _id: false })
 export class GrammarExample {
   @Prop({ required: true })
   en: string;
@@ -87,6 +105,9 @@ export class GrammarLesson {
 
   @Prop({ type: GrammarFormula, default: () => ({}) })
   formula: GrammarFormula;
+
+  @Prop({ type: [GrammarStructureItem], default: [] })
+  structures: GrammarStructureItem[];
 
   @Prop({ type: [String], default: [] })
   usage: string[];

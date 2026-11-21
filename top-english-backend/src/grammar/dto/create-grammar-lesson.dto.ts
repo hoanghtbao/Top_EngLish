@@ -34,6 +34,33 @@ export class GrammarFormulaDto {
   question?: string;
 }
 
+export class GrammarStructureItemDto {
+  @ApiPropertyOptional({ example: '=', description: 'Ký hiệu ngắn (+, -, ?, =, >, If, A...)' })
+  @IsOptional()
+  @IsString()
+  badge?: string;
+
+  @ApiProperty({ example: 'So sánh bằng', description: 'Tên dạng công thức' })
+  @IsString()
+  @IsNotEmpty()
+  label: string;
+
+  @ApiProperty({ example: 'S + V + as + adj/adv + as + N/Pronoun', description: 'Công thức chi tiết' })
+  @IsString()
+  @IsNotEmpty()
+  pattern: string;
+
+  @ApiPropertyOptional({ example: 'emerald' })
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @ApiPropertyOptional({ example: 'Dùng để so sánh 2 đối tượng ngang nhau' })
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
 export class GrammarExampleDto {
   @ApiProperty({ example: 'She drinks coffee every morning.', description: 'Câu tiếng Anh' })
   @IsString()
@@ -120,10 +147,15 @@ export class CreateGrammarLessonDto {
   @IsString()
   summary?: string;
 
-  @ApiPropertyOptional({ type: GrammarFormulaDto, description: 'Công thức ngữ pháp' })
+  @ApiPropertyOptional({ type: GrammarFormulaDto, description: 'Công thức ngữ pháp (+ / - / ?)' })
   @IsOptional()
   @IsObject()
   formula?: GrammarFormulaDto;
+
+  @ApiPropertyOptional({ type: [GrammarStructureItemDto], description: 'Danh sách công thức/cấu trúc linh hoạt phù hợp mọi chuyên đề' })
+  @IsOptional()
+  @IsArray()
+  structures?: GrammarStructureItemDto[];
 
   @ApiPropertyOptional({ type: [String], example: ['Diễn tả thói quen hàng ngày', 'Chân lý hiển nhiên'], description: 'Các trường hợp sử dụng' })
   @IsOptional()

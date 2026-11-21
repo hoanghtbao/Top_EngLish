@@ -705,13 +705,13 @@ export default function GrammarCatalogPage() {
                     </p>
 
                     {/* Formula Snippet Preview */}
-                    {lesson.formula?.positive && (
+                    {(lesson.structures?.[0]?.pattern || lesson.formula?.positive) && (
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 flex flex-col gap-1">
                         <span className="text-[10px] uppercase font-bold text-slate-400">
-                          Cấu trúc khẳng định:
+                          {lesson.structures?.[0]?.label || "Cấu trúc chính"}:
                         </span>
                         <code className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 truncate">
-                          {lesson.formula.positive}
+                          {lesson.structures?.[0]?.pattern || lesson.formula?.positive}
                         </code>
                       </div>
                     )}

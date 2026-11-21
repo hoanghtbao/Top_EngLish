@@ -478,6 +478,7 @@ Thì Hiện Tại Đơn (Present Simple) là nền tảng cốt lõi của ngữ
       status: 'draft',
       summary: source.summary || '',
       formula: source.formula || {},
+      structures: source.structures || [],
       usage: source.usage || [],
       signals: source.signals || [],
       examples: source.examples || [],
