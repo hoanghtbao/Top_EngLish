@@ -213,6 +213,43 @@ export default function AdminDashboardPage() {
     initPosX: number;
     initPosY: number;
   } | null>(null);
+  const [isBannerFullscreenPreview, setIsBannerFullscreenPreview] =
+    useState(false);
+  const sectionPreviewBoxRef = useRef<HTMLDivElement>(null);
+  const sectionPreviewStageRef = useRef<HTMLDivElement>(null);
+  const [sectionPreviewScale, setSectionPreviewScale] = useState(0.38);
+  const [sectionPreviewStageHeight, setSectionPreviewStageHeight] =
+    useState(248);
+
+  useEffect(() => {
+    if (activeTab !== "homepage") return;
+    const measure = () => {
+      const box = sectionPreviewBoxRef.current;
+      const stage = sectionPreviewStageRef.current;
+      if (box) {
+        const w = box.clientWidth;
+        if (w > 0) setSectionPreviewScale(w / 1104);
+      }
+      if (stage) {
+        const h = stage.scrollHeight;
+        if (h > 0) setSectionPreviewStageHeight(h);
+      }
+    };
+    measure();
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(measure)
+        : null;
+    if (ro && sectionPreviewBoxRef.current)
+      ro.observe(sectionPreviewBoxRef.current);
+    if (ro && sectionPreviewStageRef.current)
+      ro.observe(sectionPreviewStageRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [activeTab, expandedBannerKey, pageBannerBackgrounds]);
 
   const updateSectionBannerConfig = (
     sectionKey: string,
@@ -232,15 +269,104 @@ export default function AdminDashboardPage() {
   };
 
   const BANNER_SECTION_ITEMS = [
-    { key: "topics", label: "Từ vựng Flashcard", route: "/topics" },
-    { key: "grammar", label: "Ngữ pháp Chuyên sâu", route: "/grammar" },
-    { key: "quizzes", label: "Luyện thi & Kiểm tra", route: "/quizzes" },
-    { key: "classrooms", label: "Lớp học Trực tuyến", route: "/classrooms" },
-    { key: "dashboard", label: "Tiến độ & SRS", route: "/dashboard" },
-    { key: "leaderboard", label: "Bảng Xếp Hạng", route: "/leaderboard" },
-    { key: "live_game", label: "Đấu Trường Leo Núi", route: "/live-game" },
-    { key: "ai_assistant", label: "Trợ lý AI Gemini", route: "/ai-assistant" },
-    { key: "profile", label: "Tủ Kính Thành Tựu", route: "/profile" },
+    {
+      key: "topics",
+      label: "Từ vựng Flashcard",
+      route: "/topics",
+      badgeText: "Từ vựng Flashcard theo Lớp học",
+      title: "Danh Sách Lớp Học",
+      description:
+        "Chọn lớp học bên dưới để xem danh sách bài học và luyện tập theo 3 chế độ: Học Từ (Flashcard), Quiz ABCD và Gõ Từ.",
+      pills: ["Lớp học: 4", "Bài học: 11", "Từ vựng: 232"],
+      cta: "+ Tạo lớp học mới",
+    },
+    {
+      key: "grammar",
+      label: "Ngữ pháp Chuyên sâu",
+      route: "/grammar",
+      badgeText: "Ngữ pháp tiếng Anh thông minh & Tương tác lớp học",
+      title: "Chuyên mục Ngữ pháp tiếng Anh",
+      description:
+        "Học ngữ pháp qua công thức linh hoạt, ví dụ song ngữ phát âm, lỗi sai thường gặp, trình chiếu giảng bài và bài tập thực hành.",
+      pills: ["Bài học: 5", "Chuyên đề: 2"],
+      cta: "+ Thêm bài ngữ pháp",
+    },
+    {
+      key: "quizzes",
+      label: "Luyện thi & Kiểm tra",
+      route: "/quizzes",
+      badgeText: "Phòng Luyện Thi Tổng Hợp • Tự Chọn & Random Câu Hỏi",
+      title: "Luyện thi & Kiểm tra kiến thức",
+      description:
+        "Chọn một hoặc nhiều bài học Từ vựng Flashcard và Ngữ pháp bạn muốn ôn tập, đặt số câu muốn thi — hệ thống sẽ random ngẫu nhiên thành đề thi bấm giờ chuẩn xác.",
+      pills: ["Kho câu hỏi: 242", "Đề của tôi: 2", "Đề hệ thống: 2"],
+      cta: "",
+    },
+    {
+      key: "classrooms",
+      label: "Lớp học Trực tuyến",
+      route: "/classrooms",
+      badgeText: "Hệ Thống Lớp Học Trực Tuyến",
+      title: "Không Gian Giảng Dạy & Giao Bài Tập",
+      description:
+        "Khởi tạo lớp học mới, cấp mã mời, giao bài tập về nhà và quản lý sổ điểm học viên.",
+      pills: ["Gia nhập bằng mã"],
+      cta: "+ Tạo lớp học mới",
+    },
+    {
+      key: "dashboard",
+      label: "Tiến độ & SRS",
+      route: "/dashboard",
+      badgeText: "Spaced Repetition System (SRS)",
+      title: "Chào mừng trở lại, Học Viên!",
+      description:
+        "Thuật toán trí nhớ Ebbinghaus đang tối ưu hóa chu kỳ nhắc lại từ vựng của bạn.",
+      pills: ["Chuỗi Streak", "Từ cần ôn"],
+      cta: "Làm mới dữ liệu",
+    },
+    {
+      key: "leaderboard",
+      label: "Bảng Xếp Hạng",
+      route: "/leaderboard",
+      badgeText: "Đấu Trường Thi Đua Toàn Hệ Thống",
+      title: "Bảng Vàng Danh Dự TopEnglish",
+      description:
+        "Tích lũy XP từ bài tập Quiz, thẻ từ vựng Flashcard và lớp học để chinh phục các giải đấu.",
+      pills: ["Tổng Học Viên: 24"],
+      cta: "",
+    },
+    {
+      key: "live_game",
+      label: "Đấu Trường Leo Núi",
+      route: "/live-game",
+      badgeText: "Live Arena Realtime",
+      title: "Đấu Trường Leo Núi Thời Gian Thực",
+      description:
+        "Nhập mã phòng, hóa thân thành 8 linh vật leo núi dũng cảm và đua top trực tiếp.",
+      pills: ["Top 3 Chạm Đỉnh", "Combo & Tốc độ"],
+      cta: "",
+    },
+    {
+      key: "ai_assistant",
+      label: "Trợ lý AI Gemini",
+      route: "/ai-assistant",
+      badgeText: "AI Trợ giảng 24/7",
+      title: "Trợ lý Trí tuệ Nhân tạo AI",
+      description:
+        "Sửa lỗi ngữ pháp tức thì, mổ xẻ từ vựng chuyên sâu và giải đáp mọi thắc mắc của bạn.",
+      pills: ["Sửa lỗi Ngữ pháp", "Mổ xẻ Từ vựng"],
+      cta: "",
+    },
+    {
+      key: "profile",
+      label: "Tủ Kính Thành Tựu",
+      route: "/profile",
+      badgeText: "Hồ sơ & Thành tựu",
+      title: "Người Học TopEnglish",
+      description: "Theo dõi huy hiệu, chuỗi ngày học và tổng điểm kinh nghiệm tích lũy.",
+      pills: ["Chuỗi Streak", "Điểm XP"],
+      cta: "",
+    },
   ];
 
   // Presets ảnh nền đẹp chuẩn TopEnglish
@@ -2539,154 +2665,175 @@ export default function AdminDashboardPage() {
                           </select>
                         </div>
 
-                        {/* Simulated Page Frame */}
+                        {/* Simulated Page Frame (True 1104px Desktop Aspect Ratio Scaled 1:1!) */}
                         <div
-                          className={`rounded-2xl p-3.5 border border-slate-200/80 dark:border-slate-800 transition-colors ${
+                          className={`rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 transition-colors ${
                             previewTheme === "dark"
                               ? "bg-slate-950"
                               : "bg-slate-50"
                           }`}
                         >
-                          {/* Actual Centered Banner Simulator (Drag to Reposition like Facebook!) */}
+                          <div className="flex items-center justify-between mb-2 px-0.5">
+                            <span className="text-[10px] font-bold text-slate-400">
+                              Tỷ lệ thật 1:1 màn hình Desktop (1104px)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsBannerFullscreenPreview(true)}
+                              className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                            >
+                              Phóng to 1:1 để căn chi tiết ↗
+                            </button>
+                          </div>
+
+                          {/* Scaled Outer Viewport */}
                           <div
-                            onPointerDown={(e) => {
-                              if (!hasImg) return;
-                              e.currentTarget.setPointerCapture(e.pointerId);
-                              setBannerDragState({
-                                key: activeSec.key,
-                                startX: e.clientX,
-                                startY: e.clientY,
-                                initPosX: activeCfg.posX ?? 50,
-                                initPosY: activeCfg.posY ?? 50,
-                              });
-                            }}
-                            onPointerMove={(e) => {
-                              if (
-                                !bannerDragState ||
-                                bannerDragState.key !== activeSec.key
-                              ) {
-                                return;
-                              }
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              const dx = e.clientX - bannerDragState.startX;
-                              const dy = e.clientY - bannerDragState.startY;
-                              const nextX = Math.round(
-                                Math.min(
-                                  100,
-                                  Math.max(
-                                    0,
-                                    bannerDragState.initPosX -
-                                      (dx / Math.max(120, rect.width)) * 120,
-                                  ),
+                            ref={sectionPreviewBoxRef}
+                            className="w-full overflow-hidden relative"
+                            style={{
+                              height: `${Math.max(
+                                88,
+                                Math.round(
+                                  sectionPreviewStageHeight * sectionPreviewScale,
                                 ),
-                              );
-                              const nextY = Math.round(
-                                Math.min(
-                                  100,
-                                  Math.max(
-                                    0,
-                                    bannerDragState.initPosY -
-                                      (dy / Math.max(80, rect.height)) * 120,
-                                  ),
-                                ),
-                              );
-                              updateSectionBannerConfig(activeSec.key, {
-                                posX: nextX,
-                                posY: nextY,
-                              });
+                              )}px`,
                             }}
-                            onPointerUp={() => setBannerDragState(null)}
-                            onPointerCancel={() => setBannerDragState(null)}
-                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-6 py-7 shadow-md ${
-                              hasImg
-                                ? "touch-none select-none cursor-grab active:cursor-grabbing"
-                                : ""
-                            } ${
-                              isDarkTxt
-                                ? "text-slate-900 border border-emerald-200/80"
-                                : "text-white"
-                            }`}
                           >
-                            {hasImg ? (
-                              <BannerBackgroundLayer
-                                overrideConfig={{
-                                  ...activeCfg,
-                                  url: getFullImageUrl(activeCfg.url),
-                                }}
-                              />
-                            ) : (
-                              <BannerBackgroundLayer />
-                            )}
+                            {/* True 1104px Desktop Banner Stage */}
+                            <div
+                              ref={sectionPreviewStageRef}
+                              onPointerDown={(e) => {
+                                if (!hasImg) return;
+                                e.currentTarget.setPointerCapture(e.pointerId);
+                                setBannerDragState({
+                                  key: activeSec.key,
+                                  startX: e.clientX,
+                                  startY: e.clientY,
+                                  initPosX: activeCfg.posX ?? 50,
+                                  initPosY: activeCfg.posY ?? 50,
+                                });
+                              }}
+                              onPointerMove={(e) => {
+                                if (
+                                  !bannerDragState ||
+                                  bannerDragState.key !== activeSec.key
+                                ) {
+                                  return;
+                                }
+                                const rect =
+                                  e.currentTarget.getBoundingClientRect();
+                                const dx = e.clientX - bannerDragState.startX;
+                                const dy = e.clientY - bannerDragState.startY;
+                                const nextX = Math.round(
+                                  Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      bannerDragState.initPosX -
+                                        (dx / Math.max(80, rect.width)) * 120,
+                                    ),
+                                  ),
+                                );
+                                const nextY = Math.round(
+                                  Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      bannerDragState.initPosY -
+                                        (dy / Math.max(40, rect.height)) * 120,
+                                    ),
+                                  ),
+                                );
+                                updateSectionBannerConfig(activeSec.key, {
+                                  posX: nextX,
+                                  posY: nextY,
+                                });
+                              }}
+                              onPointerUp={() => setBannerDragState(null)}
+                              onPointerCancel={() => setBannerDragState(null)}
+                              style={{
+                                width: "1104px",
+                                transform: `scale(${sectionPreviewScale})`,
+                                transformOrigin: "top left",
+                              }}
+                              className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-20 py-9 shadow-md ${
+                                hasImg
+                                  ? "touch-none select-none cursor-grab active:cursor-grabbing"
+                                  : ""
+                              } ${
+                                isDarkTxt
+                                  ? "text-slate-900 border border-emerald-200/80"
+                                  : "text-white"
+                              }`}
+                            >
+                              {hasImg ? (
+                                <BannerBackgroundLayer
+                                  overrideConfig={{
+                                    ...activeCfg,
+                                    url: getFullImageUrl(activeCfg.url),
+                                  }}
+                                />
+                              ) : (
+                                <BannerBackgroundLayer />
+                              )}
 
-                            {hasImg && (
-                              <div className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-xs text-[9px] font-bold text-white pointer-events-none">
-                                {bannerDragState
-                                  ? `Đang căn: ${Math.round(activeCfg.posX ?? 50)}%, ${Math.round(activeCfg.posY ?? 50)}%`
-                                  : "✋ Kéo ảnh để căn vị trí"}
-                              </div>
-                            )}
-
-                            <div className="relative z-10 max-w-md mx-auto flex flex-col items-center text-center gap-2.5 pointer-events-none">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
-                                  isDarkTxt
-                                    ? "bg-white/90 border-emerald-200 text-emerald-800"
-                                    : "bg-white/15 border-white/25 text-white"
-                                }`}
-                              >
-                                <Sparkles className="size-3" />
-                                {activeSec.label}
-                              </span>
-
-                              <h4
-                                className={`text-lg font-black tracking-tight ${
-                                  isDarkTxt
-                                    ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
-                                    : "text-white"
-                                }`}
-                              >
-                                {activeSec.label}
-                              </h4>
-
-                              <p
-                                className={`text-[11px] leading-relaxed ${
-                                  isDarkTxt
-                                    ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
-                                    : "text-emerald-50/95"
-                                }`}
-                              >
-                                Mô tả chuyên mục hiển thị căn giữa trên phần đầu trang {activeSec.route}.
-                              </p>
-
-                              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
-                                <div
-                                  className={`px-2.5 py-1 rounded-full border text-[10px] font-bold ${
-                                    isDarkTxt
-                                      ? "bg-white/90 border-emerald-200 text-emerald-900"
-                                      : "bg-black/25 border-white/20 text-white"
-                                  }`}
-                                >
-                                  Số liệu • 12
-                                </div>
-                                <div
-                                  className={`px-2.5 py-1 rounded-full border text-[10px] font-bold ${
-                                    isDarkTxt
-                                      ? "bg-white/90 border-emerald-200 text-emerald-900"
-                                      : "bg-black/25 border-white/20 text-white"
-                                  }`}
-                                >
-                                  Tổng • 240
-                                </div>
+                              <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center text-center gap-3 pointer-events-none">
                                 <span
-                                  className={`px-3 py-1 rounded-full text-[10px] font-extrabold shadow-xs ${
+                                  className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
                                     isDarkTxt
-                                      ? "bg-emerald-600 text-white"
-                                      : "bg-white text-emerald-800"
+                                      ? "bg-white/90 border-emerald-200 text-emerald-800 shadow-xs"
+                                      : "bg-white/15 border-white/25 text-white"
                                   }`}
                                 >
-                                  + Hành động
+                                  <Sparkles className="size-3.5" />
+                                  {activeSec.badgeText}
                                 </span>
+
+                                <h4
+                                  className={`text-4xl font-black tracking-tight leading-tight ${
+                                    isDarkTxt
+                                      ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+                                      : "text-white"
+                                  }`}
+                                >
+                                  {activeSec.title}
+                                </h4>
+
+                                <p
+                                  className={`text-sm leading-relaxed max-w-xl ${
+                                    isDarkTxt
+                                      ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+                                      : "text-emerald-50/95"
+                                  }`}
+                                >
+                                  {activeSec.description}
+                                </p>
+
+                                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
+                                  {activeSec.pills.map((pill, i) => (
+                                    <div
+                                      key={i}
+                                      className={`px-3.5 py-2 rounded-full border text-xs font-bold ${
+                                        isDarkTxt
+                                          ? "bg-white/90 border-emerald-200 text-emerald-900 shadow-xs"
+                                          : "bg-black/25 border-white/20 text-white"
+                                      }`}
+                                    >
+                                      {pill}
+                                    </div>
+                                  ))}
+                                  {activeSec.cta && (
+                                    <span
+                                      className={`px-5 py-2 rounded-full text-sm font-extrabold shadow-md ${
+                                        isDarkTxt
+                                          ? "bg-emerald-600 text-white"
+                                          : "bg-white text-emerald-800"
+                                      }`}
+                                    >
+                                      {activeSec.cta}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2705,6 +2852,211 @@ export default function AdminDashboardPage() {
                             ))}
                           </div>
                         </div>
+
+                        {/* Fullscreen 1:1 Interactive Banner Tuning Modal */}
+                        {isBannerFullscreenPreview && (
+                          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-6xl w-full p-6 shadow-2xl flex flex-col gap-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                                    Xem Trước Kích Thước Thật 1:1 — {activeSec.label} ({activeSec.route})
+                                  </h4>
+                                  <p className="text-xs text-slate-500">
+                                    Chạm và kéo trực tiếp trên banner bên dưới hoặc chỉnh Zoom; khớp 100% với trang thật.
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setIsBannerFullscreenPreview(false)
+                                  }
+                                  className="h-9 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold cursor-pointer"
+                                >
+                                  Đóng
+                                </button>
+                              </div>
+
+                              <div
+                                onPointerDown={(e) => {
+                                  if (!hasImg) return;
+                                  e.currentTarget.setPointerCapture(
+                                    e.pointerId,
+                                  );
+                                  setBannerDragState({
+                                    key: activeSec.key,
+                                    startX: e.clientX,
+                                    startY: e.clientY,
+                                    initPosX: activeCfg.posX ?? 50,
+                                    initPosY: activeCfg.posY ?? 50,
+                                  });
+                                }}
+                                onPointerMove={(e) => {
+                                  if (
+                                    !bannerDragState ||
+                                    bannerDragState.key !== activeSec.key
+                                  ) {
+                                    return;
+                                  }
+                                  const rect =
+                                    e.currentTarget.getBoundingClientRect();
+                                  const dx =
+                                    e.clientX - bannerDragState.startX;
+                                  const dy =
+                                    e.clientY - bannerDragState.startY;
+                                  const nextX = Math.round(
+                                    Math.min(
+                                      100,
+                                      Math.max(
+                                        0,
+                                        bannerDragState.initPosX -
+                                          (dx / Math.max(120, rect.width)) * 120,
+                                      ),
+                                    ),
+                                  );
+                                  const nextY = Math.round(
+                                    Math.min(
+                                      100,
+                                      Math.max(
+                                        0,
+                                        bannerDragState.initPosY -
+                                          (dy / Math.max(80, rect.height)) * 120,
+                                      ),
+                                    ),
+                                  );
+                                  updateSectionBannerConfig(activeSec.key, {
+                                    posX: nextX,
+                                    posY: nextY,
+                                  });
+                                }}
+                                onPointerUp={() => setBannerDragState(null)}
+                                onPointerCancel={() => setBannerDragState(null)}
+                                className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-20 py-9 shadow-lg ${
+                                  hasImg
+                                    ? "touch-none select-none cursor-grab active:cursor-grabbing"
+                                    : ""
+                                } ${
+                                  isDarkTxt
+                                    ? "text-slate-900 border border-emerald-200/80"
+                                    : "text-white"
+                                }`}
+                              >
+                                {hasImg ? (
+                                  <BannerBackgroundLayer
+                                    overrideConfig={{
+                                      ...activeCfg,
+                                      url: getFullImageUrl(activeCfg.url),
+                                    }}
+                                  />
+                                ) : (
+                                  <BannerBackgroundLayer />
+                                )}
+
+                                <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center text-center gap-3 pointer-events-none">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
+                                      isDarkTxt
+                                        ? "bg-white/90 border-emerald-200 text-emerald-800 shadow-xs"
+                                        : "bg-white/15 border-white/25 text-white"
+                                    }`}
+                                  >
+                                    <Sparkles className="size-3.5" />
+                                    {activeSec.badgeText}
+                                  </span>
+                                  <h4
+                                    className={`text-4xl font-black tracking-tight leading-tight ${
+                                      isDarkTxt
+                                        ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+                                        : "text-white"
+                                    }`}
+                                  >
+                                    {activeSec.title}
+                                  </h4>
+                                  <p
+                                    className={`text-sm leading-relaxed max-w-xl ${
+                                      isDarkTxt
+                                        ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+                                        : "text-emerald-50/95"
+                                    }`}
+                                  >
+                                    {activeSec.description}
+                                  </p>
+                                  <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
+                                    {activeSec.pills.map((pill, i) => (
+                                      <div
+                                        key={i}
+                                        className={`px-3.5 py-2 rounded-full border text-xs font-bold ${
+                                          isDarkTxt
+                                            ? "bg-white/90 border-emerald-200 text-emerald-900 shadow-xs"
+                                            : "bg-black/25 border-white/20 text-white"
+                                        }`}
+                                      >
+                                        {pill}
+                                      </div>
+                                    ))}
+                                    {activeSec.cta && (
+                                      <span
+                                        className={`px-5 py-2 rounded-full text-sm font-extrabold shadow-md ${
+                                          isDarkTxt
+                                            ? "bg-emerald-600 text-white"
+                                            : "bg-white text-emerald-800"
+                                        }`}
+                                      >
+                                        {activeSec.cta}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+                                <div className="flex items-center gap-3 flex-1 min-w-[220px]">
+                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                                    Zoom: {activeCfg.zoom}%
+                                  </span>
+                                  <input
+                                    type="range"
+                                    min="100"
+                                    max="180"
+                                    step="5"
+                                    value={activeCfg.zoom}
+                                    onChange={(e) =>
+                                      updateSectionBannerConfig(activeSec.key, {
+                                        zoom: parseInt(e.target.value, 10),
+                                      })
+                                    }
+                                    className="w-full accent-teal-600 cursor-pointer"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateSectionBannerConfig(activeSec.key, {
+                                        posX: 50,
+                                        posY: 50,
+                                        zoom: 100,
+                                      })
+                                    }
+                                    className="h-9 px-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold cursor-pointer"
+                                  >
+                                    Đặt lại (50%, 50%)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleSaveHeroSettings();
+                                      setIsBannerFullscreenPreview(false);
+                                    }}
+                                    className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                                  >
+                                    Lưu &amp; Áp dụng ngay
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {hasImg && (
                           <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
