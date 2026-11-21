@@ -43,6 +43,21 @@ export class Quiz {
   @Prop({ default: 0 })
   totalQuestions: number;
 
+  @Prop({ default: false, index: true })
+  isCustomPractice: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: User.name, default: null, index: true })
+  ownerId?: Types.ObjectId | null;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: Topic.name }], default: [] })
+  sourceTopicIds?: Types.ObjectId[];
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: GrammarLesson.name }], default: [] })
+  sourceGrammarLessonIds?: Types.ObjectId[];
+
+  @Prop({ default: 'mixed_abcd' })
+  questionMode?: string;
+
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   createdBy: Types.ObjectId;
 }
@@ -52,3 +67,4 @@ export const QuizSchema = SchemaFactory.createForClass(Quiz);
 QuizSchema.index({ type: 1, level: 1 });
 QuizSchema.index({ topicId: 1 });
 QuizSchema.index({ grammarLessonId: 1 });
+QuizSchema.index({ isCustomPractice: 1, ownerId: 1, createdAt: -1 });

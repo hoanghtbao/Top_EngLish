@@ -16,6 +16,8 @@ import { QuizzesService } from './quizzes.service';
 import { QuizzesController } from './quizzes.controller';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Topic, TopicSchema } from '../topics/schemas/topic.schema';
+import { VocabClass, VocabClassSchema } from '../topics/schemas/vocab-class.schema';
+import { Vocabulary, VocabularySchema } from '../vocabulary/schemas/vocabulary.schema';
 import {
   GrammarLesson,
   GrammarLessonSchema,
@@ -29,6 +31,8 @@ import {
       { name: QuizSubmission.name, schema: QuizSubmissionSchema },
       { name: User.name, schema: UserSchema },
       { name: Topic.name, schema: TopicSchema },
+      { name: VocabClass.name, schema: VocabClassSchema },
+      { name: Vocabulary.name, schema: VocabularySchema },
       { name: GrammarLesson.name, schema: GrammarLessonSchema },
     ]),
   ],

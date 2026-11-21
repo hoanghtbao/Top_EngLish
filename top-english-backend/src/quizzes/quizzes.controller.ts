@@ -23,6 +23,7 @@ import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
+import { GenerateCustomQuizDto } from './dto/generate-custom-quiz.dto';
 import { QuizType } from './enums/quiz-type.enum';
 import { EnglishLevel } from '../topics/enums/english-level.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -52,6 +53,35 @@ export class QuizzesController {
     @Query('search') search?: string,
   ) {
     return this.quizzesService.findAll({ type, level, topicId, grammarLessonId, search });
+  }
+
+  @Get('sources')
+  @ApiOperation({ summary: 'Lấy danh sách bài học Flashcard theo Lớp và Ngữ pháp để tạo đề luyện thi' })
+  @ApiResponse({ status: 200, description: 'Nguồn bài học Flashcard và Ngữ pháp' })
+  async getPracticeSources() {
+    return this.quizzesService.getPracticeSources();
+  }
+
+  @Get('my-custom')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Lấy danh sách đề tự luyện ngẫu nhiên của học viên hiện tại' })
+  @ApiResponse({ status: 200, description: 'Danh sách đề tự luyện cá nhân' })
+  async getMyCustomQuizzes(@CurrentUser('userId') userId: string) {
+    return this.quizzesService.getMyCustomQuizzes(userId);
+  }
+
+  @Post('generate-custom')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Tạo đề luyện thi ngẫu nhiên từ các bài Flashcard và Ngữ pháp đã chọn' })
+  @ApiResponse({ status: 201, description: 'Đề luyện thi ngẫu nhiên đã được tạo' })
+  async generateCustomQuiz(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: GenerateCustomQuizDto,
+  ) {
+    return this.quizzesService.generateCustomQuiz(userId, dto);
   }
 
   @Get('my-submissions')
@@ -150,12 +180,15 @@ export class QuizzesController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Xóa đề thi và các câu hỏi liên quan (Chỉ ADMIN)' })
+  @ApiOperation({ summary: 'Xóa đề thi (ADMIN xóa mọi đề; học viên xóa được đề tự luyện của mình)' })
   @ApiResponse({ status: 200, description: 'Đã xóa đề thi thành công' })
-  async remove(@Param('id') id: string) {
-    return this.quizzesService.removeQuiz(id);
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: Role,
+  ) {
+    return this.quizzesService.removeQuiz(id, userId, role);
   }
 }

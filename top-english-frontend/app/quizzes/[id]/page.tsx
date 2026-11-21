@@ -330,7 +330,7 @@ function QuizTakingInner() {
                 href="/quizzes"
                 className="h-11 px-6 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex items-center gap-2"
               >
-                Khám phá đề thi khác
+                Tạo đề ngẫu nhiên mới
               </Link>
             </div>
           </div>
@@ -415,7 +415,7 @@ function QuizTakingInner() {
                         <strong className="text-slate-900 dark:text-white block mb-0.5">
                           Giải thích đáp án:
                         </strong>
-                        <p className="leading-relaxed">{ans.explanation}</p>
+                        <p className="leading-relaxed whitespace-pre-line">{ans.explanation}</p>
                       </div>
                     </div>
                   )}
@@ -448,7 +448,11 @@ function QuizTakingInner() {
                   CEFR {quiz.level}
                 </span>
                 <span className="text-xs text-slate-400 font-bold uppercase">
-                  {quiz.type}
+                  {quiz.type === "vocabulary"
+                    ? "Từ vựng"
+                    : quiz.type === "grammar"
+                    ? "Ngữ pháp"
+                    : "Tổng hợp"}
                 </span>
               </div>
               <h1 className="text-base sm:text-lg font-extrabold truncate max-w-sm sm:max-w-md">
