@@ -342,6 +342,7 @@ export class AdminService {
         heroSubtitle:
           'Ghi nhớ từ vựng qua thẻ Flashcard 3D, thuật toán lặp lại ngắt quãng (Spaced Repetition), ngữ pháp tương tác 4 thể và phòng luyện thi trắc nghiệm bấm giờ thực chiến.',
         heroBadge: 'Nền tảng học tiếng Anh thông minh thế hệ mới',
+        pageBannerBackgrounds: {},
       };
     }
 
@@ -369,6 +370,11 @@ export class AdminService {
       heroBadge:
         setting.value.heroBadge ||
         'Nền tảng học tiếng Anh thông minh thế hệ mới',
+      pageBannerBackgrounds:
+        setting.value.pageBannerBackgrounds &&
+        typeof setting.value.pageBannerBackgrounds === 'object'
+          ? setting.value.pageBannerBackgrounds
+          : {},
       updatedAt: (setting as any).updatedAt,
       updatedBy: setting.updatedBy,
     };
@@ -429,6 +435,16 @@ export class AdminService {
           ? dto.heroBadge
           : existingVal.heroBadge ||
             'Nền tảng học tiếng Anh thông minh thế hệ mới',
+      pageBannerBackgrounds:
+        dto.pageBannerBackgrounds !== undefined &&
+        typeof dto.pageBannerBackgrounds === 'object'
+          ? Object.fromEntries(
+              Object.entries(dto.pageBannerBackgrounds).map(([k, v]) => [
+                k,
+                typeof v === 'string' ? v.trim() : '',
+              ]),
+            )
+          : existingVal.pageBannerBackgrounds || {},
     };
 
     const updated = await this.systemSettingModel

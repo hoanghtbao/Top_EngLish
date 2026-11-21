@@ -623,6 +623,7 @@ export default function QuizzesCatalogPage() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-7">
         {/* Balanced Page Header Banner */}
         <PageHeaderBanner
+          pageKey="quizzes"
           badgeIcon={<Sparkles className="size-3.5" />}
           badgeText="Phòng Luyện Thi Tổng Hợp • Tự Chọn & Random Câu Hỏi"
           title="Luyện thi & Kiểm tra kiến thức"

@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 import UserAvatar from "../../components/UserAvatar";
@@ -119,6 +120,7 @@ export default function LeaderboardPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
         {/* COMPACT & ELEGANT JADE BANNER */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 sm:p-6 text-white shadow-lg shadow-emerald-900/10">
+          <BannerBackgroundLayer pageKey="leaderboard" />
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col gap-1.5 max-w-xl">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur text-[11px] font-semibold w-fit border border-white/20">

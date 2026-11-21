@@ -28,6 +28,7 @@ import {
   Wand2,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
 import { fetchApi } from "../../lib/api-client";
 import { useAuth } from "../../context/auth-context";
 
@@ -260,8 +261,9 @@ export default function AiAssistantPage() {
     <AppLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 text-white shadow-xl shadow-emerald-900/10">
-          <div className="flex items-start sm:items-center gap-4">
+        <div className="relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 text-white shadow-xl shadow-emerald-900/10">
+          <BannerBackgroundLayer pageKey="ai_assistant" />
+          <div className="relative z-10 flex items-start sm:items-center gap-4">
             <div className="size-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
               <Sparkles className="size-8 text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" />
             </div>
@@ -280,7 +282,7 @@ export default function AiAssistantPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="relative z-10 flex items-center gap-2 self-start md:self-auto">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 backdrop-blur-md border border-white/20 text-emerald-100">
               <Bot className="size-4 text-emerald-300" />
               <span>Sẵn sàng hỗ trợ {user?.fullName ? `cho ${user.fullName}` : ""}</span>

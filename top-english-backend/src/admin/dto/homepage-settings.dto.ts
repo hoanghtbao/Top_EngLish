@@ -8,6 +8,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -108,4 +109,13 @@ export class UpdateHomepageHeroDto {
   @IsOptional()
   @IsString()
   heroBadge?: string;
+
+  @ApiProperty({
+    description: 'Ảnh nền banner riêng cho từng chuyên mục (key: topics, grammar, quizzes, classrooms, dashboard, leaderboard, live_game, ai_assistant, profile)',
+    example: { topics: 'http://localhost:5001/uploads/hero-bg-123.jpg' },
+    required: false,
+  })
+  @IsOptional()
+  @IsObject()
+  pageBannerBackgrounds?: Record<string, string>;
 }

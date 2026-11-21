@@ -189,6 +189,24 @@ export default function AdminDashboardPage() {
   const [heroBadge, setHeroBadge] = useState(
     "Nền tảng học tiếng Anh thông minh thế hệ mới",
   );
+  const [pageBannerBackgrounds, setPageBannerBackgrounds] = useState<
+    Record<string, string>
+  >({});
+  const [uploadingSectionKey, setUploadingSectionKey] = useState<string | null>(
+    null,
+  );
+
+  const BANNER_SECTION_ITEMS = [
+    { key: "topics", label: "Từ vựng Flashcard", route: "/topics" },
+    { key: "grammar", label: "Ngữ pháp Chuyên sâu", route: "/grammar" },
+    { key: "quizzes", label: "Luyện thi & Kiểm tra", route: "/quizzes" },
+    { key: "classrooms", label: "Lớp học Trực tuyến", route: "/classrooms" },
+    { key: "dashboard", label: "Tiến độ & SRS", route: "/dashboard" },
+    { key: "leaderboard", label: "Bảng Xếp Hạng", route: "/leaderboard" },
+    { key: "live_game", label: "Đấu Trường Leo Núi", route: "/live-game" },
+    { key: "ai_assistant", label: "Trợ lý AI Gemini", route: "/ai-assistant" },
+    { key: "profile", label: "Tủ Kính Thành Tựu", route: "/profile" },
+  ];
 
   // Presets ảnh nền đẹp chuẩn TopEnglish
   const heroPresets = [
@@ -353,6 +371,12 @@ export default function AdminDashboardPage() {
         if (res.data.heroHighlight) setHeroHighlight(res.data.heroHighlight);
         if (res.data.heroSubtitle) setHeroSubtitle(res.data.heroSubtitle);
         if (res.data.heroBadge) setHeroBadge(res.data.heroBadge);
+        if (
+          res.data.pageBannerBackgrounds &&
+          typeof res.data.pageBannerBackgrounds === "object"
+        ) {
+          setPageBannerBackgrounds(res.data.pageBannerBackgrounds);
+        }
       }
     } catch (err: any) {
       console.error("Lỗi tải cấu hình trang chủ:", err);
@@ -379,6 +403,7 @@ export default function AdminDashboardPage() {
           "Ghi nhớ từ vựng qua thẻ Flashcard 3D, thuật toán lặp lại ngắt quãng (Spaced Repetition), ngữ pháp tương tác 4 thể và phòng luyện thi trắc nghiệm bấm giờ thực chiến.",
         heroBadge:
           heroBadge.trim() || "Nền tảng học tiếng Anh thông minh thế hệ mới",
+        pageBannerBackgrounds,
       };
 
       const res = await fetchApi("/admin/settings/homepage", {
@@ -406,6 +431,66 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setIsSavingHeroSettings(false);
+    }
+  };
+
+  // Upload & áp dụng ngay ảnh nền cho từng chuyên mục riêng biệt
+  const handleSectionBannerUpload = async (sectionKey: string, file: File) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showToast({
+        type: "error",
+        title: "File quá lớn",
+        message: "Dung lượng ảnh không được vượt quá 5MB",
+      });
+      return;
+    }
+
+    try {
+      setUploadingSectionKey(sectionKey);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const token = localStorage.getItem("access_token");
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
+      const res = await fetch(`${apiUrl}/admin/upload/hero-bg`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.data?.url) {
+        const nextMap = {
+          ...pageBannerBackgrounds,
+          [sectionKey]: data.data.url,
+        };
+        setPageBannerBackgrounds(nextMap);
+
+        await fetchApi("/admin/settings/homepage", {
+          method: "PATCH",
+          body: JSON.stringify({ pageBannerBackgrounds: nextMap }),
+        });
+        updateBrandState({ pageBannerBackgrounds: nextMap });
+        await refreshBrandSettings();
+
+        showToast({
+          type: "success",
+          title: "Đã cập nhật ảnh nền chuyên mục!",
+          message: "Ảnh mới đã được áp dụng lên banner trang tương ứng.",
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        type: "error",
+        title: "Lỗi tải ảnh chuyên mục",
+        message: err?.message || "Không thể tải ảnh lên",
+      });
+    } finally {
+      setUploadingSectionKey(null);
     }
   };
 
@@ -456,6 +541,7 @@ export default function AdminDashboardPage() {
           heroHighlight: heroHighlight.trim() || "TopEnglish",
           heroSubtitle: heroSubtitle.trim(),
           heroBadge: heroBadge.trim(),
+          pageBannerBackgrounds,
         };
 
         try {
@@ -1798,12 +1884,137 @@ export default function AdminDashboardPage() {
                         setHeroSubtitle(
                           "Ghi nhớ từ vựng qua thẻ Flashcard 3D, thuật toán lặp lại ngắt quãng (Spaced Repetition), ngữ pháp tương tác 4 thể và phòng luyện thi trắc nghiệm bấm giờ thực chiến.",
                         );
+                        setPageBannerBackgrounds({});
                       }}
                       className="h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shrink-0"
                     >
                       <RotateCcw className="size-3.5" />
                       <span>Khôi phục mặc định</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* 6. Per-Section Page Banner Backgrounds */}
+                <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <ImageIcon className="size-4.5 text-emerald-600" />
+                        6. Ảnh Nền Banner Từng Chuyên Mục
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Mặc định dùng nền Jade Ngọc Bích; thêm ảnh riêng để tạo dấu ấn đa dạng cho từng trang chức năng.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isSavingHeroSettings}
+                      onClick={handleSaveHeroSettings}
+                      className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer shrink-0 self-start sm:self-auto"
+                    >
+                      <Check className="size-3.5" />
+                      <span>Lưu ảnh các phần</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {BANNER_SECTION_ITEMS.map((sec) => {
+                      const currentUrl = pageBannerBackgrounds[sec.key] || "";
+                      const isUploadingThis = uploadingSectionKey === sec.key;
+
+                      return (
+                        <div
+                          key={sec.key}
+                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col sm:flex-row sm:items-center gap-3"
+                        >
+                          {/* Mini Preview Box */}
+                          <div className="relative h-14 w-full sm:w-28 rounded-xl overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                            {currentUrl ? (
+                              <>
+                                <img
+                                  src={getFullImageUrl(currentUrl)}
+                                  alt={sec.label}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-emerald-950/55" />
+                                <span className="relative z-10 text-[10px] font-extrabold text-white px-1.5 py-0.5 rounded bg-black/40">
+                                  Ảnh tùy chỉnh
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-[10px] font-bold text-white/90">
+                                Mặc định Jade
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Info + URL Input */}
+                          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                                {sec.label}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400">
+                                {sec.route}
+                              </span>
+                            </div>
+
+                            <input
+                              type="url"
+                              value={currentUrl}
+                              onChange={(e) =>
+                                setPageBannerBackgrounds((prev) => ({
+                                  ...prev,
+                                  [sec.key]: e.target.value,
+                                }))
+                              }
+                              placeholder="Để trống để dùng nền Jade mặc định, hoặc dán URL / tải ảnh..."
+                              className="w-full h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                          </div>
+
+                          {/* Upload + Reset Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <label className="h-8 px-3 rounded-lg bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition">
+                              {isUploadingThis ? (
+                                <RefreshCw className="size-3 animate-spin" />
+                              ) : (
+                                <UploadCloud className="size-3.5" />
+                              )}
+                              <span>{isUploadingThis ? "Đang tải..." : "Tải ảnh"}</span>
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/jpg,image/webp,image/avif"
+                                className="hidden"
+                                disabled={isUploadingThis}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) handleSectionBannerUpload(sec.key, f);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+
+                            {currentUrl && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPageBannerBackgrounds((prev) => ({
+                                    ...prev,
+                                    [sec.key]: "",
+                                  }))
+                                }
+                                title="Xóa ảnh để quay về nền Jade mặc định"
+                                className="h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-[11px] font-bold transition cursor-pointer"
+                              >
+                                Mặc định
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

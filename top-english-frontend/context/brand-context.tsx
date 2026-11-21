@@ -26,6 +26,7 @@ export interface BrandSettings {
   overlayOpacity: number;
   blurAmount: number;
   isEnabled: boolean;
+  pageBannerBackgrounds: Record<string, string>;
 }
 
 const defaultBrandSettings: BrandSettings = {
@@ -40,6 +41,7 @@ const defaultBrandSettings: BrandSettings = {
   overlayOpacity: 0.5,
   blurAmount: 0,
   isEnabled: true,
+  pageBannerBackgrounds: {},
 };
 
 interface BrandContextType {
@@ -86,6 +88,11 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
             typeof res.data.blurAmount === "number" ? res.data.blurAmount : 0,
           isEnabled:
             typeof res.data.isEnabled === "boolean" ? res.data.isEnabled : true,
+          pageBannerBackgrounds:
+            res.data.pageBannerBackgrounds &&
+            typeof res.data.pageBannerBackgrounds === "object"
+              ? res.data.pageBannerBackgrounds
+              : {},
         });
       }
     } catch (err) {

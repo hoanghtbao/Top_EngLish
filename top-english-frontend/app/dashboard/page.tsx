@@ -34,6 +34,7 @@ import {
   Zap,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { useSound } from "../../context/sound-context";
 import { fetchApi } from "../../lib/api-client";
@@ -341,7 +342,7 @@ function DashboardContent() {
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-8">
         {/* --- HEADER BANNER --- */}
         <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-700 text-white shadow-xl shadow-emerald-950/20 relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 size-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <BannerBackgroundLayer pageKey="dashboard" />
           <div className="relative z-10 flex flex-col gap-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-xs font-semibold w-fit">
               <Sparkles className="size-3.5" /> Spaced Repetition System (SRS)

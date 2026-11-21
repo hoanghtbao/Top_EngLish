@@ -298,6 +298,7 @@ export default function GrammarCatalogPage() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Balanced Page Header Banner */}
         <PageHeaderBanner
+          pageKey="grammar"
           className="mb-6"
           badgeIcon={<Sparkles className="size-3.5" />}
           badgeText="Ngữ pháp tiếng Anh thông minh & Tương tác lớp học"

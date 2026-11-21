@@ -1,10 +1,13 @@
 /**
  * @project TopEnglish - Nền tảng học tiếng Anh trực tuyến
  * @author HoangBao
- * @description Banner tiêu đề trang chuẩn UI/UX Pro Max — cân đối giữa nội dung giới thiệu, chỉ số nhanh và nút hành động
+ * @description Banner tiêu đề trang chuẩn UI/UX Pro Max — hỗ trợ nền mặc định Jade hoặc ảnh nền riêng theo từng chuyên mục do Admin cấu hình
  */
 
+"use client";
+
 import React from "react";
+import { useBrand } from "../context/brand-context";
 
 export interface BannerStatItem {
   icon?: React.ReactNode;
@@ -13,6 +16,8 @@ export interface BannerStatItem {
 }
 
 interface PageHeaderBannerProps {
+  pageKey?: string;
+  backgroundImageUrl?: string;
   badgeIcon?: React.ReactNode;
   badgeText: string;
   title: string;
@@ -22,7 +27,58 @@ interface PageHeaderBannerProps {
   className?: string;
 }
 
+export function resolveBannerImageUrl(url?: string): string {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
+  const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
+  return `${baseUrl}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
+}
+
+export function BannerBackgroundLayer({
+  pageKey,
+  backgroundImageUrl,
+}: {
+  pageKey?: string;
+  backgroundImageUrl?: string;
+}) {
+  const { brandSettings } = useBrand();
+  const rawUrl =
+    backgroundImageUrl ||
+    (pageKey ? brandSettings.pageBannerBackgrounds?.[pageKey] : "") ||
+    "";
+  const resolvedUrl = resolveBannerImageUrl(rawUrl);
+
+  if (resolvedUrl) {
+    return (
+      <>
+        <img
+          src={resolvedUrl}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/85 via-teal-900/75 to-cyan-950/80 pointer-events-none" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="absolute -right-10 -bottom-10 size-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+      <div className="absolute right-1/3 -top-12 size-40 rounded-full bg-emerald-300/15 blur-2xl pointer-events-none" />
+    </>
+  );
+}
+
 export default function PageHeaderBanner({
+  pageKey,
+  backgroundImageUrl,
   badgeIcon,
   badgeText,
   title,
@@ -35,6 +91,11 @@ export default function PageHeaderBanner({
     <section
       className={`relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 sm:p-7 text-white shadow-lg shadow-emerald-900/10 ${className}`}
     >
+      <BannerBackgroundLayer
+        pageKey={pageKey}
+        backgroundImageUrl={backgroundImageUrl}
+      />
+
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         {/* Left: Badge + Heading + Description */}
         <div className="flex flex-col gap-2 max-w-2xl">
@@ -60,7 +121,7 @@ export default function PageHeaderBanner({
                 {stats.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2.5 bg-black/20 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20"
+                    className="flex items-center gap-2.5 bg-black/25 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20"
                   >
                     {item.icon && (
                       <div className="size-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0 text-white">
@@ -84,10 +145,6 @@ export default function PageHeaderBanner({
           </div>
         )}
       </div>
-
-      {/* Subtle Ambient Glow */}
-      <div className="absolute -right-10 -bottom-10 size-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-      <div className="absolute right-1/3 -top-12 size-40 rounded-full bg-emerald-300/15 blur-2xl pointer-events-none" />
     </section>
   );
 }

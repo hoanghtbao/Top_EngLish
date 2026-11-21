@@ -28,6 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 
@@ -200,6 +201,7 @@ export default function LiveGameLobbyPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-8">
         {/* HERO BANNER - THEME NGỌC BÍCH EMERALD-TEAL */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white p-6 sm:p-10 shadow-xl shadow-teal-900/10 border border-teal-500/20">
+          <BannerBackgroundLayer pageKey="live_game" />
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="max-w-2xl flex flex-col gap-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-emerald-500/30 backdrop-blur-md border border-emerald-300/30 text-emerald-100 w-fit">

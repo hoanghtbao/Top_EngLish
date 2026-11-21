@@ -33,6 +33,7 @@ import {
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 import AppLayout from "../../components/AppLayout";
+import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
 import UserAvatar from "../../components/UserAvatar";
 import AvatarUploadModal from "../../components/AvatarUploadModal";
 
@@ -151,6 +152,7 @@ export default function ProfilePage() {
           achievements?.userStats.tier,
         )} p-5 sm:p-6 shadow-lg shadow-emerald-900/10`}
       >
+        <BannerBackgroundLayer pageKey="profile" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative group shrink-0">

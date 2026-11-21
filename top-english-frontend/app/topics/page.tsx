@@ -216,6 +216,7 @@ export default function TopicsClassesPage() {
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
         {/* Balanced Page Header Banner */}
         <PageHeaderBanner
+          pageKey="topics"
           badgeIcon={<Sparkles className="size-3.5" />}
           badgeText="Từ vựng Flashcard theo Lớp học"
           title="Danh Sách Lớp Học"
