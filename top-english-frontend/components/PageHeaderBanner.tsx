@@ -1,13 +1,17 @@
 /**
  * @project TopEnglish - Nền tảng học tiếng Anh trực tuyến
  * @author HoangBao
- * @description Banner tiêu đề trang chuẩn UI/UX Pro Max — hỗ trợ nền mặc định Jade hoặc ảnh nền riêng theo từng chuyên mục do Admin cấu hình
+ * @description Banner tiêu đề trang chuẩn UI/UX Pro Max — hỗ trợ nền mặc định Jade hoặc ảnh nền riêng kèm tinh chỉnh độ mờ, độ phóng to (cắt viền trắng) và tông chữ sáng/tối
  */
 
 "use client";
 
 import React from "react";
-import { useBrand } from "../context/brand-context";
+import {
+  PageBannerConfig,
+  PageBannerValue,
+  useBrand,
+} from "../context/brand-context";
 
 export interface BannerStatItem {
   icon?: React.ReactNode;
@@ -27,6 +31,54 @@ interface PageHeaderBannerProps {
   className?: string;
 }
 
+export const DEFAULT_BANNER_CONFIG: PageBannerConfig = {
+  url: "",
+  overlayOpacity: 0.35,
+  blurAmount: 0,
+  overlayMode: "dark",
+  textColor: "white",
+  zoom: 100,
+  position: "center",
+};
+
+export function normalizeBannerConfig(
+  raw?: PageBannerValue | null,
+): PageBannerConfig {
+  if (!raw) return { ...DEFAULT_BANNER_CONFIG };
+  if (typeof raw === "string") {
+    return {
+      ...DEFAULT_BANNER_CONFIG,
+      url: raw.trim(),
+    };
+  }
+  return {
+    url: (raw.url || "").trim(),
+    overlayOpacity:
+      typeof raw.overlayOpacity === "number"
+        ? Math.min(0.95, Math.max(0, raw.overlayOpacity))
+        : 0.35,
+    blurAmount:
+      typeof raw.blurAmount === "number"
+        ? Math.min(16, Math.max(0, raw.blurAmount))
+        : 0,
+    overlayMode:
+      raw.overlayMode === "light" ||
+      raw.overlayMode === "none" ||
+      raw.overlayMode === "dark"
+        ? raw.overlayMode
+        : "dark",
+    textColor: raw.textColor === "dark" ? "dark" : "white",
+    zoom:
+      typeof raw.zoom === "number"
+        ? Math.min(200, Math.max(100, raw.zoom))
+        : 100,
+    position:
+      raw.position === "top" || raw.position === "bottom"
+        ? raw.position
+        : "center",
+  };
+}
+
 export function resolveBannerImageUrl(url?: string): string {
   if (!url) return "";
   const trimmed = url.trim();
@@ -43,27 +95,65 @@ export function resolveBannerImageUrl(url?: string): string {
 export function BannerBackgroundLayer({
   pageKey,
   backgroundImageUrl,
+  overrideConfig,
 }: {
   pageKey?: string;
   backgroundImageUrl?: string;
+  overrideConfig?: PageBannerConfig;
 }) {
   const { brandSettings } = useBrand();
-  const rawUrl =
-    backgroundImageUrl ||
-    (pageKey ? brandSettings.pageBannerBackgrounds?.[pageKey] : "") ||
-    "";
-  const resolvedUrl = resolveBannerImageUrl(rawUrl);
+  const config = overrideConfig
+    ? overrideConfig
+    : backgroundImageUrl
+    ? normalizeBannerConfig(backgroundImageUrl)
+    : normalizeBannerConfig(
+        pageKey ? brandSettings.pageBannerBackgrounds?.[pageKey] : undefined,
+      );
+
+  const resolvedUrl = resolveBannerImageUrl(config.url);
 
   if (resolvedUrl) {
+    const posClass =
+      config.position === "top"
+        ? "object-top"
+        : config.position === "bottom"
+        ? "object-bottom"
+        : "object-center";
+
+    const scale = (config.zoom || 100) / 100;
+
     return (
       <>
         <img
           src={resolvedUrl}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+          className={`absolute inset-0 w-full h-full object-cover ${posClass} pointer-events-none select-none transition-transform duration-300`}
+          style={{
+            transform: scale !== 1 ? `scale(${scale})` : undefined,
+            filter:
+              config.blurAmount > 0 ? `blur(${config.blurAmount}px)` : undefined,
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/85 via-teal-900/75 to-cyan-950/80 pointer-events-none" />
+        {config.overlayMode === "dark" && config.overlayOpacity > 0 && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(90deg, rgba(2,44,34,${config.overlayOpacity}) 0%, rgba(15,23,42,${Math.max(
+                0,
+                config.overlayOpacity * 0.85,
+              )}) 100%)`,
+            }}
+          />
+        )}
+        {config.overlayMode === "light" && config.overlayOpacity > 0 && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundColor: `rgba(255,255,255,${config.overlayOpacity})`,
+            }}
+          />
+        )}
       </>
     );
   }
@@ -87,9 +177,22 @@ export default function PageHeaderBanner({
   actions,
   className = "",
 }: PageHeaderBannerProps) {
+  const { brandSettings } = useBrand();
+  const config = backgroundImageUrl
+    ? normalizeBannerConfig(backgroundImageUrl)
+    : normalizeBannerConfig(
+        pageKey ? brandSettings.pageBannerBackgrounds?.[pageKey] : undefined,
+      );
+
+  const hasCustomImage = Boolean(resolveBannerImageUrl(config.url));
+  const isDarkText = hasCustomImage && config.textColor === "dark";
+
   return (
     <section
-      className={`relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 sm:p-7 text-white shadow-lg shadow-emerald-900/10 ${className}`}
+      data-banner-tone={isDarkText ? "light" : "dark"}
+      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-6 sm:p-8 shadow-lg shadow-emerald-900/10 ${
+        isDarkText ? "text-slate-900 border border-emerald-200/70" : "text-white"
+      } ${className}`}
     >
       <BannerBackgroundLayer
         pageKey={pageKey}
@@ -99,16 +202,32 @@ export default function PageHeaderBanner({
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         {/* Left: Badge + Heading + Description */}
         <div className="flex flex-col gap-2 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[11px] sm:text-xs font-bold text-white w-fit">
+          <div
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md border text-[11px] sm:text-xs font-bold w-fit ${
+              isDarkText
+                ? "bg-white/85 border-emerald-200/90 text-emerald-800 shadow-xs"
+                : "bg-white/15 border-white/25 text-white"
+            }`}
+          >
             {badgeIcon}
             <span>{badgeText}</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+          <h1
+            className={`text-2xl sm:text-3xl font-black tracking-tight ${
+              isDarkText ? "text-emerald-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]" : "text-white"
+            }`}
+          >
             {title}
           </h1>
 
-          <p className="text-xs sm:text-sm text-emerald-50/95 leading-relaxed max-w-xl">
+          <p
+            className={`text-xs sm:text-sm leading-relaxed max-w-xl ${
+              isDarkText
+                ? "text-slate-800 font-semibold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
+                : "text-emerald-50/95"
+            }`}
+          >
             {description}
           </p>
         </div>
@@ -121,18 +240,36 @@ export default function PageHeaderBanner({
                 {stats.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2.5 bg-black/25 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20"
+                    className={`flex items-center gap-2.5 backdrop-blur-md px-3.5 py-2 rounded-xl border ${
+                      isDarkText
+                        ? "bg-white/85 border-emerald-200/90 text-slate-900 shadow-xs"
+                        : "bg-black/25 border-white/20 text-white"
+                    }`}
                   >
                     {item.icon && (
-                      <div className="size-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0 text-white">
+                      <div
+                        className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          isDarkText
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-white/15 text-white"
+                        }`}
+                      >
                         {item.icon}
                       </div>
                     )}
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold text-emerald-100/90 uppercase tracking-wider leading-tight">
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-wider leading-tight ${
+                          isDarkText ? "text-slate-500" : "text-emerald-100/90"
+                        }`}
+                      >
                         {item.label}
                       </span>
-                      <span className="text-sm sm:text-base font-black text-white leading-tight">
+                      <span
+                        className={`text-sm sm:text-base font-black leading-tight ${
+                          isDarkText ? "text-emerald-900" : "text-white"
+                        }`}
+                      >
                         {item.value}
                       </span>
                     </div>
@@ -141,7 +278,9 @@ export default function PageHeaderBanner({
               </div>
             )}
 
-            {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
+            {actions && (
+              <div className="flex flex-wrap items-center gap-2.5">{actions}</div>
+            )}
           </div>
         )}
       </div>

@@ -15,6 +15,18 @@ import React, {
 } from "react";
 import { fetchApi } from "../lib/api-client";
 
+export interface PageBannerConfig {
+  url: string;
+  overlayOpacity: number;
+  blurAmount: number;
+  overlayMode: "dark" | "light" | "none";
+  textColor: "white" | "dark";
+  zoom: number;
+  position: "center" | "top" | "bottom";
+}
+
+export type PageBannerValue = string | PageBannerConfig;
+
 export interface BrandSettings {
   brandName: string;
   brandSubtitle: string;
@@ -26,7 +38,7 @@ export interface BrandSettings {
   overlayOpacity: number;
   blurAmount: number;
   isEnabled: boolean;
-  pageBannerBackgrounds: Record<string, string>;
+  pageBannerBackgrounds: Record<string, PageBannerValue>;
 }
 
 const defaultBrandSettings: BrandSettings = {

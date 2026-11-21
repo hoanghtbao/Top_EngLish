@@ -52,7 +52,15 @@ import {
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
 import { useAuth } from "../../context/auth-context";
-import { useBrand } from "../../context/brand-context";
+import {
+  PageBannerConfig,
+  PageBannerValue,
+  useBrand,
+} from "../../context/brand-context";
+import {
+  BannerBackgroundLayer,
+  normalizeBannerConfig,
+} from "../../components/PageHeaderBanner";
 import { fetchApi } from "../../lib/api-client";
 import UserAvatar from "../../components/UserAvatar";
 import AvatarUploadModal from "../../components/AvatarUploadModal";
@@ -190,11 +198,30 @@ export default function AdminDashboardPage() {
     "Nền tảng học tiếng Anh thông minh thế hệ mới",
   );
   const [pageBannerBackgrounds, setPageBannerBackgrounds] = useState<
-    Record<string, string>
+    Record<string, PageBannerValue>
   >({});
   const [uploadingSectionKey, setUploadingSectionKey] = useState<string | null>(
     null,
   );
+  const [expandedBannerKey, setExpandedBannerKey] = useState<string | null>(
+    "topics",
+  );
+
+  const updateSectionBannerConfig = (
+    sectionKey: string,
+    patch: Partial<PageBannerConfig>,
+  ) => {
+    setPageBannerBackgrounds((prev) => {
+      const current = normalizeBannerConfig(prev[sectionKey]);
+      return {
+        ...prev,
+        [sectionKey]: {
+          ...current,
+          ...patch,
+        },
+      };
+    });
+  };
 
   const BANNER_SECTION_ITEMS = [
     { key: "topics", label: "Từ vựng Flashcard", route: "/topics" },
@@ -464,11 +491,18 @@ export default function AdminDashboardPage() {
 
       const data = await res.json();
       if (data.success && data.data?.url) {
-        const nextMap = {
+        const existingCfg = normalizeBannerConfig(
+          pageBannerBackgrounds[sectionKey],
+        );
+        const nextMap: Record<string, PageBannerValue> = {
           ...pageBannerBackgrounds,
-          [sectionKey]: data.data.url,
+          [sectionKey]: {
+            ...existingCfg,
+            url: data.data.url,
+          },
         };
         setPageBannerBackgrounds(nextMap);
+        setExpandedBannerKey(sectionKey);
 
         await fetchApi("/admin/settings/homepage", {
           method: "PATCH",
@@ -479,8 +513,8 @@ export default function AdminDashboardPage() {
 
         showToast({
           type: "success",
-          title: "Đã cập nhật ảnh nền chuyên mục!",
-          message: "Ảnh mới đã được áp dụng lên banner trang tương ứng.",
+          title: "Đã tải ảnh nền chuyên mục!",
+          message: "Hãy chỉnh độ mờ, độ phóng to & tông chữ ngay bên dưới để ảnh khớp đẹp nhất.",
         });
       }
     } catch (err: any) {
@@ -1920,98 +1954,403 @@ export default function AdminDashboardPage() {
 
                   <div className="grid grid-cols-1 gap-3">
                     {BANNER_SECTION_ITEMS.map((sec) => {
-                      const currentUrl = pageBannerBackgrounds[sec.key] || "";
+                      const cfg = normalizeBannerConfig(
+                        pageBannerBackgrounds[sec.key],
+                      );
+                      const currentUrl = cfg.url;
                       const isUploadingThis = uploadingSectionKey === sec.key;
+                      const isExpanded = expandedBannerKey === sec.key;
+                      const isDarkPreviewText =
+                        Boolean(currentUrl) && cfg.textColor === "dark";
 
                       return (
                         <div
                           key={sec.key}
-                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col sm:flex-row sm:items-center gap-3"
+                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex flex-col gap-3"
                         >
-                          {/* Mini Preview Box */}
-                          <div className="relative h-14 w-full sm:w-28 rounded-xl overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                            {currentUrl ? (
-                              <>
-                                <img
-                                  src={getFullImageUrl(currentUrl)}
-                                  alt={sec.label}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-emerald-950/55" />
-                                <span className="relative z-10 text-[10px] font-extrabold text-white px-1.5 py-0.5 rounded bg-black/40">
-                                  Ảnh tùy chỉnh
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                            {/* Mini Preview Box */}
+                            <div className="relative h-14 w-full sm:w-28 rounded-xl overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                              {currentUrl ? (
+                                <>
+                                  <BannerBackgroundLayer
+                                    overrideConfig={{
+                                      ...cfg,
+                                      url: getFullImageUrl(cfg.url),
+                                    }}
+                                  />
+                                  <span
+                                    className={`relative z-10 text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                                      isDarkPreviewText
+                                        ? "bg-white/85 text-emerald-900"
+                                        : "bg-black/45 text-white"
+                                    }`}
+                                  >
+                                    {cfg.zoom}% •{" "}
+                                    {cfg.overlayMode === "none"
+                                      ? "Trong suốt"
+                                      : `${Math.round(cfg.overlayOpacity * 100)}%`}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-[10px] font-bold text-white/90">
+                                  Mặc định Jade
                                 </span>
-                              </>
-                            ) : (
-                              <span className="text-[10px] font-bold text-white/90">
-                                Mặc định Jade
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Info + URL Input */}
-                          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
-                                {sec.label}
-                              </span>
-                              <span className="text-[10px] font-mono text-slate-400">
-                                {sec.route}
-                              </span>
+                              )}
                             </div>
 
-                            <input
-                              type="url"
-                              value={currentUrl}
-                              onChange={(e) =>
-                                setPageBannerBackgrounds((prev) => ({
-                                  ...prev,
-                                  [sec.key]: e.target.value,
-                                }))
-                              }
-                              placeholder="Để trống để dùng nền Jade mặc định, hoặc dán URL / tải ảnh..."
-                              className="w-full h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            />
-                          </div>
+                            {/* Info + URL Input */}
+                            <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                                  {sec.label}
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  {sec.route}
+                                </span>
+                              </div>
 
-                          {/* Upload + Reset Actions */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <label className="h-8 px-3 rounded-lg bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition">
-                              {isUploadingThis ? (
-                                <RefreshCw className="size-3 animate-spin" />
-                              ) : (
-                                <UploadCloud className="size-3.5" />
-                              )}
-                              <span>{isUploadingThis ? "Đang tải..." : "Tải ảnh"}</span>
                               <input
-                                type="file"
-                                accept="image/png,image/jpeg,image/jpg,image/webp,image/avif"
-                                className="hidden"
-                                disabled={isUploadingThis}
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0];
-                                  if (f) handleSectionBannerUpload(sec.key, f);
-                                  e.target.value = "";
-                                }}
-                              />
-                            </label>
-
-                            {currentUrl && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPageBannerBackgrounds((prev) => ({
-                                    ...prev,
-                                    [sec.key]: "",
-                                  }))
+                                type="url"
+                                value={currentUrl}
+                                onChange={(e) =>
+                                  updateSectionBannerConfig(sec.key, {
+                                    url: e.target.value,
+                                  })
                                 }
-                                title="Xóa ảnh để quay về nền Jade mặc định"
-                                className="h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-[11px] font-bold transition cursor-pointer"
-                              >
-                                Mặc định
-                              </button>
-                            )}
+                                placeholder="Để trống để dùng nền Jade mặc định, hoặc dán URL / tải ảnh..."
+                                className="w-full h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-[11px] font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+
+                            {/* Upload + Tune + Reset Actions */}
+                            <div className="flex items-center flex-wrap gap-1.5 shrink-0">
+                              <label className="h-8 px-3 rounded-lg bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition">
+                                {isUploadingThis ? (
+                                  <RefreshCw className="size-3 animate-spin" />
+                                ) : (
+                                  <UploadCloud className="size-3.5" />
+                                )}
+                                <span>{isUploadingThis ? "Đang tải..." : "Tải ảnh"}</span>
+                                <input
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/jpg,image/webp,image/avif"
+                                  className="hidden"
+                                  disabled={isUploadingThis}
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleSectionBannerUpload(sec.key, f);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+
+                              {currentUrl && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedBannerKey(isExpanded ? null : sec.key)
+                                    }
+                                    className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                                      isExpanded
+                                        ? "bg-emerald-600 text-white border-emerald-600"
+                                        : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-emerald-500"
+                                    }`}
+                                  >
+                                    <Sliders className="size-3" />
+                                    <span>Tinh chỉnh</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateSectionBannerConfig(sec.key, { url: "" })
+                                    }
+                                    title="Xóa ảnh để quay về nền Jade mặc định"
+                                    className="h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-[11px] font-bold transition cursor-pointer"
+                                  >
+                                    Mặc định
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Expandable Live Preview + Tuning Controls when URL is set */}
+                          {currentUrl && isExpanded && (
+                            <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-col gap-3.5">
+                              {/* Full Banner Simulator Preview */}
+                              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-4 sm:p-5 border border-slate-200 dark:border-slate-700">
+                                <BannerBackgroundLayer
+                                  overrideConfig={{
+                                    ...cfg,
+                                    url: getFullImageUrl(cfg.url),
+                                  }}
+                                />
+                                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div className="flex flex-col gap-1">
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
+                                        isDarkPreviewText
+                                          ? "bg-white/85 border-emerald-200 text-emerald-800"
+                                          : "bg-white/15 border-white/25 text-white"
+                                      }`}
+                                    >
+                                      Xem trước trực tiếp • {sec.label}
+                                    </span>
+                                    <div
+                                      className={`text-lg font-black ${
+                                        isDarkPreviewText
+                                          ? "text-emerald-950"
+                                          : "text-white"
+                                      }`}
+                                    >
+                                      {sec.label}
+                                    </div>
+                                    <div
+                                      className={`text-[11px] ${
+                                        isDarkPreviewText
+                                          ? "text-slate-800 font-semibold"
+                                          : "text-emerald-50/95"
+                                      }`}
+                                    >
+                                      Ví dụ dòng mô tả hiển thị trên banner chuyên mục này.
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold shrink-0 w-fit shadow-xs ${
+                                      isDarkPreviewText
+                                        ? "bg-emerald-600 text-white"
+                                        : "bg-white text-emerald-800"
+                                    }`}
+                                  >
+                                    + Nút hành động
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 1-Click Presets for Bright Illustration vs Dark Photo */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[11px] font-bold text-slate-500">
+                                  Mẫu nhanh:
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateSectionBannerConfig(sec.key, {
+                                      overlayMode: "none",
+                                      overlayOpacity: 0,
+                                      blurAmount: 0,
+                                      textColor: "dark",
+                                      zoom: cfg.zoom < 110 ? 120 : cfg.zoom,
+                                    })
+                                  }
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200 transition cursor-pointer"
+                                >
+                                  ✨ Ảnh minh họa sáng + Chữ đậm (như mẫu đẹp)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateSectionBannerConfig(sec.key, {
+                                      overlayMode: "dark",
+                                      overlayOpacity: 0.45,
+                                      blurAmount: 0,
+                                      textColor: "white",
+                                      zoom: 100,
+                                    })
+                                  }
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-white hover:bg-slate-700 transition cursor-pointer"
+                                >
+                                  🌙 Phủ tối nhẹ + Chữ trắng
+                                </button>
+                              </div>
+
+                              {/* Controls Grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                                {/* Overlay Mode & Text Color */}
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                    Kiểu lớp phủ
+                                  </span>
+                                  <div className="grid grid-cols-3 gap-1">
+                                    {[
+                                      { k: "none", l: "Trong suốt" },
+                                      { k: "dark", l: "Phủ tối" },
+                                      { k: "light", l: "Phủ sáng" },
+                                    ].map((m) => (
+                                      <button
+                                        key={m.k}
+                                        type="button"
+                                        onClick={() =>
+                                          updateSectionBannerConfig(sec.key, {
+                                            overlayMode: m.k as
+                                              | "none"
+                                              | "dark"
+                                              | "light",
+                                            textColor:
+                                              m.k === "light" || m.k === "none"
+                                                ? cfg.textColor
+                                                : "white",
+                                          })
+                                        }
+                                        className={`h-8 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                                          cfg.overlayMode === m.k
+                                            ? "bg-emerald-600 text-white border-emerald-600"
+                                            : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        {m.l}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                    Màu chữ tiêu đề
+                                  </span>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    {[
+                                      { k: "dark", l: "Chữ tối (nền sáng)" },
+                                      { k: "white", l: "Chữ trắng (nền tối)" },
+                                    ].map((t) => (
+                                      <button
+                                        key={t.k}
+                                        type="button"
+                                        onClick={() =>
+                                          updateSectionBannerConfig(sec.key, {
+                                            textColor: t.k as "dark" | "white",
+                                          })
+                                        }
+                                        className={`h-8 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                                          cfg.textColor === t.k
+                                            ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white"
+                                            : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        {t.l}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Overlay Opacity Slider */}
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                      Độ mờ nhạt lớp phủ
+                                    </span>
+                                    <span className="font-mono font-bold text-emerald-600">
+                                      {cfg.overlayMode === "none"
+                                        ? "0% (Tắt)"
+                                        : `${Math.round(cfg.overlayOpacity * 100)}%`}
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="0.9"
+                                    step="0.05"
+                                    disabled={cfg.overlayMode === "none"}
+                                    value={cfg.overlayOpacity}
+                                    onChange={(e) =>
+                                      updateSectionBannerConfig(sec.key, {
+                                        overlayOpacity: parseFloat(e.target.value),
+                                      })
+                                    }
+                                    className="w-full accent-emerald-600 cursor-pointer disabled:opacity-40"
+                                  />
+                                </div>
+
+                                {/* Zoom Slider (Crops white border!) */}
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                      Phóng to vừa khung (cắt viền trắng)
+                                    </span>
+                                    <span className="font-mono font-bold text-teal-600">
+                                      {cfg.zoom}%
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="100"
+                                    max="180"
+                                    step="5"
+                                    value={cfg.zoom}
+                                    onChange={(e) =>
+                                      updateSectionBannerConfig(sec.key, {
+                                        zoom: parseInt(e.target.value, 10),
+                                      })
+                                    }
+                                    className="w-full accent-teal-600 cursor-pointer"
+                                  />
+                                </div>
+
+                                {/* Blur Slider */}
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                      Độ nhòe ảnh (Blur)
+                                    </span>
+                                    <span className="font-mono font-bold text-slate-600">
+                                      {cfg.blurAmount}px
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="12"
+                                    step="1"
+                                    value={cfg.blurAmount}
+                                    onChange={(e) =>
+                                      updateSectionBannerConfig(sec.key, {
+                                        blurAmount: parseInt(e.target.value, 10),
+                                      })
+                                    }
+                                    className="w-full accent-slate-600 cursor-pointer"
+                                  />
+                                </div>
+
+                                {/* Position */}
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                    Canh vị trí ảnh
+                                  </span>
+                                  <div className="grid grid-cols-3 gap-1">
+                                    {[
+                                      { k: "top", l: "Trên" },
+                                      { k: "center", l: "Giữa" },
+                                      { k: "bottom", l: "Dưới" },
+                                    ].map((p) => (
+                                      <button
+                                        key={p.k}
+                                        type="button"
+                                        onClick={() =>
+                                          updateSectionBannerConfig(sec.key, {
+                                            position: p.k as
+                                              | "top"
+                                              | "center"
+                                              | "bottom",
+                                          })
+                                        }
+                                        className={`h-7 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                                          cfg.position === p.k
+                                            ? "bg-teal-600 text-white border-teal-600"
+                                            : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                        }`}
+                                      >
+                                        {p.l}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

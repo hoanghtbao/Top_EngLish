@@ -111,11 +111,22 @@ export class UpdateHomepageHeroDto {
   heroBadge?: string;
 
   @ApiProperty({
-    description: 'Ảnh nền banner riêng cho từng chuyên mục (key: topics, grammar, quizzes, classrooms, dashboard, leaderboard, live_game, ai_assistant, profile)',
-    example: { topics: 'http://localhost:5001/uploads/hero-bg-123.jpg' },
+    description:
+      'Ảnh nền và thông số độ mờ/zoom banner riêng cho từng chuyên mục (key: topics, grammar, quizzes, classrooms, dashboard, leaderboard, live_game, ai_assistant, profile)',
+    example: {
+      topics: {
+        url: 'http://localhost:5001/uploads/hero-bg-123.jpg',
+        overlayOpacity: 0.15,
+        blurAmount: 0,
+        overlayMode: 'none',
+        textColor: 'dark',
+        zoom: 120,
+        position: 'center',
+      },
+    },
     required: false,
   })
   @IsOptional()
   @IsObject()
-  pageBannerBackgrounds?: Record<string, string>;
+  pageBannerBackgrounds?: Record<string, any>;
 }

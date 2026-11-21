@@ -322,6 +322,61 @@ export class AdminService {
   }
 
   /**
+   * Chuẩn hóa cấu hình ảnh nền từng chuyên mục (hỗ trợ cả string URL cũ và object tinh chỉnh độ mờ/zoom)
+   */
+  private sanitizePageBannerBackgrounds(
+    raw: Record<string, any> | undefined,
+  ): Record<string, any> {
+    if (!raw || typeof raw !== 'object') return {};
+
+    const result: Record<string, any> = {};
+    for (const [key, val] of Object.entries(raw)) {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (trimmed) {
+          result[key] = {
+            url: trimmed,
+            overlayOpacity: 0.45,
+            blurAmount: 0,
+            overlayMode: 'dark',
+            textColor: 'white',
+            zoom: 100,
+            position: 'center',
+          };
+        }
+      } else if (val && typeof val === 'object') {
+        const url = typeof val.url === 'string' ? val.url.trim() : '';
+        if (!url) continue;
+        result[key] = {
+          url,
+          overlayOpacity:
+            typeof val.overlayOpacity === 'number'
+              ? Math.min(0.95, Math.max(0, val.overlayOpacity))
+              : 0.45,
+          blurAmount:
+            typeof val.blurAmount === 'number'
+              ? Math.min(16, Math.max(0, val.blurAmount))
+              : 0,
+          overlayMode: ['dark', 'light', 'none'].includes(val.overlayMode)
+            ? val.overlayMode
+            : 'dark',
+          textColor: ['white', 'dark'].includes(val.textColor)
+            ? val.textColor
+            : 'white',
+          zoom:
+            typeof val.zoom === 'number'
+              ? Math.min(200, Math.max(100, val.zoom))
+              : 100,
+          position: ['center', 'top', 'bottom'].includes(val.position)
+            ? val.position
+            : 'center',
+        };
+      }
+    }
+    return result;
+  }
+
+  /**
    * Lấy cấu hình ảnh nền và hiệu ứng Hero trang chủ
    */
   async getHomepageSettings() {
@@ -438,12 +493,7 @@ export class AdminService {
       pageBannerBackgrounds:
         dto.pageBannerBackgrounds !== undefined &&
         typeof dto.pageBannerBackgrounds === 'object'
-          ? Object.fromEntries(
-              Object.entries(dto.pageBannerBackgrounds).map(([k, v]) => [
-                k,
-                typeof v === 'string' ? v.trim() : '',
-              ]),
-            )
+          ? this.sanitizePageBannerBackgrounds(dto.pageBannerBackgrounds)
           : existingVal.pageBannerBackgrounds || {},
     };
 
