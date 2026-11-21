@@ -19,9 +19,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Left Sidebar */}
       <Sidebar />
 
-      {/* Main Content Area: Dynamic Left Margin according to Collapse State & Safe Mobile Clipping */}
+      {/* Main Content Area: Dynamic Left Margin according to Collapse State & Safe Mobile Clipping (overflow-x-clip keeps sticky AppHeader working) */}
       <div
-        className={`flex-1 flex flex-col min-w-0 overflow-x-hidden ${
+        className={`flex-1 flex flex-col min-w-0 overflow-x-clip ${
           isInitialized ? "transition-all duration-300 ease-in-out" : ""
         } ${isCollapsed ? "md:pl-20" : "md:pl-64"}`}
       >

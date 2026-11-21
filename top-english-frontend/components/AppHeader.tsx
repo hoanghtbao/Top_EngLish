@@ -147,7 +147,7 @@ export default function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between">
+    <header className="sticky top-0 z-30 h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between">
       {/* LEFT: MOBILE HAMBURGER & BREADCRUMB */}
       <div className="flex items-center gap-3">
         {/* Mobile menu trigger */}
