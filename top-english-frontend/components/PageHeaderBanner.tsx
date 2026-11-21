@@ -39,6 +39,8 @@ export const DEFAULT_BANNER_CONFIG: PageBannerConfig = {
   textColor: "white",
   zoom: 100,
   position: "center",
+  posX: 50,
+  posY: 50,
 };
 
 export function normalizeBannerConfig(
@@ -51,6 +53,12 @@ export function normalizeBannerConfig(
       url: raw.trim(),
     };
   }
+  const legacyPos =
+    raw.position === "top" || raw.position === "bottom"
+      ? raw.position
+      : "center";
+  const fallbackY =
+    legacyPos === "top" ? 0 : legacyPos === "bottom" ? 100 : 50;
   return {
     url: (raw.url || "").trim(),
     overlayOpacity:
@@ -72,10 +80,13 @@ export function normalizeBannerConfig(
       typeof raw.zoom === "number"
         ? Math.min(200, Math.max(100, raw.zoom))
         : 100,
-    position:
-      raw.position === "top" || raw.position === "bottom"
-        ? raw.position
-        : "center",
+    position: legacyPos,
+    posX:
+      typeof raw.posX === "number" ? Math.min(100, Math.max(0, raw.posX)) : 50,
+    posY:
+      typeof raw.posY === "number"
+        ? Math.min(100, Math.max(0, raw.posY))
+        : fallbackY,
   };
 }
 
@@ -113,13 +124,8 @@ export function BannerBackgroundLayer({
   const resolvedUrl = resolveBannerImageUrl(config.url);
 
   if (resolvedUrl) {
-    const posClass =
-      config.position === "top"
-        ? "object-top"
-        : config.position === "bottom"
-        ? "object-bottom"
-        : "object-center";
-
+    const posX = typeof config.posX === "number" ? config.posX : 50;
+    const posY = typeof config.posY === "number" ? config.posY : 50;
     const scale = (config.zoom || 100) / 100;
 
     return (
@@ -128,8 +134,10 @@ export function BannerBackgroundLayer({
           src={resolvedUrl}
           alt=""
           aria-hidden="true"
-          className={`absolute inset-0 w-full h-full object-cover ${posClass} pointer-events-none select-none transition-transform duration-300`}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
           style={{
+            objectPosition: `${posX}% ${posY}%`,
+            transformOrigin: `${posX}% ${posY}%`,
             transform: scale !== 1 ? `scale(${scale})` : undefined,
             filter:
               config.blurAmount > 0 ? `blur(${config.blurAmount}px)` : undefined,

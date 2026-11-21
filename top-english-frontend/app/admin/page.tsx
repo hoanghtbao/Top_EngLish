@@ -206,6 +206,13 @@ export default function AdminDashboardPage() {
   const [expandedBannerKey, setExpandedBannerKey] = useState<string | null>(
     "topics",
   );
+  const [bannerDragState, setBannerDragState] = useState<{
+    key: string;
+    startX: number;
+    startY: number;
+    initPosX: number;
+    initPosY: number;
+  } | null>(null);
 
   const updateSectionBannerConfig = (
     sectionKey: string,
@@ -2417,37 +2424,34 @@ export default function AdminDashboardPage() {
                                   />
                                 </div>
 
-                                {/* Position */}
+                                {/* Position Hint + Reset (Facebook-style Drag) */}
                                 <div className="flex flex-col gap-1.5">
-                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                                    Canh vị trí ảnh
-                                  </span>
-                                  <div className="grid grid-cols-3 gap-1">
-                                    {[
-                                      { k: "top", l: "Trên" },
-                                      { k: "center", l: "Giữa" },
-                                      { k: "bottom", l: "Dưới" },
-                                    ].map((p) => (
-                                      <button
-                                        key={p.k}
-                                        type="button"
-                                        onClick={() =>
-                                          updateSectionBannerConfig(sec.key, {
-                                            position: p.k as
-                                              | "top"
-                                              | "center"
-                                              | "bottom",
-                                          })
-                                        }
-                                        className={`h-7 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
-                                          cfg.position === p.k
-                                            ? "bg-teal-600 text-white border-teal-600"
-                                            : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                                        }`}
-                                      >
-                                        {p.l}
-                                      </button>
-                                    ))}
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                      Canh vị trí ảnh (Kéo ở khung phải)
+                                    </span>
+                                    <span className="font-mono font-bold text-teal-600">
+                                      {Math.round(cfg.posX ?? 50)}% ,{" "}
+                                      {Math.round(cfg.posY ?? 50)}%
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                                    <span className="text-[10px] text-slate-500">
+                                      Chạm &amp; kéo trực tiếp ảnh bên phải
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateSectionBannerConfig(sec.key, {
+                                          posX: 50,
+                                          posY: 50,
+                                          zoom: 100,
+                                        })
+                                      }
+                                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-500 cursor-pointer shrink-0"
+                                    >
+                                      Đặt lại giữa
+                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -2543,9 +2547,62 @@ export default function AdminDashboardPage() {
                               : "bg-slate-50"
                           }`}
                         >
-                          {/* Actual Centered Banner Simulator */}
+                          {/* Actual Centered Banner Simulator (Drag to Reposition like Facebook!) */}
                           <div
-                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-6 py-6 shadow-md ${
+                            onPointerDown={(e) => {
+                              if (!hasImg) return;
+                              e.currentTarget.setPointerCapture(e.pointerId);
+                              setBannerDragState({
+                                key: activeSec.key,
+                                startX: e.clientX,
+                                startY: e.clientY,
+                                initPosX: activeCfg.posX ?? 50,
+                                initPosY: activeCfg.posY ?? 50,
+                              });
+                            }}
+                            onPointerMove={(e) => {
+                              if (
+                                !bannerDragState ||
+                                bannerDragState.key !== activeSec.key
+                              ) {
+                                return;
+                              }
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              const dx = e.clientX - bannerDragState.startX;
+                              const dy = e.clientY - bannerDragState.startY;
+                              const nextX = Math.round(
+                                Math.min(
+                                  100,
+                                  Math.max(
+                                    0,
+                                    bannerDragState.initPosX -
+                                      (dx / Math.max(120, rect.width)) * 120,
+                                  ),
+                                ),
+                              );
+                              const nextY = Math.round(
+                                Math.min(
+                                  100,
+                                  Math.max(
+                                    0,
+                                    bannerDragState.initPosY -
+                                      (dy / Math.max(80, rect.height)) * 120,
+                                  ),
+                                ),
+                              );
+                              updateSectionBannerConfig(activeSec.key, {
+                                posX: nextX,
+                                posY: nextY,
+                              });
+                            }}
+                            onPointerUp={() => setBannerDragState(null)}
+                            onPointerCancel={() => setBannerDragState(null)}
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-6 py-7 shadow-md ${
+                              hasImg
+                                ? "touch-none select-none cursor-grab active:cursor-grabbing"
+                                : ""
+                            } ${
                               isDarkTxt
                                 ? "text-slate-900 border border-emerald-200/80"
                                 : "text-white"
@@ -2562,7 +2619,15 @@ export default function AdminDashboardPage() {
                               <BannerBackgroundLayer />
                             )}
 
-                            <div className="relative z-10 max-w-md mx-auto flex flex-col items-center text-center gap-2.5">
+                            {hasImg && (
+                              <div className="absolute top-2 right-2 z-20 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-xs text-[9px] font-bold text-white pointer-events-none">
+                                {bannerDragState
+                                  ? `Đang căn: ${Math.round(activeCfg.posX ?? 50)}%, ${Math.round(activeCfg.posY ?? 50)}%`
+                                  : "✋ Kéo ảnh để căn vị trí"}
+                              </div>
+                            )}
+
+                            <div className="relative z-10 max-w-md mx-auto flex flex-col items-center text-center gap-2.5 pointer-events-none">
                               <span
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
                                   isDarkTxt
@@ -2640,6 +2705,48 @@ export default function AdminDashboardPage() {
                             ))}
                           </div>
                         </div>
+
+                        {hasImg && (
+                          <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-700 dark:text-slate-200">
+                                Phóng to &amp; Kéo ảnh trực tiếp ở trên
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-teal-600">
+                                  {activeCfg.zoom}% ({Math.round(activeCfg.posX ?? 50)}%,{" "}
+                                  {Math.round(activeCfg.posY ?? 50)}%)
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateSectionBannerConfig(activeSec.key, {
+                                      posX: 50,
+                                      posY: 50,
+                                      zoom: 100,
+                                    })
+                                  }
+                                  className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-500 cursor-pointer"
+                                >
+                                  Đặt lại
+                                </button>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min="100"
+                              max="180"
+                              step="5"
+                              value={activeCfg.zoom}
+                              onChange={(e) =>
+                                updateSectionBannerConfig(activeSec.key, {
+                                  zoom: parseInt(e.target.value, 10),
+                                })
+                              }
+                              className="w-full accent-teal-600 cursor-pointer"
+                            />
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
                           <span>

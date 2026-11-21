@@ -342,11 +342,18 @@ export class AdminService {
             textColor: 'white',
             zoom: 100,
             position: 'center',
+            posX: 50,
+            posY: 50,
           };
         }
       } else if (val && typeof val === 'object') {
         const url = typeof val.url === 'string' ? val.url.trim() : '';
         if (!url) continue;
+        const legacyPos = ['center', 'top', 'bottom'].includes(val.position)
+          ? val.position
+          : 'center';
+        const fallbackY =
+          legacyPos === 'top' ? 0 : legacyPos === 'bottom' ? 100 : 50;
         result[key] = {
           url,
           overlayOpacity:
@@ -367,9 +374,15 @@ export class AdminService {
             typeof val.zoom === 'number'
               ? Math.min(200, Math.max(100, val.zoom))
               : 100,
-          position: ['center', 'top', 'bottom'].includes(val.position)
-            ? val.position
-            : 'center',
+          position: legacyPos,
+          posX:
+            typeof val.posX === 'number'
+              ? Math.min(100, Math.max(0, val.posX))
+              : 50,
+          posY:
+            typeof val.posY === 'number'
+              ? Math.min(100, Math.max(0, val.posY))
+              : fallbackY,
         };
       }
     }

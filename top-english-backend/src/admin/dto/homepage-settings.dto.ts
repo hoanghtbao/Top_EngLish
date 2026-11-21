@@ -122,6 +122,8 @@ export class UpdateHomepageHeroDto {
         textColor: 'dark',
         zoom: 120,
         position: 'center',
+        posX: 50,
+        posY: 50,
       },
     },
     required: false,

@@ -23,6 +23,8 @@ export interface PageBannerConfig {
   textColor: "white" | "dark";
   zoom: number;
   position: "center" | "top" | "bottom";
+  posX?: number;
+  posY?: number;
 }
 
 export type PageBannerValue = string | PageBannerConfig;
