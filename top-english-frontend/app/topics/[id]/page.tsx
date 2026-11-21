@@ -2189,6 +2189,27 @@ function TopicDetailInner() {
                     </div>
                   </div>
                 ))}
+
+                {/* Card "+ Thêm từ vựng mới" ở cuối danh sách dành cho Giáo viên / Admin */}
+                {isTeacherOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={openAddModal}
+                    className="group min-h-[160px] rounded-2xl border-2 border-dashed border-emerald-300/80 dark:border-emerald-800/70 bg-emerald-50/25 dark:bg-emerald-950/15 hover:bg-emerald-50/75 dark:hover:bg-emerald-950/35 hover:border-emerald-500 p-5 flex flex-col items-center justify-center text-center gap-2.5 transition-all duration-200 cursor-pointer"
+                  >
+                    <div className="size-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white flex items-center justify-center shadow-xs transition-all duration-200 group-hover:scale-105">
+                      <Plus className="size-6 stroke-[2.75]" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-extrabold text-slate-800 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                        Thêm từ vựng mới
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Nhập từng từ, dùng AI tạo từ hoặc nhập hàng loạt JSON
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -529,6 +529,27 @@ function VocabClassDetailInner() {
                     </div>
                   </article>
                 ))}
+
+                {/* Card "+ Tạo bài học mới" ở cuối danh sách dành cho Giáo viên / Admin */}
+                {isTeacherOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={openCreateLesson}
+                    className="group w-full rounded-2xl border-2 border-dashed border-emerald-300/80 dark:border-emerald-800/70 bg-emerald-50/25 dark:bg-emerald-950/15 hover:bg-emerald-50/75 dark:hover:bg-emerald-950/35 hover:border-emerald-500 p-5 flex items-center justify-center gap-3.5 transition-all duration-200 cursor-pointer"
+                  >
+                    <div className="size-11 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white flex items-center justify-center shadow-xs transition-all duration-200 group-hover:scale-105 shrink-0">
+                      <Plus className="size-6 stroke-[2.75]" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                        Tạo bài học mới trong lớp {classInfo?.code || ""}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Bấm để thêm Lesson mới rồi nhập từ vựng hoặc nhờ AI tạo tự động
+                      </div>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </>
