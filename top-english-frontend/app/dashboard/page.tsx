@@ -34,7 +34,7 @@ import {
   Zap,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
-import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { useSound } from "../../context/sound-context";
 import { fetchApi } from "../../lib/api-client";
@@ -339,36 +339,27 @@ function DashboardContent() {
 
   return (
     <AppLayout>
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-8">
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
         {/* --- HEADER BANNER --- */}
-        <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-700 text-white shadow-xl shadow-emerald-950/20 relative overflow-hidden">
-          <BannerBackgroundLayer pageKey="dashboard" />
-          <div className="relative z-10 flex flex-col gap-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-xs font-semibold w-fit">
-              <Sparkles className="size-3.5" /> Spaced Repetition System (SRS)
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Chào mừng trở lại, {dashboardData?.user.fullName || user.fullName}!
-            </h1>
-            <p className="text-xs sm:text-sm text-emerald-50 max-w-2xl leading-relaxed">
-              Thuật toán trí nhớ Ebbinghaus đang tối ưu hóa chu kỳ nhắc lại từ vựng
-              của bạn. Duy trì chuỗi Streak mỗi ngày để đạt hiệu quả ghi nhớ lâu bền nhất.
-            </p>
-          </div>
-
-          <div className="relative z-10 flex items-center gap-3">
-            <button
-              onClick={() => {
-                playClickSound();
-                loadDashboardData();
-              }}
-              title="Làm mới số liệu"
-              className="h-11 px-4 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur font-semibold text-xs flex items-center gap-2 transition cursor-pointer active:scale-95"
-            >
-              <RefreshCw className="size-4" /> Làm mới dữ liệu
-            </button>
-          </div>
-        </section>
+        <PageHeaderBanner
+          pageKey="dashboard"
+          badgeIcon={<Sparkles className="size-3.5" />}
+          badgeText="Spaced Repetition System (SRS)"
+          title={`Chào mừng trở lại, ${dashboardData?.user.fullName || user.fullName}!`}
+          description="Thuật toán trí nhớ Ebbinghaus tối ưu hóa chu kỳ nhắc lại từ vựng và duy trì chuỗi Streak mỗi ngày."
+          stats={[
+            {
+              icon: <Flame className="size-4" />,
+              label: "Chuỗi Streak",
+              value: `${dashboardData?.user.streak || 0} ngày`,
+            },
+            {
+              icon: <BookOpen className="size-4" />,
+              label: "Từ cần ôn",
+              value: `${dueWords.length} từ`,
+            },
+          ]}
+        />
 
         {/* --- KPI OVERVIEW CARDS (5 METRICS) --- */}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -548,11 +539,24 @@ function DashboardContent() {
                 </div>
               </div>
 
-              {dueWords.length > 0 && !isSessionFinished && (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  Thẻ {currentWordIndex + 1} / {dueWords.length}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {dueWords.length > 0 && !isSessionFinished && (
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    Thẻ {currentWordIndex + 1} / {dueWords.length}
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    loadDashboardData();
+                  }}
+                  title="Làm mới số liệu"
+                  className="h-8 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+                >
+                  <RefreshCw className="size-3.5" />
+                  <span className="hidden sm:inline">Làm mới</span>
+                </button>
+              </div>
             </div>
 
             {/* ERROR ALERT IF ANY */}

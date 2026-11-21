@@ -322,7 +322,7 @@ export default function AdminDashboardPage() {
       description:
         "Thuật toán trí nhớ Ebbinghaus đang tối ưu hóa chu kỳ nhắc lại từ vựng của bạn.",
       pills: ["Chuỗi Streak", "Từ cần ôn"],
-      cta: "Làm mới dữ liệu",
+      cta: "",
     },
     {
       key: "leaderboard",

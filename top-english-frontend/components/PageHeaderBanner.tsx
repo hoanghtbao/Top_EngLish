@@ -22,6 +22,7 @@ export interface BannerStatItem {
 interface PageHeaderBannerProps {
   pageKey?: string;
   backgroundImageUrl?: string;
+  topSlot?: React.ReactNode;
   badgeIcon?: React.ReactNode;
   badgeText: string;
   title: string;
@@ -188,6 +189,7 @@ export function BannerBackgroundLayer({
 export default function PageHeaderBanner({
   pageKey,
   backgroundImageUrl,
+  topSlot,
   badgeIcon,
   badgeText,
   title,
@@ -229,8 +231,9 @@ export default function PageHeaderBanner({
       />
 
       {/* Centered Content Block — thu gọn đoạn mô tả để nằm trọn vùng thoáng giữa ảnh */}
-      {(!hideText || hasBottomRow) && (
+      {(!hideText || hasBottomRow || topSlot) && (
         <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5">
+          {!hideText && topSlot}
           {!hideText && (
             <>
               {/* Badge */}

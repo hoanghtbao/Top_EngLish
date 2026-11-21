@@ -33,7 +33,7 @@ import {
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 import AppLayout from "../../components/AppLayout";
-import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import UserAvatar from "../../components/UserAvatar";
 import AvatarUploadModal from "../../components/AvatarUploadModal";
 
@@ -147,86 +147,53 @@ export default function ProfilePage() {
     <AppLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
       {/* USER HERO BANNER */}
-      <div
-        className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${getTierGradient(
-          achievements?.userStats.tier,
-        )} p-5 sm:p-6 shadow-lg shadow-emerald-900/10`}
-      >
-        <BannerBackgroundLayer pageKey="profile" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="relative group shrink-0">
-              <UserAvatar
-                avatar={user?.avatar}
-                fullName={user?.fullName}
-                role={user?.role}
-                size="xl"
-                editable
-                onEdit={() => setShowAvatarModal(true)}
-                className="shadow-xl ring-2 ring-white/50"
-                title="Bấm để cập nhật ảnh đại diện"
-              />
-              <button
-                type="button"
-                onClick={() => setShowAvatarModal(true)}
-                className="absolute -bottom-1 -right-1 size-6 rounded-full bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-md flex items-center justify-center hover:scale-110 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-                title="Thay đổi ảnh đại diện"
-              >
-                <Camera className="size-3 text-emerald-600" />
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-0.5 text-white">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.2 rounded-full bg-white/20 backdrop-blur text-[10px] font-bold uppercase tracking-wider border border-white/20">
-                  {user?.role === "teacher"
-                    ? "Giáo viên"
-                    : user?.role === "admin"
-                    ? "Quản trị viên"
-                    : "Học viên"}
-                </span>
-                <span className="px-2 py-0.2 rounded-full bg-black/20 backdrop-blur text-[10px] font-bold border border-white/10 flex items-center gap-1">
-                  <Shield className="size-2.5" />
-                  <span>{achievements?.userStats.tierName || "Hạng Đồng"}</span>
-                </span>
-              </div>
-
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                {user?.fullName || "Người Học TopEnglish"}
-              </h1>
-              <p className="text-white/80 text-xs font-medium">
-                {user?.email}
-              </p>
-            </div>
+      <PageHeaderBanner
+        pageKey="profile"
+        topSlot={
+          <div className="relative group shrink-0">
+            <UserAvatar
+              avatar={user?.avatar}
+              fullName={user?.fullName}
+              role={user?.role}
+              size="lg"
+              editable
+              onEdit={() => setShowAvatarModal(true)}
+              className="shadow-xl ring-2 ring-white/60"
+              title="Bấm để cập nhật ảnh đại diện"
+            />
+            <button
+              type="button"
+              onClick={() => setShowAvatarModal(true)}
+              className="absolute -bottom-1 -right-1 size-6 rounded-full bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-md flex items-center justify-center hover:scale-110 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+              title="Thay đổi ảnh đại diện"
+            >
+              <Camera className="size-3 text-emerald-600" />
+            </button>
           </div>
-
-          {/* Quick Trophy & Streak Badges */}
-          <div className="flex items-center gap-3 bg-black/20 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/20 self-start md:self-auto">
-            <div className="flex flex-col items-center px-2.5 border-r border-white/15">
-              <span className="flex items-center gap-1 text-amber-300 font-extrabold text-base">
-                <Flame className="size-3.5 fill-amber-400" />
-                <span>{achievements?.userStats.streak || user?.streak || 0}</span>
-              </span>
-              <span className="text-[9px] text-white/70 font-semibold uppercase">
-                Chuỗi Streak
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center px-2.5">
-              <span className="flex items-center gap-1 text-white font-extrabold text-base">
-                <Trophy className="size-3.5 text-amber-300" />
-                <span>{achievements?.userStats.totalXP || user?.totalXP || 0}</span>
-              </span>
-              <span className="text-[9px] text-white/70 font-semibold uppercase">
-                Điểm XP
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Ambient glow */}
-        <div className="absolute -right-10 -bottom-10 size-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-      </div>
+        }
+        badgeIcon={<Shield className="size-3.5" />}
+        badgeText={`${
+          user?.role === "teacher"
+            ? "Giáo viên"
+            : user?.role === "admin"
+            ? "Quản trị viên"
+            : "Học viên"
+        } • ${achievements?.userStats.tierName || "Hạng Đồng"}`}
+        title={user?.fullName || "Người Học TopEnglish"}
+        description={user?.email || "Theo dõi huy hiệu, chuỗi ngày học và tổng điểm kinh nghiệm tích lũy."}
+        stats={[
+          {
+            icon: <Flame className="size-4" />,
+            label: "Chuỗi Streak",
+            value: `${achievements?.userStats.streak || user?.streak || 0} ngày`,
+          },
+          {
+            icon: <Trophy className="size-4" />,
+            label: "Điểm XP",
+            value: achievements?.userStats.totalXP || user?.totalXP || 0,
+          },
+        ]}
+      />
 
       {/* STATS OVERVIEW CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
