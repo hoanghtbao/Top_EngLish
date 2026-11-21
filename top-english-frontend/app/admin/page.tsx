@@ -595,14 +595,17 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const MAX_BANNER_UPLOAD_MB = 20;
+  const MAX_BANNER_UPLOAD_BYTES = MAX_BANNER_UPLOAD_MB * 1024 * 1024;
+
   // Upload & áp dụng ngay ảnh nền cho từng chuyên mục riêng biệt
   const handleSectionBannerUpload = async (sectionKey: string, file: File) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_BANNER_UPLOAD_BYTES) {
       showToast({
         type: "error",
         title: "File quá lớn",
-        message: "Dung lượng ảnh không được vượt quá 5MB",
+        message: `Dung lượng ảnh (${(file.size / (1024 * 1024)).toFixed(1)}MB) không được vượt quá ${MAX_BANNER_UPLOAD_MB}MB`,
       });
       return;
     }
@@ -624,7 +627,7 @@ export default function AdminDashboardPage() {
       });
 
       const data = await res.json();
-      if (data.success && data.data?.url) {
+      if (res.ok && data.success && data.data?.url) {
         const existingCfg = normalizeBannerConfig(
           pageBannerBackgrounds[sectionKey],
         );
@@ -650,6 +653,8 @@ export default function AdminDashboardPage() {
           title: "Đã tải ảnh nền chuyên mục!",
           message: "Hãy chỉnh độ mờ, độ phóng to & tông chữ ngay bên dưới để ảnh khớp đẹp nhất.",
         });
+      } else {
+        throw new Error(data.message || "Không thể tải ảnh lên máy chủ");
       }
     } catch (err: any) {
       showToast({
@@ -665,11 +670,11 @@ export default function AdminDashboardPage() {
   // Upload ảnh nền từ máy tính
   const handleFileUpload = async (file: File) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_BANNER_UPLOAD_BYTES) {
       showToast({
         type: "error",
         title: "File quá lớn",
-        message: "Dung lượng ảnh không được vượt quá 5MB",
+        message: `Dung lượng ảnh (${(file.size / (1024 * 1024)).toFixed(1)}MB) không được vượt quá ${MAX_BANNER_UPLOAD_MB}MB`,
       });
       return;
     }
@@ -1755,7 +1760,7 @@ export default function AdminDashboardPage() {
                       2. Tải Lên Ảnh Nền Từ Máy Tính
                     </h3>
                     <span className="text-[11px] text-slate-400 font-medium">
-                      PNG, JPG, WEBP • Tối đa 5MB
+                      PNG, JPG, WEBP • Tối đa {MAX_BANNER_UPLOAD_MB}MB
                     </span>
                   </div>
 
