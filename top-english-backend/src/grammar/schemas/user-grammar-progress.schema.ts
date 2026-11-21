@@ -22,8 +22,29 @@ export class UserGrammarProgress {
   @Prop({ default: true })
   isCompleted: boolean;
 
-  @Prop({ default: Date.now })
-  completedAt: Date;
+  @Prop({ type: Date, default: Date.now })
+  completedAt: Date | null;
+
+  @Prop({ default: 0 })
+  practiceAttempts: number;
+
+  @Prop({ type: Number, default: null })
+  lastScore: number | null;
+
+  @Prop({ type: Number, default: null })
+  bestScore: number | null;
+
+  @Prop({ default: 0 })
+  lastCorrectCount: number;
+
+  @Prop({ default: 0 })
+  lastTotalCount: number;
+
+  @Prop({ type: Date, default: null })
+  lastPracticedAt: Date | null;
+
+  @Prop({ type: [Number], default: [] })
+  wrongQuestionIndexes: number[];
 }
 
 export const UserGrammarProgressSchema = SchemaFactory.createForClass(UserGrammarProgress);

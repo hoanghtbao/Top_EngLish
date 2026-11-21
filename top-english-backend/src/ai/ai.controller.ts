@@ -12,6 +12,8 @@ import { ExplainWordDto } from './dto/explain-word.dto';
 import { ChatAiDto } from './dto/chat-ai.dto';
 import { AnalyzeQuizDto } from './dto/analyze-quiz.dto';
 import { GenerateVocabJsonDto } from './dto/generate-vocab-json.dto';
+import { GenerateGrammarLessonDto } from './dto/generate-grammar-lesson.dto';
+import { GenerateGrammarExercisesDto } from './dto/generate-grammar-exercises.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -122,6 +124,38 @@ export class AiController {
       success: true,
       statusCode: HttpStatus.OK,
       message: 'AI đã tạo xong danh sách từ vựng chuẩn JSON',
+      data,
+    };
+  }
+
+  @Post('generate-grammar-lesson')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'AI soạn khung bài học ngữ pháp tự động cho Giáo viên / Admin' })
+  async generateGrammarLesson(@Body() dto: GenerateGrammarLessonDto) {
+    const data = await this.aiService.generateGrammarLesson(dto);
+    return {
+      success: true,
+      statusCode: HttpStatus.OK,
+      message: 'AI đã soạn xong gợi ý bài giảng ngữ pháp',
+      data,
+    };
+  }
+
+  @Post('generate-grammar-exercises')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'AI tự động sinh 5-10 câu bài tập thực hành từ nội dung bài ngữ pháp' })
+  async generateGrammarExercises(@Body() dto: GenerateGrammarExercisesDto) {
+    const data = await this.aiService.generateGrammarExercises(dto);
+    return {
+      success: true,
+      statusCode: HttpStatus.OK,
+      message: 'AI đã sinh xong danh sách bài tập thực hành',
       data,
     };
   }

@@ -47,6 +47,24 @@ export class CommonMistake {
   reason: string;
 }
 
+@Schema({ _id: false })
+export class GrammarExercise {
+  @Prop({ type: String, enum: ['mcq', 'fill_blank'], default: 'mcq' })
+  type: 'mcq' | 'fill_blank';
+
+  @Prop({ required: true })
+  question: string;
+
+  @Prop({ type: [String], default: [] })
+  options?: string[];
+
+  @Prop({ required: true })
+  correctAnswer: string;
+
+  @Prop({ default: '' })
+  explanation?: string;
+}
+
 @Schema({ timestamps: true, collection: 'grammar_lessons' })
 export class GrammarLesson {
   @Prop({ required: true, trim: true })
@@ -60,6 +78,9 @@ export class GrammarLesson {
 
   @Prop({ required: true, trim: true, default: 'Tenses' })
   category: string; // 'Tenses', 'Conditionals', 'Passive Voice', 'Modal Verbs'...
+
+  @Prop({ type: String, enum: ['draft', 'published'], default: 'published', index: true })
+  status: 'draft' | 'published';
 
   @Prop({ default: '' })
   summary: string;
@@ -78,6 +99,9 @@ export class GrammarLesson {
 
   @Prop({ type: [CommonMistake], default: [] })
   commonMistakes: CommonMistake[];
+
+  @Prop({ type: [GrammarExercise], default: [] })
+  exercises: GrammarExercise[];
 
   @Prop({ default: '' })
   content: string; // Nội dung bổ trợ dạng Markdown

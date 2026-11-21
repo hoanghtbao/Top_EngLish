@@ -17,6 +17,7 @@ import {
 import { GrammarService } from './grammar.service';
 import { GrammarController } from './grammar.controller';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { ClassroomsModule } from '../classrooms/classrooms.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
       { name: UserGrammarProgress.name, schema: UserGrammarProgressSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    ClassroomsModule,
   ],
   controllers: [GrammarController],
   providers: [GrammarService],

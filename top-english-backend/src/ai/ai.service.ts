@@ -14,6 +14,8 @@ import { ExplainWordDto } from './dto/explain-word.dto';
 import { ChatAiDto } from './dto/chat-ai.dto';
 import { AnalyzeQuizDto } from './dto/analyze-quiz.dto';
 import { GenerateVocabJsonDto } from './dto/generate-vocab-json.dto';
+import { GenerateGrammarLessonDto } from './dto/generate-grammar-lesson.dto';
+import { GenerateGrammarExercisesDto } from './dto/generate-grammar-exercises.dto';
 import { AI_TUTOR_SYSTEM_GUARDRAILS } from './constants/ai-guardrails.constant';
 import { PartOfSpeech } from '../vocabulary/enums/part-of-speech.enum';
 
@@ -1159,5 +1161,291 @@ Return ONLY a valid JSON object with an "items" array of exactly ${requestedCoun
       distractors: ['bỏ lỡ cơ hội', 'hủy bỏ hợp đồng', 'từ chối tiếp nhận'],
       difficulty: this.defaultDifficultyForLevel(level),
     }));
+  }
+
+  /**
+   * 6. AI soạn khung bài giảng ngữ pháp đầy đủ cho giáo viên
+   */
+  async generateGrammarLesson(dto: GenerateGrammarLessonDto): Promise<{
+    provider: string;
+    lesson: {
+      title: string;
+      category: string;
+      level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      summary: string;
+      formula: { positive: string; negative: string; question: string };
+      usage: string[];
+      signals: string[];
+      examples: Array<{ en: string; vi: string; note?: string }>;
+      commonMistakes: Array<{ wrong: string; correct: string; reason: string }>;
+      content: string;
+    };
+  }> {
+    const topic = dto.topic.trim();
+    const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
+    const rawLevel = (dto.level || '').toUpperCase();
+    const detectedLevel =
+      validLevels.find((l) => rawLevel === l) ||
+      validLevels.find((l) => topic.toUpperCase().includes(l)) ||
+      'B1';
+    const category = dto.category?.trim() || this.inferGrammarCategory(topic);
+    const hasKey = !!this.getApiKey();
+
+    if (hasKey) {
+      const systemRule = `You are a senior English grammar curriculum designer for TopEnglish teachers. Create structured, accurate, concise bilingual (English-Vietnamese) grammar lessons tailored for teaching.`;
+      const prompt = `Create a complete structured English grammar lesson draft for a teacher based on:
+Topic/Prompt: "${topic}"
+Target CEFR Level: ${detectedLevel}
+Suggested Category: "${category}"
+${dto.extraInstructions?.trim() ? `Extra Notes: "${dto.extraInstructions.trim()}"` : ''}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "title": "Vietnamese + English lesson title (e.g. Câu Bị Động (Passive Voice))",
+  "category": "Short English category (e.g. Tenses, Passive Voice, Conditionals, Modal Verbs, Relative Clauses, Reported Speech)",
+  "level": "${detectedLevel}",
+  "summary": "1-2 clear sentences in Vietnamese summarizing what learners gain from this lesson",
+  "formula": {
+    "positive": "Clear affirmative formula (+)",
+    "negative": "Clear negative formula (-)",
+    "question": "Clear interrogative formula (?)"
+  },
+  "usage": ["3-4 concise Vietnamese bullet points explaining main uses"],
+  "signals": ["4-8 key words / structural markers / signal words"],
+  "examples": [
+    { "en": "English example sentence", "vi": "Vietnamese translation", "note": "Short grammar note in Vietnamese" }
+  ],
+  "commonMistakes": [
+    { "wrong": "Common incorrect sentence", "correct": "Corrected English sentence", "reason": "Clear Vietnamese explanation of why" }
+  ],
+  "content": "Concise Markdown lecture notes (tips, special cases, exceptions) in Vietnamese"
+}`;
+
+      const result = await this.callGemini(prompt, true, systemRule);
+      if (result && result.title && result.formula) {
+        const resLevel = validLevels.includes(result.level) ? result.level : detectedLevel;
+        return {
+          provider: 'Google Gemini 2.5 Flash',
+          lesson: {
+            title: String(result.title).trim(),
+            category: String(result.category || category).trim(),
+            level: resLevel,
+            summary: String(result.summary || '').trim(),
+            formula: {
+              positive: String(result.formula?.positive || '').trim(),
+              negative: String(result.formula?.negative || '').trim(),
+              question: String(result.formula?.question || '').trim(),
+            },
+            usage: Array.isArray(result.usage) ? result.usage.map(String).filter(Boolean) : [],
+            signals: Array.isArray(result.signals) ? result.signals.map(String).filter(Boolean) : [],
+            examples: Array.isArray(result.examples)
+              ? result.examples
+                  .filter((e: any) => e?.en && e?.vi)
+                  .map((e: any) => ({
+                    en: String(e.en).trim(),
+                    vi: String(e.vi).trim(),
+                    note: e.note ? String(e.note).trim() : '',
+                  }))
+              : [],
+            commonMistakes: Array.isArray(result.commonMistakes)
+              ? result.commonMistakes
+                  .filter((m: any) => m?.wrong && m?.correct && m?.reason)
+                  .map((m: any) => ({
+                    wrong: String(m.wrong).trim(),
+                    correct: String(m.correct).trim(),
+                    reason: String(m.reason).trim(),
+                  }))
+              : [],
+            content: String(result.content || '').trim(),
+          },
+        };
+      }
+    }
+
+    return {
+      provider: 'Smart Offline Engine',
+      lesson: {
+        title: topic,
+        category,
+        level: detectedLevel,
+        summary: `Nắm vững cấu trúc, cách dùng và các lỗi sai thường gặp của chủ điểm "${topic}" (${detectedLevel}).`,
+        formula: {
+          positive: 'S + Auxiliary / V + O',
+          negative: 'S + Auxiliary + not + V + O',
+          question: 'Auxiliary + S + V + O?',
+        },
+        usage: [
+          `Diễn đạt cấu trúc chính xác cho chủ điểm ${topic}.`,
+          'Áp dụng trong câu giao tiếp, viết email và bài đọc TOEIC/IELTS.',
+        ],
+        signals: ['by + agent', 'key signal phrase', 'context clue'],
+        examples: [
+          {
+            en: 'The quarterly report is reviewed by the manager every Friday.',
+            vi: 'Báo cáo hằng quý được quản lý rà soát vào mỗi thứ Sáu.',
+            note: 'Ví dụ minh họa cấu trúc chuẩn',
+          },
+          {
+            en: 'These guidelines must be followed carefully by all team members.',
+            vi: 'Những hướng dẫn này phải được tất cả thành viên tuân thủ cẩn thận.',
+            note: 'Ví dụ kết hợp ngữ cảnh thực tế',
+          },
+        ],
+        commonMistakes: [
+          {
+            wrong: 'The report reviewed by the manager yesterday.',
+            correct: 'The report was reviewed by the manager yesterday.',
+            reason: 'Thiếu trợ động từ "to be" chia theo thì trước động từ V3/ed.',
+          },
+        ],
+        content: `### Lưu ý giảng dạy (${topic})\n- Nhấn mạnh quy tắc chia động từ và trật tự từ.\n- Cho học sinh luyện phân biệt dạng chủ động và bị động / khẳng định và phủ định.`,
+      },
+    };
+  }
+
+  /**
+   * 7. AI tự động sinh 5-10 câu bài tập thực hành (trắc nghiệm / điền từ) từ nội dung bài ngữ pháp
+   */
+  async generateGrammarExercises(dto: GenerateGrammarExercisesDto): Promise<{
+    provider: string;
+    exercises: Array<{
+      type: 'mcq' | 'fill_blank';
+      question: string;
+      options?: string[];
+      correctAnswer: string;
+      explanation: string;
+    }>;
+  }> {
+    const count = Math.min(Math.max(dto.count ?? 6, 1), 15);
+    const exerciseType = dto.exerciseType || 'mixed';
+    const hasKey = !!this.getApiKey();
+
+    if (hasKey) {
+      const typeRule =
+        exerciseType === 'mcq'
+          ? 'All questions MUST be type "mcq" with 4 distinct options.'
+          : exerciseType === 'fill_blank'
+          ? 'All questions MUST be type "fill_blank" (put "____" in the question where the student types the exact missing word/phrase, options = []).'
+          : 'Mix both "mcq" (with 4 options) and "fill_blank" (with "____" blank and options = []) evenly.';
+
+      const systemRule = `You are an English assessment designer for TopEnglish. Generate crisp, unambiguous grammar practice questions based strictly on the provided grammar lesson.`;
+      const prompt = `Generate ${count} grammar practice questions for this lesson:
+Title: "${dto.title}"
+Category: "${dto.category || 'Grammar'}"
+CEFR Level: "${dto.level || 'B1'}"
+Summary: "${dto.summary || ''}"
+Formulas: (+): "${dto.formula?.positive || ''}" | (-): "${dto.formula?.negative || ''}" | (?): "${dto.formula?.question || ''}"
+Usage notes: ${JSON.stringify(dto.usage || [])}
+Signals: ${JSON.stringify(dto.signals || [])}
+
+Question type rule: ${typeRule}
+
+Return ONLY a valid JSON object:
+{
+  "exercises": [
+    {
+      "type": "mcq | fill_blank",
+      "question": "English sentence with ____ for the blank",
+      "options": ["4 options if mcq, or empty array [] if fill_blank"],
+      "correctAnswer": "Exact matching string (must be one of the 4 options if mcq)",
+      "explanation": "Clear concise Vietnamese explanation why correctAnswer is right"
+    }
+  ]
+}`;
+
+      const result = await this.callGemini(prompt, true, systemRule);
+      if (result && Array.isArray(result.exercises) && result.exercises.length > 0) {
+        const cleaned = result.exercises
+          .filter((q: any) => q?.question && q?.correctAnswer)
+          .slice(0, count)
+          .map((q: any) => {
+            const type: 'mcq' | 'fill_blank' =
+              q.type === 'fill_blank' ? 'fill_blank' : 'mcq';
+            const correctAnswer = String(q.correctAnswer).trim();
+            let options: string[] = [];
+            if (type === 'mcq') {
+              const rawOpts: string[] = Array.isArray(q.options)
+                ? q.options.map((o: any) => String(o).trim()).filter(Boolean)
+                : [];
+              if (!rawOpts.includes(correctAnswer)) rawOpts.unshift(correctAnswer);
+              options = Array.from(new Set<string>(rawOpts)).slice(0, 4);
+            }
+            return {
+              type: options.length < 2 && type === 'mcq' ? 'fill_blank' : type,
+              question: String(q.question).trim(),
+              options,
+              correctAnswer,
+              explanation: String(q.explanation || '').trim(),
+            };
+          });
+
+        if (cleaned.length > 0) {
+          return {
+            provider: 'Google Gemini 2.5 Flash',
+            exercises: cleaned,
+          };
+        }
+      }
+    }
+
+    const fallbackPool: Array<{
+      type: 'mcq' | 'fill_blank';
+      question: string;
+      options: string[];
+      correctAnswer: string;
+      explanation: string;
+    }> = [
+      {
+        type: 'mcq',
+        question: 'The monthly financial report ____ by the accounting team every Friday.',
+        options: ['prepares', 'is prepared', 'prepared', 'is preparing'],
+        correctAnswer: 'is prepared',
+        explanation: 'Chủ ngữ chỉ vật + "every Friday" → sử dụng bị động Hiện tại đơn (is + V3/ed).',
+      },
+      {
+        type: 'fill_blank',
+        question: 'She usually ____ (review) the meeting agenda before 9 a.m.',
+        options: [],
+        correctAnswer: 'reviews',
+        explanation: 'Chủ ngữ ngôi 3 số ít + "usually" → động từ chia thì Hiện tại đơn thêm -s.',
+      },
+      {
+        type: 'mcq',
+        question: 'If the client ____ the contract today, we can start immediately.',
+        options: ['signs', 'will sign', 'signed', 'would sign'],
+        correctAnswer: 'signs',
+        explanation: 'Câu điều kiện loại 1: mệnh đề If chia thì Hiện tại đơn.',
+      },
+      {
+        type: 'mcq',
+        question: 'The new software update ____ to all company laptops yesterday.',
+        options: ['deployed', 'was deployed', 'has deployed', 'is deploying'],
+        correctAnswer: 'was deployed',
+        explanation: 'Có "yesterday" + chủ ngữ chỉ vật → dùng bị động Quá khứ đơn (was + V3/ed).',
+      },
+      {
+        type: 'fill_blank',
+        question: 'Have you ____ (finish) preparing the presentation slides yet?',
+        options: [],
+        correctAnswer: 'finished',
+        explanation: 'Câu nghi vấn Hiện tại hoàn thành với "yet": Have + S + V3/ed.',
+      },
+    ];
+
+    return {
+      provider: 'Smart Offline Engine',
+      exercises: fallbackPool.slice(0, Math.min(count, fallbackPool.length)),
+    };
+  }
+
+  private inferGrammarCategory(topic: string): string {
+    const lower = topic.toLowerCase();
+    if (lower.includes('passive') || lower.includes('bị động')) return 'Passive Voice';
+    if (lower.includes('conditional') || lower.includes('điều kiện')) return 'Conditionals';
+    if (lower.includes('modal')) return 'Modal Verbs';
+    if (lower.includes('relative') || lower.includes('quan hệ')) return 'Relative Clauses';
+    if (lower.includes('reported') || lower.includes('tường thuật')) return 'Reported Speech';
+    if (lower.includes('tense') || lower.includes('thì')) return 'Tenses';
+    return 'Grammar Structures';
   }
 }

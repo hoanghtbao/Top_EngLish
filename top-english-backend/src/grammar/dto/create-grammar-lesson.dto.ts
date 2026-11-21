@@ -8,6 +8,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsObject,
@@ -67,6 +68,32 @@ export class CommonMistakeDto {
   reason: string;
 }
 
+export class GrammarExerciseDto {
+  @ApiProperty({ enum: ['mcq', 'fill_blank'], example: 'mcq' })
+  @IsIn(['mcq', 'fill_blank'])
+  type: 'mcq' | 'fill_blank';
+
+  @ApiProperty({ example: 'She ____ to school every day.' })
+  @IsString()
+  @IsNotEmpty()
+  question: string;
+
+  @ApiPropertyOptional({ type: [String], example: ['go', 'goes', 'going', 'gone'] })
+  @IsOptional()
+  @IsArray()
+  options?: string[];
+
+  @ApiProperty({ example: 'goes' })
+  @IsString()
+  @IsNotEmpty()
+  correctAnswer: string;
+
+  @ApiPropertyOptional({ example: 'Chủ ngữ ngôi 3 số ít thêm -es.' })
+  @IsOptional()
+  @IsString()
+  explanation?: string;
+}
+
 export class CreateGrammarLessonDto {
   @ApiProperty({ example: 'Thì Hiện Tại Đơn (Present Simple)', description: 'Tiêu đề bài học ngữ pháp' })
   @IsString()
@@ -117,6 +144,16 @@ export class CreateGrammarLessonDto {
   @IsOptional()
   @IsArray()
   commonMistakes?: CommonMistakeDto[];
+
+  @ApiPropertyOptional({ enum: ['draft', 'published'], example: 'published', description: 'Trạng thái bài học (draft = Nháp, published = Đã xuất bản)' })
+  @IsOptional()
+  @IsIn(['draft', 'published'])
+  status?: 'draft' | 'published';
+
+  @ApiPropertyOptional({ type: [GrammarExerciseDto], description: 'Danh sách bài tập thực hành cuối bài' })
+  @IsOptional()
+  @IsArray()
+  exercises?: GrammarExerciseDto[];
 
   @ApiPropertyOptional({ description: 'Nội dung bài giảng chi tiết (hỗ trợ Markdown)' })
   @IsOptional()
