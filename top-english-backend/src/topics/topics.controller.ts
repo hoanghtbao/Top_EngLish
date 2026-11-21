@@ -1,7 +1,7 @@
 /**
  * @project TopEnglish - Nền tảng học tiếng Anh trực tuyến
  * @author HoangBao
- * @description Controller cung cấp API quản lý danh mục và chủ đề học từ vựng
+ * @description Controller cung cấp API quản lý Lớp học từ vựng (VocabClasses) và Bài học (Topics)
  */
 
 import {
@@ -21,39 +21,96 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 import { TopicsService } from './topics.service';
 import { CreateTopicDto } from './dto/create-topic.dto';
 import { UpdateTopicDto } from './dto/update-topic.dto';
+import { CreateVocabClassDto } from './dto/create-vocab-class.dto';
+import { UpdateVocabClassDto } from './dto/update-vocab-class.dto';
 import { EnglishLevel } from './enums/english-level.enum';
-import { TopicCategory } from './enums/topic-category.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/enums/role.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-@ApiTags('Topics - Chủ đề từ vựng')
+@ApiTags('Topics - Lớp học & Bài học từ vựng')
 @Controller('topics')
 export class TopicsController {
   constructor(private readonly topicsService: TopicsService) {}
 
+  // =========================================================================
+  // QUẢN LÝ LỚP HỌC TỪ VỰNG (VOCAB CLASSES)
+  // =========================================================================
+
+  @Get('classes')
+  @ApiOperation({ summary: 'Lấy danh sách các lớp học từ vựng (kèm tổng số bài học và số từ)' })
+  @ApiQuery({ name: 'search', type: String, required: false, description: 'Tìm kiếm theo tên, mã lớp hoặc mô tả' })
+  @ApiResponse({ status: 200, description: 'Danh sách lớp học được trả về thành công' })
+  async findAllClasses(@Query('search') search?: string) {
+    return this.topicsService.findAllClasses(search);
+  }
+
+  @Get('classes/:idOrCode')
+  @ApiOperation({ summary: 'Xem chi tiết một lớp học kèm danh sách bài học bên trong' })
+  @ApiResponse({ status: 200, description: 'Thông tin lớp học và danh sách bài học' })
+  async findOneClass(@Param('idOrCode') idOrCode: string) {
+    return this.topicsService.findClassWithLessons(idOrCode);
+  }
+
+  @Post('classes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Tạo lớp học từ vựng mới (Yêu cầu ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 201, description: 'Lớp học đã được tạo thành công' })
+  async createClass(
+    @Body() dto: CreateVocabClassDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.topicsService.createClass(dto, userId);
+  }
+
+  @Patch('classes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cập nhật thông tin lớp học (Yêu cầu ADMIN hoặc TEACHER)' })
+  async updateClass(
+    @Param('id') id: string,
+    @Body() dto: UpdateVocabClassDto,
+  ) {
+    return this.topicsService.updateClass(id, dto);
+  }
+
+  @Delete('classes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Xóa lớp học từ vựng và các bài học thuộc lớp (Yêu cầu ADMIN hoặc TEACHER)' })
+  async removeClass(@Param('id') id: string) {
+    return this.topicsService.removeClass(id);
+  }
+
+  // =========================================================================
+  // QUẢN LÝ BÀI HỌC TỪ VỰNG (LESSONS / TOPICS)
+  // =========================================================================
+
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách các chủ đề từ vựng (Có lọc theo lộ trình, trình độ, mục tiêu và tìm kiếm)' })
-  @ApiQuery({ name: 'category', enum: TopicCategory, required: false, description: 'Lộ trình từ vựng (GENERAL, TOEIC, IELTS)' })
-  @ApiQuery({ name: 'level', enum: EnglishLevel, required: false, description: 'Trình độ tiếng Anh CEFR (A1, A2, B1, B2, C1, C2)' })
-  @ApiQuery({ name: 'targetScore', type: String, required: false, description: 'Mục tiêu TOEIC (450+, 600+...) hoặc Band điểm IELTS (Band 5.5, Band 6.5...)' })
-  @ApiQuery({ name: 'search', type: String, required: false, description: 'Từ khóa tìm kiếm tiêu đề hoặc mô tả' })
-  @ApiResponse({ status: 200, description: 'Danh sách chủ đề được trả về thành công' })
+  @ApiOperation({ summary: 'Lấy danh sách các bài học từ vựng (Có lọc theo lớp học, trình độ và tìm kiếm)' })
+  @ApiQuery({ name: 'vocabClassId', type: String, required: false, description: 'Lọc bài học theo ID lớp học' })
+  @ApiQuery({ name: 'level', enum: EnglishLevel, required: false, description: 'Trình độ tiếng Anh CEFR (A1 - C2)' })
+  @ApiQuery({ name: 'search', type: String, required: false, description: 'Từ khóa tìm kiếm tiêu đề, tag hoặc mô tả' })
+  @ApiResponse({ status: 200, description: 'Danh sách bài học được trả về thành công' })
   async findAll(
-    @Query('category') category?: TopicCategory,
+    @Query('vocabClassId') vocabClassId?: string,
     @Query('level') level?: EnglishLevel,
-    @Query('targetScore') targetScore?: string,
     @Query('search') search?: string,
   ) {
-    return this.topicsService.findAll({ category, level, targetScore, search });
+    return this.topicsService.findAll({ vocabClassId, level, search });
   }
 
   @Get(':idOrSlug')
-  @ApiOperation({ summary: 'Lấy thông tin chi tiết một chủ đề theo ID hoặc Slug' })
-  @ApiResponse({ status: 200, description: 'Thông tin chi tiết chủ đề' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy chủ đề' })
+  @ApiOperation({ summary: 'Lấy thông tin chi tiết một bài học theo ID hoặc Slug' })
+  @ApiResponse({ status: 200, description: 'Thông tin chi tiết bài học' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy bài học' })
   async findOne(@Param('idOrSlug') idOrSlug: string) {
     return this.topicsService.findByIdOrSlug(idOrSlug);
   }
@@ -63,8 +120,8 @@ export class TopicsController {
   @Roles(Role.ADMIN, Role.TEACHER)
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Tạo chủ đề học mới (Yêu cầu quyền ADMIN hoặc TEACHER)' })
-  @ApiResponse({ status: 201, description: 'Chủ đề đã được tạo thành công' })
+  @ApiOperation({ summary: 'Tạo bài học từ vựng mới (Yêu cầu ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 201, description: 'Bài học đã được tạo thành công' })
   async create(
     @Body() createTopicDto: CreateTopicDto,
     @CurrentUser('userId') userId: string,
@@ -76,8 +133,8 @@ export class TopicsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Cập nhật thông tin chủ đề (Yêu cầu quyền ADMIN hoặc TEACHER)' })
-  @ApiResponse({ status: 200, description: 'Chủ đề đã được cập nhật' })
+  @ApiOperation({ summary: 'Cập nhật thông tin bài học (Yêu cầu ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 200, description: 'Bài học đã được cập nhật' })
   async update(
     @Param('id') id: string,
     @Body() updateTopicDto: UpdateTopicDto,
@@ -87,10 +144,10 @@ export class TopicsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.TEACHER)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Xóa chủ đề học (Chỉ ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Đã xóa chủ đề thành công' })
+  @ApiOperation({ summary: 'Xóa bài học từ vựng (Yêu cầu ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 200, description: 'Đã xóa bài học thành công' })
   async remove(@Param('id') id: string) {
     return this.topicsService.remove(id);
   }

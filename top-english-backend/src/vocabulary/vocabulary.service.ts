@@ -265,18 +265,18 @@ export class VocabularyService implements OnModuleInit {
       }
     }
 
-    // Bổ sung từ vựng mẫu cho các chủ đề TOEIC & IELTS mới nếu chủ đề đó chưa có từ nào
-    await this.seedTrackVocabularies();
+    // Bổ sung từ vựng mẫu cho các bài học trong lớp học TOEIC 2 (nếu chưa có từ vựng)
+    await this.seedClassLessonVocabularies();
   }
 
   /**
-   * Gieo từ vựng mẫu cho các chuyên đề TOEIC và IELTS nếu chủ đề chưa có dữ liệu từ vựng
+   * Gieo từ vựng mẫu cho các bài học mặc định của Lớp học TOEIC 2 nếu bài học chưa có từ nào
    */
-  private async seedTrackVocabularies() {
+  private async seedClassLessonVocabularies() {
     const admin = await this.userModel.findOne({ role: Role.ADMIN });
     if (!admin) return;
 
-    const trackWordBank: Record<
+    const lessonWordBank: Record<
       string,
       Array<{
         word: string;
@@ -287,304 +287,94 @@ export class VocabularyService implements OnModuleInit {
         exampleMeaning: string;
       }>
     > = {
-      'toeic-office-and-meetings': [
+      'toeic2-lesson-8-articles-reports': [
         {
-          word: 'Agenda',
-          phonetic: '/əˈdʒen.də/',
+          word: 'Editorial',
+          phonetic: '/ˌed.ɪˈtɔː.ri.əl/',
           partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Chương trình nghị sự, lịch trình cuộc họp',
-          exampleSentence: 'Please review the meeting agenda before we start at 9:00 AM.',
-          exampleMeaning: 'Vui lòng xem qua chương trình cuộc họp trước khi chúng ta bắt đầu lúc 9 giờ sáng.',
+          meaning: 'Bài xã luận, bài bình luận của ban biên tập',
+          exampleSentence: 'The newspaper published a compelling editorial on renewable energy.',
+          exampleMeaning: 'Tờ báo đã đăng một bài xã luận thuyết phục về năng lượng tái tạo.',
         },
         {
-          word: 'Schedule',
-          phonetic: '/ˈskedʒ.uːl/',
+          word: 'Quarterly',
+          phonetic: '/ˈkwɔː.tə.li/',
+          partOfSpeech: PartOfSpeech.ADJECTIVE,
+          meaning: 'Hằng quý (ba tháng một lần)',
+          exampleSentence: 'The finance team presented the quarterly revenue report to the board.',
+          exampleMeaning: 'Đội ngũ tài chính đã trình bày báo cáo doanh thu hằng quý trước hội đồng quản trị.',
+        },
+        {
+          word: 'Summarize',
+          phonetic: '/ˈsʌm.ə.raɪz/',
           partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Lên lịch, sắp xếp thời gian biểu',
-          exampleSentence: 'The HR manager scheduled an interview with the candidate for Friday.',
-          exampleMeaning: 'Trưởng phòng nhân sự đã lên lịch phỏng vấn với ứng viên vào thứ Sáu.',
+          meaning: 'Tóm tắt, tổng hợp lại nội dung chính',
+          exampleSentence: 'Please summarize the key findings at the beginning of your report.',
+          exampleMeaning: 'Vui lòng tóm tắt các phát hiện chính ở phần đầu báo cáo của bạn.',
         },
         {
-          word: 'Colleague',
-          phonetic: '/ˈkɒl.iːɡ/',
+          word: 'Forecast',
+          phonetic: '/ˈfɔː.kɑːst/',
           partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Đồng nghiệp cùng công ty',
-          exampleSentence: 'I collaborated closely with my colleagues on the quarterly report.',
-          exampleMeaning: 'Tôi đã phối hợp chặt chẽ với các đồng nghiệp để hoàn thành báo cáo quý.',
+          meaning: 'Dự báo (kinh tế, doanh số, thời tiết)',
+          exampleSentence: 'According to the latest market forecast, exports will rise by 8%.',
+          exampleMeaning: 'Theo dự báo thị trường mới nhất, kim ngạch xuất khẩu sẽ tăng 8%.',
         },
         {
-          word: 'Submit',
-          phonetic: '/səbˈmɪt/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Nộp, đệ trình (báo cáo, hồ sơ)',
-          exampleSentence: 'All expense forms must be submitted by the end of the month.',
-          exampleMeaning: 'Tất cả phiếu chi phí phải được nộp trước cuối tháng.',
-        },
-        {
-          word: 'Deadline',
-          phonetic: '/ˈded.laɪn/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Hạn chót hoàn thành công việc',
-          exampleSentence: 'Our team worked overtime to meet the strict project deadline.',
-          exampleMeaning: 'Nhóm chúng tôi đã làm thêm giờ để kịp hạn chót nghiêm ngặt của dự án.',
+          word: 'Substantial',
+          phonetic: '/səbˈstæn.ʃəl/',
+          partOfSpeech: PartOfSpeech.ADJECTIVE,
+          meaning: 'Đáng kể, lớn lao, vững chắc',
+          exampleSentence: 'The company recorded a substantial increase in online subscriptions.',
+          exampleMeaning: 'Công ty ghi nhận mức tăng đáng kể về số lượng đăng ký trực tuyến.',
         },
       ],
-      'toeic-finance-and-contracts': [
+      'toeic2-lesson-7-everyday-transactions': [
         {
-          word: 'Invoice',
-          phonetic: '/ˈɪn.vɔɪs/',
+          word: 'Inquiry',
+          phonetic: '/ɪnˈkwaɪə.ri/',
           partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Hóa đơn thanh toán hàng hóa/dịch vụ',
-          exampleSentence: 'Please attach the original invoice to your reimbursement request.',
-          exampleMeaning: 'Vui lòng đính kèm hóa đơn gốc vào yêu cầu hoàn tiền của bạn.',
+          meaning: 'Câu hỏi thắc mắc, yêu cầu cung cấp thông tin',
+          exampleSentence: 'Customer service responds to every billing inquiry within 24 hours.',
+          exampleMeaning: 'Bộ phận chăm sóc khách hàng phản hồi mọi thắc mắc hóa đơn trong vòng 24 giờ.',
         },
         {
-          word: 'Negotiate',
-          phonetic: '/nəˈɡəʊ.ʃi.eɪt/',
+          word: 'Receipt',
+          phonetic: '/rɪˈsiːt/',
+          partOfSpeech: PartOfSpeech.NOUN,
+          meaning: 'Biên lai, hóa đơn xác nhận đã thanh toán',
+          exampleSentence: 'Keep your receipt in case you need to exchange the item later.',
+          exampleMeaning: 'Hãy giữ lại biên lai phòng trường hợp bạn cần đổi trả sản phẩm sau này.',
+        },
+        {
+          word: 'Refund',
+          phonetic: '/ˈriː.fʌnd/',
+          partOfSpeech: PartOfSpeech.NOUN,
+          meaning: 'Khoản tiền hoàn trả',
+          exampleSentence: 'You are eligible for a full refund if you cancel before Friday.',
+          exampleMeaning: 'Bạn đủ điều kiện được hoàn tiền 100% nếu hủy trước thứ Sáu.',
+        },
+        {
+          word: 'Confirm',
+          phonetic: '/kənˈfɜːm/',
           partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Đàm phán, thương lượng điều khoản',
-          exampleSentence: 'Both companies spent weeks negotiating the renewal contract.',
-          exampleMeaning: 'Cả hai công ty đã dành nhiều tuần để thương lượng hợp đồng gia hạn.',
+          meaning: 'Xác nhận lại (lịch hẹn, đơn hàng)',
+          exampleSentence: 'We will send an email to confirm your hotel reservation.',
+          exampleMeaning: 'Chúng tôi sẽ gửi email để xác nhận đặt phòng khách sạn của bạn.',
         },
         {
-          word: 'Budget',
-          phonetic: '/ˈbʌdʒ.ɪt/',
+          word: 'Convenience',
+          phonetic: '/kənˈviː.ni.əns/',
           partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Ngân sách dự toán',
-          exampleSentence: 'The marketing department stayed strictly within its annual budget.',
-          exampleMeaning: 'Phòng tiếp thị đã chi tiêu chặt chẽ trong phạm vi ngân sách hằng năm.',
-        },
-        {
-          word: 'Authorize',
-          phonetic: '/ˈɔː.θə.raɪz/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Ủy quyền, phê duyệt chính thức',
-          exampleSentence: 'Only the finance director can authorize purchases over $5,000.',
-          exampleMeaning: 'Chỉ giám đốc tài chính mới có thể phê duyệt các giao dịch trên 5.000 đô la.',
-        },
-        {
-          word: 'Profitable',
-          phonetic: '/ˈprɒf.ɪ.tə.bəl/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Có lợi nhuận, sinh lời cao',
-          exampleSentence: 'Expanding into online retail proved to be a highly profitable decision.',
-          exampleMeaning: 'Việc mở rộng sang bán lẻ trực tuyến đã chứng minh là một quyết định sinh lời cao.',
-        },
-      ],
-      'toeic-logistics-and-supply': [
-        {
-          word: 'Inventory',
-          phonetic: '/ˈɪn.vən.tər.i/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Hàng tồn kho, bảng kiểm kê hàng hóa',
-          exampleSentence: 'The warehouse uses barcode scanners to track inventory in real time.',
-          exampleMeaning: 'Nhà kho sử dụng máy quét mã vạch để theo dõi hàng tồn kho theo thời gian thực.',
-        },
-        {
-          word: 'Shipment',
-          phonetic: '/ˈʃɪp.mənt/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Lô hàng vận chuyển',
-          exampleSentence: 'The overseas shipment was delayed due to severe weather at the port.',
-          exampleMeaning: 'Lô hàng quốc tế bị trì hoãn do thời tiết khắc nghiệt tại cảng.',
-        },
-        {
-          word: 'Distribute',
-          phonetic: '/dɪˈstrɪb.juːt/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Phân phối, giao hàng đến các đại lý',
-          exampleSentence: 'We distribute organic products to over 200 supermarkets nationwide.',
-          exampleMeaning: 'Chúng tôi phân phối sản phẩm hữu cơ tới hơn 200 siêu thị trên toàn quốc.',
-        },
-        {
-          word: 'Defective',
-          phonetic: '/dɪˈfek.tɪv/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Bị lỗi, khiếm khuyết (sản phẩm)',
-          exampleSentence: 'Customers are entitled to a full refund for any defective merchandise.',
-          exampleMeaning: 'Khách hàng được hoàn tiền đầy đủ đối với bất kỳ hàng hóa nào bị lỗi.',
-        },
-        {
-          word: 'Expedite',
-          phonetic: '/ˈek.spə.daɪt/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Đẩy nhanh tiến độ xử lý, giao gấp',
-          exampleSentence: 'We paid an extra fee to expedite the delivery of spare parts.',
-          exampleMeaning: 'Chúng tôi đã trả thêm phí để đẩy nhanh việc giao phụ tùng thay thế.',
-        },
-      ],
-      'toeic-executive-strategy': [
-        {
-          word: 'Acquisition',
-          phonetic: '/ˌæk.wɪˈzɪʃ.ən/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Sự thâu tóm, mua lại doanh nghiệp',
-          exampleSentence: 'The acquisition of the fintech startup boosted our market share.',
-          exampleMeaning: 'Thương vụ mua lại công ty khởi nghiệp fintech đã giúp tăng thị phần của chúng tôi.',
-        },
-        {
-          word: 'Lucrative',
-          phonetic: '/ˈluː.krə.tɪv/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Sinh lợi lớn, béo bở (hợp đồng/thị trường)',
-          exampleSentence: 'The consulting firm secured a lucrative three-year government contract.',
-          exampleMeaning: 'Công ty tư vấn đã giành được hợp đồng chính phủ béo bở kéo dài ba năm.',
-        },
-        {
-          word: 'Consolidate',
-          phonetic: '/kənˈsɒl.ɪ.deɪt/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Củng cố, hợp nhất các bộ phận/nguồn lực',
-          exampleSentence: 'Management decided to consolidate three regional offices into one hub.',
-          exampleMeaning: 'Ban lãnh đạo quyết định hợp nhất ba văn phòng khu vực thành một trung tâm.',
-        },
-        {
-          word: 'Compliance',
-          phonetic: '/kəmˈplaɪ.əns/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Sự tuân thủ quy định, pháp luật',
-          exampleSentence: 'Every branch must pass the annual safety compliance audit.',
-          exampleMeaning: 'Mỗi chi nhánh phải vượt qua kỳ kiểm toán tuân thủ an toàn hằng năm.',
-        },
-        {
-          word: 'Unanimously',
-          phonetic: '/juːˈnæn.ɪ.məs.li/',
-          partOfSpeech: PartOfSpeech.ADVERB,
-          meaning: 'Một cách nhất trí hoàn toàn',
-          exampleSentence: 'The board of directors unanimously approved the expansion plan.',
-          exampleMeaning: 'Hội đồng quản trị đã nhất trí hoàn toàn thông qua kế hoạch mở rộng.',
-        },
-      ],
-      'ielts-education-and-research': [
-        {
-          word: 'Curriculum',
-          phonetic: '/kəˈrɪk.jə.ləm/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Chương trình giảng dạy chính khóa',
-          exampleSentence: 'Critical thinking should be integrated into the secondary school curriculum.',
-          exampleMeaning: 'Tư duy phản biện nên được tích hợp vào chương trình giảng dạy trung học.',
-        },
-        {
-          word: 'Pedagogy',
-          phonetic: '/ˈped.ə.ɡɒdʒ.i/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Phương pháp sư phạm, khoa học giảng dạy',
-          exampleSentence: 'Modern pedagogy emphasizes interactive learning over rote memorization.',
-          exampleMeaning: 'Phương pháp sư phạm hiện đại nhấn mạnh việc học tương tác hơn là học vẹt.',
-        },
-        {
-          word: 'Empirical',
-          phonetic: '/ɪmˈpɪr.ɪ.kəl/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Dựa trên thực nghiệm và quan sát thực tế',
-          exampleSentence: 'The researchers provided strong empirical evidence to support their theory.',
-          exampleMeaning: 'Các nhà nghiên cứu đã cung cấp bằng chứng thực nghiệm vững chắc cho học thuyết.',
-        },
-        {
-          word: 'Foster',
-          phonetic: '/ˈfɒs.tər/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Nuôi dưỡng, thúc đẩy phát triển (kỹ năng/sáng tạo)',
-          exampleSentence: 'Collaborative projects help foster creativity and teamwork among students.',
-          exampleMeaning: 'Các dự án nhóm giúp nuôi dưỡng sự sáng tạo và tinh thần đồng đội ở học sinh.',
-        },
-        {
-          word: 'Literacy',
-          phonetic: '/ˈlɪt.ər.ə.si/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Trình độ đọc viết, sự am hiểu (ví dụ: digital literacy)',
-          exampleSentence: 'Digital literacy has become an indispensable skill in higher education.',
-          exampleMeaning: 'Năng lực số đã trở thành kỹ năng không thể thiếu trong giáo dục đại học.',
-        },
-      ],
-      'ielts-environment-and-climate': [
-        {
-          word: 'Mitigate',
-          phonetic: '/ˈmɪt.ɪ.ɡeɪt/',
-          partOfSpeech: PartOfSpeech.VERB,
-          meaning: 'Giảm nhẹ, làm dịu bớt tác động tiêu cực',
-          exampleSentence: 'Governments must enact strict policies to mitigate the effects of global warming.',
-          exampleMeaning: 'Chính phủ cần ban hành chính sách nghiêm ngặt để giảm nhẹ tác động của sự nóng lên toàn cầu.',
-        },
-        {
-          word: 'Biodiversity',
-          phonetic: '/ˌbaɪ.əʊ.daɪˈvɜː.sə.ti/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Đa dạng sinh học',
-          exampleSentence: 'Deforestation poses a severe threat to tropical rainforest biodiversity.',
-          exampleMeaning: 'Nạn phá rừng gây ra mối đe dọa nghiêm trọng đối với đa dạng sinh học rừng nhiệt đới.',
-        },
-        {
-          word: 'Renewable',
-          phonetic: '/rɪˈnjuː.ə.bəl/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Có thể tái tạo (năng lượng mặt trời, gió)',
-          exampleSentence: 'Transitioning to renewable energy sources reduces carbon emissions dramatically.',
-          exampleMeaning: 'Chuyển đổi sang các nguồn năng lượng tái tạo giúp giảm mạnh lượng khí thải carbon.',
-        },
-        {
-          word: 'Depletion',
-          phonetic: '/dɪˈpliː.ʃən/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Sự cạn kiệt, suy giảm tài nguyên',
-          exampleSentence: 'Overconsumption is accelerating the rapid depletion of freshwater reserves.',
-          exampleMeaning: 'Tiêu thụ quá mức đang đẩy nhanh sự cạn kiệt nguồn nước ngọt dự trữ.',
-        },
-        {
-          word: 'Ecological',
-          phonetic: '/ˌiː.kəˈlɒdʒ.ɪ.kəl/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Thuộc về sinh thái học',
-          exampleSentence: 'Plastic waste causes long-lasting ecological damage to marine habitats.',
-          exampleMeaning: 'Rác thải nhựa gây ra tổn hại sinh thái lâu dài cho môi trường sống dưới biển.',
-        },
-      ],
-      'ielts-urbanization-and-society': [
-        {
-          word: 'Infrastructure',
-          phonetic: '/ˈɪn.frəˌstrʌk.tʃər/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Cơ sở hạ tầng (giao thông, điện, nước)',
-          exampleSentence: 'Rapid population growth puts immense strain on urban transport infrastructure.',
-          exampleMeaning: 'Tăng trưởng dân số nhanh gây áp lực lớn lên hạ tầng giao thông đô thị.',
-        },
-        {
-          word: 'Disparity',
-          phonetic: '/dɪˈspær.ə.ti/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Sự chênh lệch, bất bình đẳng (thu nhập, cơ hội)',
-          exampleSentence: 'Policies should aim to narrow the economic disparity between rural and urban areas.',
-          exampleMeaning: 'Các chính sách cần hướng tới thu hẹp khoảng cách kinh tế giữa nông thôn và thành thị.',
-        },
-        {
-          word: 'Congestion',
-          phonetic: '/kənˈdʒes.tʃən/',
-          partOfSpeech: PartOfSpeech.NOUN,
-          meaning: 'Sự tắc nghẽn, ùn tắc giao thông',
-          exampleSentence: 'Expanding metro networks is an effective remedy for severe traffic congestion.',
-          exampleMeaning: 'Mở rộng mạng lưới tàu điện ngầm là giải pháp hiệu quả cho tình trạng tắc nghẽn giao thông.',
-        },
-        {
-          word: 'Sustainable',
-          phonetic: '/səˈsteɪ.nə.bəl/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Bền vững, lâu dài',
-          exampleSentence: 'Architects are designing sustainable smart cities with abundant green spaces.',
-          exampleMeaning: 'Các kiến trúc sư đang thiết kế những thành phố thông minh bền vững với nhiều mảng xanh.',
-        },
-        {
-          word: 'Demographic',
-          phonetic: '/ˌdem.əˈɡræf.ɪk/',
-          partOfSpeech: PartOfSpeech.ADJECTIVE,
-          meaning: 'Thuộc về nhân khẩu học, cơ cấu dân số',
-          exampleSentence: 'Many developed nations are facing major demographic shifts due to aging populations.',
-          exampleMeaning: 'Nhiều quốc gia phát triển đang đối mặt với biến động nhân khẩu học lớn do già hóa dân số.',
+          meaning: 'Sự thuận tiện, tiện lợi',
+          exampleSentence: 'For your convenience, digital invoices are available in your account.',
+          exampleMeaning: 'Để thuận tiện cho bạn, hóa đơn điện tử luôn có sẵn trong tài khoản.',
         },
       ],
     };
 
     let insertedTotal = 0;
-    for (const [slug, words] of Object.entries(trackWordBank)) {
+    for (const [slug, words] of Object.entries(lessonWordBank)) {
       const topic = await this.topicModel.findOne({ slug }).exec();
       if (!topic) continue;
 
@@ -602,7 +392,7 @@ export class VocabularyService implements OnModuleInit {
     }
 
     if (insertedTotal > 0) {
-      this.logger.log(`🌱 Đã bổ sung ${insertedTotal} thẻ từ vựng mẫu cho các chuyên đề TOEIC & IELTS`);
+      this.logger.log(`🌱 Đã bổ sung ${insertedTotal} thẻ từ vựng mẫu cho các bài học lớp TOEIC 2`);
     }
   }
 

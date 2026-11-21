@@ -18,12 +18,16 @@ import {
   ChevronLeft,
   Edit2,
   FileJson,
-  GraduationCap,
+  HelpCircle,
+  Keyboard,
+  Layers,
   List,
   Plus,
   RotateCw,
   Search,
+  Settings,
   Sparkles,
+  Target,
   Trash2,
   Trophy,
   Upload,
@@ -35,15 +39,22 @@ import { speakText } from "../../../lib/speech";
 import { useAuth } from "../../../context/auth-context";
 import { useSound } from "../../../context/sound-context";
 import { fetchApi } from "../../../lib/api-client";
+import {
+  DEFAULT_STUDY_SETTINGS,
+  loadStudySettings,
+  saveStudySettings,
+  StudySessionSettings,
+} from "../../../lib/study-settings";
 
 interface Topic {
   _id: string;
   title: string;
   slug: string;
   description: string;
-  category?: "GENERAL" | "TOEIC" | "IELTS";
+  vocabClassId?: { _id: string; name: string; code: string } | string | null;
+  lessonNumber?: number;
+  tag?: string;
   level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
-  targetScore?: string;
   wordCount: number;
 }
 
@@ -130,7 +141,23 @@ function TopicDetailInner() {
   const [topic, setTopic] = useState<Topic | null>(null);
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [viewMode, setViewMode] = useState<"flashcard" | "list">("flashcard");
+  const [viewMode, setViewMode] = useState<"flashcard" | "quiz" | "typing" | "list">("flashcard");
+
+  // Study Session Settings (đồng bộ từ Lớp học)
+  const [studySettings, setStudySettings] =
+    useState<StudySessionSettings>(DEFAULT_STUDY_SETTINGS);
+  const [showStudySettingsModal, setShowStudySettingsModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    setStudySettings(loadStudySettings());
+  }, []);
+
+  const updateStudySettings = (patch: Partial<StudySessionSettings>) => {
+    playClickSound();
+    const next = { ...studySettings, ...patch };
+    setStudySettings(next);
+    saveStudySettings(next);
+  };
 
   // Flashcard states
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -139,6 +166,21 @@ function TopicDetailInner() {
   const [knownWords, setKnownWords] = useState<string[]>([]);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [rewardClaimed, setRewardClaimed] = useState<boolean>(false);
+
+  // Quiz ABCD states (Chế độ 2. Quiz ABCD)
+  const [quizIndex, setQuizIndex] = useState<number>(0);
+  const [quizSelectedOption, setQuizSelectedOption] = useState<string | null>(null);
+  const [quizScore, setQuizScore] = useState<number>(0);
+  const [quizFinished, setQuizFinished] = useState<boolean>(false);
+  const [quizSeed, setQuizSeed] = useState<number>(0);
+
+  // Typing states (Chế độ 3. Gõ Từ)
+  const [typingIndex, setTypingIndex] = useState<number>(0);
+  const [typingInput, setTypingInput] = useState<string>("");
+  const [typingStatus, setTypingStatus] = useState<"idle" | "correct" | "wrong">("idle");
+  const [typingScore, setTypingScore] = useState<number>(0);
+  const [typingFinished, setTypingFinished] = useState<boolean>(false);
+  const [typingShowHint, setTypingShowHint] = useState<boolean>(false);
 
   // List mode state
   const [listSearch, setListSearch] = useState<string>("");
@@ -248,11 +290,15 @@ function TopicDetailInner() {
     }
   }, [jsonInput]);
 
-  // Tự động chuyển mode tra cứu / soạn từ khi có query params (ví dụ: ?mode=list hoặc ?action=add)
+  // Tự động chuyển mode học / tra cứu / soạn từ khi có query params
   useEffect(() => {
     const mode = searchParams.get("mode");
     if (mode === "list") {
       setViewMode("list");
+    } else if (mode === "quiz") {
+      setViewMode("quiz");
+    } else if (mode === "typing") {
+      setViewMode("typing");
     } else if (mode === "flashcard") {
       setViewMode("flashcard");
     }
@@ -371,6 +417,164 @@ function TopicDetailInner() {
     playClickSound();
     setIsFlipped((prev) => !prev);
   }, [playClickSound]);
+
+  // Tự động phát âm khi chuyển thẻ Flashcard nếu bật Phát âm
+  useEffect(() => {
+    if (
+      viewMode === "flashcard" &&
+      !isCompleted &&
+      studySettings.autoAudio &&
+      studySettings.direction === "en-vi" &&
+      currentWord?.word
+    ) {
+      speakText(currentWord.word).catch(() => {});
+    }
+  }, [viewMode, isCompleted, studySettings.autoAudio, studySettings.direction, currentWord]);
+
+  // --- CHẾ ĐỘ 2: QUIZ ABCD TỰ ĐỘNG TỪ DANH SÁCH TỪ VỰNG ---
+  const quizQuestions = useMemo(() => {
+    if (vocabularies.length === 0) return [];
+    // Xáo trộn có kiểm soát theo quizSeed
+    const shuffled = [...vocabularies].sort((a, b) => {
+      const ha = (a._id + quizSeed).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const hb = (b._id + quizSeed).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      return (ha % 17) - (hb % 17);
+    });
+
+    return shuffled.map((item) => {
+      const isEnToVi = studySettings.direction === "en-vi";
+      const prompt = isEnToVi ? item.word : item.meaning;
+      const correct = isEnToVi ? item.meaning : item.word;
+
+      const distractors = vocabularies
+        .filter((v) => v._id !== item._id)
+        .map((v) => (isEnToVi ? v.meaning : v.word))
+        .filter((val, idx, arr) => val !== correct && arr.indexOf(val) === idx)
+        .slice(0, 3);
+
+      const options = [correct, ...distractors].sort((a, b) => {
+        const ha = (a + item._id + quizSeed).length + a.charCodeAt(0);
+        const hb = (b + item._id + quizSeed).length + b.charCodeAt(0);
+        return (ha % 11) - (hb % 11);
+      });
+
+      return {
+        vocab: item,
+        prompt,
+        phonetic: isEnToVi ? item.phonetic : "",
+        partOfSpeech: item.partOfSpeech,
+        correct,
+        options,
+      };
+    });
+  }, [vocabularies, studySettings.direction, quizSeed]);
+
+  const currentQuiz = quizQuestions[quizIndex];
+
+  const handleSelectQuizOption = (option: string) => {
+    if (!currentQuiz || quizSelectedOption !== null) return;
+    setQuizSelectedOption(option);
+    const isRight = option === currentQuiz.correct;
+    if (isRight) {
+      playSuccessSound();
+      setQuizScore((prev) => prev + 1);
+    } else {
+      playClickSound();
+    }
+
+    if (!studySettings.instantAnswer) {
+      setTimeout(() => {
+        if (quizIndex < quizQuestions.length - 1) {
+          setQuizIndex((prev) => prev + 1);
+          setQuizSelectedOption(null);
+        } else {
+          setQuizFinished(true);
+        }
+      }, 280);
+    }
+  };
+
+  const handleNextQuiz = () => {
+    playClickSound();
+    if (quizIndex < quizQuestions.length - 1) {
+      setQuizIndex((prev) => prev + 1);
+      setQuizSelectedOption(null);
+    } else {
+      setQuizFinished(true);
+    }
+  };
+
+  const handleRestartQuiz = () => {
+    playClickSound();
+    setQuizIndex(0);
+    setQuizSelectedOption(null);
+    setQuizScore(0);
+    setQuizFinished(false);
+    setQuizSeed((s) => s + 1);
+  };
+
+  // --- CHẾ ĐỘ 3: GÕ TỪ (TYPING PRACTICE) ---
+  const currentTypingWord = vocabularies[typingIndex];
+
+  const handleCheckTyping = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!currentTypingWord || typingStatus !== "idle") return;
+
+    const target =
+      studySettings.direction === "en-vi"
+        ? currentTypingWord.word.trim().toLowerCase()
+        : currentTypingWord.meaning.trim().toLowerCase();
+    const answer = typingInput.trim().toLowerCase();
+    if (!answer) return;
+
+    const isRight = answer === target;
+    if (isRight) {
+      playSuccessSound();
+      setTypingStatus("correct");
+      setTypingScore((prev) => prev + 1);
+      if (studySettings.autoAudio) {
+        speakText(currentTypingWord.word).catch(() => {});
+      }
+    } else {
+      playClickSound();
+      setTypingStatus("wrong");
+    }
+
+    if (!studySettings.instantAnswer) {
+      setTimeout(() => {
+        if (typingIndex < vocabularies.length - 1) {
+          setTypingIndex((prev) => prev + 1);
+          setTypingInput("");
+          setTypingStatus("idle");
+          setTypingShowHint(false);
+        } else {
+          setTypingFinished(true);
+        }
+      }, 280);
+    }
+  };
+
+  const handleNextTyping = () => {
+    playClickSound();
+    if (typingIndex < vocabularies.length - 1) {
+      setTypingIndex((prev) => prev + 1);
+      setTypingInput("");
+      setTypingStatus("idle");
+      setTypingShowHint(false);
+    } else {
+      setTypingFinished(true);
+    }
+  };
+
+  const handleRestartTyping = () => {
+    playClickSound();
+    setTypingIndex(0);
+    setTypingInput("");
+    setTypingStatus("idle");
+    setTypingScore(0);
+    setTypingFinished(false);
+    setTypingShowHint(false);
+  };
 
   const handleMarkKnown = useCallback(
     async (id: string) => {
@@ -710,50 +914,105 @@ function TopicDetailInner() {
       ? Math.round(((currentIndex + 1) / vocabularies.length) * 100)
       : 0;
 
+  const parentClassId =
+    topic.vocabClassId && typeof topic.vocabClassId === "object"
+      ? topic.vocabClassId._id
+      : typeof topic.vocabClassId === "string"
+      ? topic.vocabClassId
+      : null;
+  const parentClassName =
+    topic.vocabClassId && typeof topic.vocabClassId === "object"
+      ? topic.vocabClassId.name
+      : null;
+  const backHref = parentClassId ? `/topics/classes/${parentClassId}` : "/topics";
+  const backLabel = parentClassName ? `Quay lại lớp ${parentClassName}` : "Quay lại danh sách lớp";
+
   return (
     <AppLayout>
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 w-full flex flex-col gap-6">
         {/* Breadcrumb & Navigation Back */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/topics"
+            href={backHref}
             onClick={() => playClickSound()}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-2xs transition"
           >
-            <ChevronLeft className="size-4" /> Danh mục chủ đề
+            <ChevronLeft className="size-4" /> {backLabel}
           </Link>
 
-          {/* Action Row: Mode Switcher & Teacher Authoring Button */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Action Row: 4-Mode Switcher + Study Settings + Teacher Add Button */}
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Mode Switcher */}
-            <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="flex flex-wrap items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs gap-1">
               <button
                 onClick={() => {
                   playClickSound();
                   setViewMode("flashcard");
                 }}
-                className={`h-9 px-3.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`h-9 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   viewMode === "flashcard"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
-                <BookOpen className="size-3.5" /> Thẻ Flashcard 3D
+                <Layers className="size-3.5" /> 1. Học Từ
+              </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setViewMode("quiz");
+                }}
+                className={`h-9 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === "quiz"
+                    ? "bg-emerald-500 text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <Target className="size-3.5" /> 2. Quiz ABCD
+              </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setViewMode("typing");
+                }}
+                className={`h-9 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === "typing"
+                    ? "bg-rose-500 text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <Keyboard className="size-3.5" /> 3. Gõ Từ
               </button>
               <button
                 onClick={() => {
                   playClickSound();
                   setViewMode("list");
                 }}
-                className={`h-9 px-3.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`h-9 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   viewMode === "list"
-                    ? "bg-emerald-600 text-white shadow-xs"
+                    ? "bg-slate-800 dark:bg-slate-700 text-white shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
-                <List className="size-3.5" /> Danh sách từ ({vocabularies.length})
+                <List className="size-3.5" /> Danh sách ({vocabularies.length})
               </button>
             </div>
+
+            {/* Study Settings Button */}
+            <button
+              type="button"
+              onClick={() => {
+                playClickSound();
+                setShowStudySettingsModal(true);
+              }}
+              className="h-10 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 shadow-2xs hover:border-emerald-500 transition cursor-pointer"
+              title="Cài đặt phiên học"
+            >
+              <Settings className="size-3.5 text-emerald-600" />
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300">
+                {studySettings.direction === "en-vi" ? "ANH → VIỆT" : "VIỆT → ANH"}
+              </span>
+            </button>
 
             {/* Teacher / Admin: Nút Thêm Từ Vựng Mới */}
             {isTeacherOrAdmin && (
@@ -778,42 +1037,30 @@ function TopicDetailInner() {
             </div>
             <button
               onClick={() => setAuthoringSuccess(null)}
-              className="text-emerald-700 hover:text-emerald-900 dark:hover:text-white"
+              className="text-emerald-700 hover:text-emerald-900 dark:hover:text-white cursor-pointer"
             >
               <X className="size-4" />
             </button>
           </div>
         )}
 
-        {/* Topic Header Summary */}
+        {/* Lesson Header Summary */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border uppercase ${
-                  topic.category === "TOEIC"
-                    ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700"
-                    : topic.category === "IELTS"
-                    ? "bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700"
-                    : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                }`}
-              >
-                <GraduationCap className="size-3" />{" "}
-                {topic.category === "TOEIC"
-                  ? topic.targetScore
-                    ? `TOEIC ${topic.targetScore}`
-                    : "TOEIC"
-                  : topic.category === "IELTS"
-                  ? topic.targetScore
-                    ? `IELTS ${topic.targetScore}`
-                    : "IELTS"
-                  : `CEFR ${topic.level}`}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                Bài {topic.lessonNumber || 1}
               </span>
+              {topic.tag && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {topic.tag}
+                </span>
+              )}
               <h1 className="text-xl sm:text-2xl font-extrabold">{topic.title}</h1>
             </div>
-            <p className="text-xs text-slate-500 max-w-xl">
-              {topic.description}
-            </p>
+            {topic.description && (
+              <p className="text-xs text-slate-500 max-w-xl">{topic.description}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-4 text-xs font-semibold self-stretch sm:self-auto justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800">
@@ -939,11 +1186,13 @@ function TopicDetailInner() {
                       isFlipped ? "rotate-y-180" : ""
                     }`}
                   >
-                    {/* FRONT SIDE: WORD + IPA + AUDIO */}
+                    {/* FRONT SIDE (respects ANH->VIỆT or VIỆT->ANH) */}
                     <div className="absolute inset-0 w-full h-full rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-xl p-8 flex flex-col justify-between items-center text-center backface-hidden">
                       <div className="w-full flex items-center justify-between text-xs font-semibold text-slate-400">
                         <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] uppercase font-bold tracking-wider">
-                          Mặt trước: Từ vựng
+                          {studySettings.direction === "en-vi"
+                            ? "Mặt trước: Tiếng Anh"
+                            : "Mặt trước: Tiếng Việt"}
                         </span>
                         <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 text-[10px] font-bold uppercase">
                           {currentWord?.partOfSpeech || "noun"}
@@ -952,44 +1201,52 @@ function TopicDetailInner() {
 
                       <div className="flex flex-col items-center gap-3">
                         <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-xs">
-                          {currentWord?.word}
+                          {studySettings.direction === "en-vi"
+                            ? currentWord?.word
+                            : currentWord?.meaning}
                         </h2>
 
-                        {currentWord?.phonetic && (
+                        {studySettings.direction === "en-vi" && currentWord?.phonetic && (
                           <span className="text-base sm:text-lg font-mono text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide">
                             {currentWord.phonetic}
                           </span>
                         )}
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (currentWord) handlePronounce(currentWord.word);
-                          }}
-                          disabled={isSpeaking}
-                          className="mt-2 size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500 transition-all flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
-                          title="Bấm để nghe phát âm giọng chuẩn"
-                        >
-                          <Volume2
-                            className={`size-6 ${
-                              isSpeaking ? "animate-bounce text-emerald-400" : ""
-                            }`}
-                          />
-                        </button>
+                        {studySettings.direction === "en-vi" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (currentWord) handlePronounce(currentWord.word);
+                            }}
+                            disabled={isSpeaking}
+                            className="mt-2 size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-500 transition-all flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
+                            title="Bấm để nghe phát âm giọng chuẩn"
+                          >
+                            <Volume2
+                              className={`size-6 ${
+                                isSpeaking ? "animate-bounce text-emerald-400" : ""
+                              }`}
+                            />
+                          </button>
+                        )}
                       </div>
 
                       <div className="w-full flex items-center justify-center gap-1 text-[11px] text-slate-400">
                         <RotateCw className="size-3" />
-                        <span>Chạm để lật xem định nghĩa tiếng Việt</span>
+                        <span>
+                          {studySettings.direction === "en-vi"
+                            ? "Chạm để lật xem nghĩa tiếng Việt"
+                            : "Chạm để lật xem từ tiếng Anh & phát âm"}
+                        </span>
                       </div>
                     </div>
 
-                    {/* BACK SIDE: MEANING + EXAMPLE */}
+                    {/* BACK SIDE */}
                     <div className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl p-8 flex flex-col justify-between items-center text-center rotate-y-180 backface-hidden">
                       <div className="w-full flex items-center justify-between text-xs font-semibold text-emerald-100">
                         <span className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur text-[10px] uppercase font-bold tracking-wider">
-                          Mặt sau: Định nghĩa & Ví dụ
+                          Mặt sau: Đáp án &amp; Ví dụ
                         </span>
                         <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur text-[10px] font-bold uppercase">
                           {currentWord?.partOfSpeech}
@@ -998,11 +1255,20 @@ function TopicDetailInner() {
 
                       <div className="flex flex-col items-center gap-3 max-w-md">
                         <span className="text-xs text-emerald-200 uppercase font-bold tracking-wider">
-                          Ý nghĩa tiếng Việt
+                          {studySettings.direction === "en-vi"
+                            ? "Ý nghĩa tiếng Việt"
+                            : "Từ vựng tiếng Anh"}
                         </span>
                         <h3 className="text-2xl sm:text-3xl font-black drop-shadow-sm leading-snug">
-                          {currentWord?.meaning}
+                          {studySettings.direction === "en-vi"
+                            ? currentWord?.meaning
+                            : currentWord?.word}
                         </h3>
+                        {studySettings.direction === "vi-en" && currentWord?.phonetic && (
+                          <span className="text-sm font-mono text-emerald-100">
+                            {currentWord.phonetic}
+                          </span>
+                        )}
 
                         {currentWord?.exampleSentence && (
                           <div className="mt-2 p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-xs sm:text-sm text-emerald-50 flex flex-col gap-1 text-left w-full">
@@ -1088,7 +1354,328 @@ function TopicDetailInner() {
           </div>
         )}
 
-        {/* VIEW MODE 2: VOCABULARY LIST TABLE */}
+        {/* VIEW MODE 2: QUIZ ABCD */}
+        {viewMode === "quiz" && (
+          <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
+            {vocabularies.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-8 w-full flex flex-col items-center gap-3">
+                <Target className="size-12 text-slate-300 dark:text-slate-700" />
+                <p className="text-sm font-semibold text-slate-500">
+                  Bài học này chưa có từ vựng để tạo Quiz ABCD.
+                </p>
+                {isTeacherOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={openAddModal}
+                    className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="size-4" /> Thêm từ vựng ngay
+                  </button>
+                )}
+              </div>
+            ) : quizFinished ? (
+              <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center shadow-lg flex flex-col items-center gap-5">
+                <div className="size-20 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
+                  <Trophy className="size-10" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-extrabold">Hoàn thành Quiz ABCD!</h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Bạn đã trả lời đúng{" "}
+                    <strong className="text-emerald-600">
+                      {quizScore}/{quizQuestions.length}
+                    </strong>{" "}
+                    câu hỏi ({Math.round((quizScore / quizQuestions.length) * 100)}%).
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleRestartQuiz}
+                    className="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer"
+                  >
+                    Làm lại Quiz ABCD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClickSound();
+                      setViewMode("typing");
+                    }}
+                    className="h-11 px-6 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold cursor-pointer"
+                  >
+                    Chuyển sang 3. Gõ Từ
+                  </button>
+                </div>
+              </div>
+            ) : currentQuiz ? (
+              <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-md flex flex-col gap-5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                  <span>
+                    Câu {quizIndex + 1} / {quizQuestions.length}
+                  </span>
+                  <span className="text-emerald-600">Điểm: {quizScore}</span>
+                </div>
+
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-full transition-all duration-300"
+                    style={{
+                      width: `${Math.round(((quizIndex + 1) / quizQuestions.length) * 100)}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="py-4 text-center flex flex-col items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 text-[10px] font-bold uppercase">
+                    {currentQuiz.partOfSpeech}
+                  </span>
+                  <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white">
+                    {currentQuiz.prompt}
+                  </h2>
+                  {currentQuiz.phonetic && (
+                    <span className="text-sm font-mono text-emerald-600">
+                      {currentQuiz.phonetic}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handlePronounce(currentQuiz.vocab.word)}
+                    className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+                  >
+                    <Volume2 className="size-3.5 text-emerald-600" /> Nghe phát âm
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {currentQuiz.options.map((opt, idx) => {
+                    const letter = String.fromCharCode(65 + idx);
+                    const isPicked = quizSelectedOption === opt;
+                    const isCorrect = opt === currentQuiz.correct;
+                    const showFeedback = studySettings.instantAnswer && quizSelectedOption !== null;
+
+                    let btnStyle =
+                      "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-800 dark:text-slate-200";
+                    if (showFeedback) {
+                      if (isCorrect) {
+                        btnStyle =
+                          "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/20";
+                      } else if (isPicked && !isCorrect) {
+                        btnStyle =
+                          "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300";
+                      }
+                    } else if (isPicked) {
+                      btnStyle = "bg-emerald-600 border-emerald-600 text-white";
+                    }
+
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        disabled={quizSelectedOption !== null}
+                        onClick={() => handleSelectQuizOption(opt)}
+                        className={`min-h-[48px] px-4 py-3 rounded-2xl border text-left text-xs sm:text-sm font-bold flex items-center gap-3 transition cursor-pointer ${btnStyle}`}
+                      >
+                        <span className="size-7 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-700 flex items-center justify-center text-xs font-black shrink-0 text-slate-700 dark:text-slate-200">
+                          {letter}
+                        </span>
+                        <span className="flex-1">{opt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {studySettings.instantAnswer && quizSelectedOption !== null && (
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={handleNextQuiz}
+                      className="h-10.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>
+                        {quizIndex < quizQuestions.length - 1 ? "Câu tiếp theo" : "Xem kết quả"}
+                      </span>
+                      <ArrowRight className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* VIEW MODE 3: GÕ TỪ (TYPING PRACTICE) */}
+        {viewMode === "typing" && (
+          <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
+            {vocabularies.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-8 w-full flex flex-col items-center gap-3">
+                <Keyboard className="size-12 text-slate-300 dark:text-slate-700" />
+                <p className="text-sm font-semibold text-slate-500">
+                  Bài học này chưa có từ vựng để luyện Gõ Từ.
+                </p>
+              </div>
+            ) : typingFinished ? (
+              <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center shadow-lg flex flex-col items-center gap-5">
+                <div className="size-20 rounded-3xl bg-rose-100 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center">
+                  <Trophy className="size-10" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-extrabold">Hoàn thành Luyện Gõ Từ!</h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Bạn gõ chính xác{" "}
+                    <strong className="text-emerald-600">
+                      {typingScore}/{vocabularies.length}
+                    </strong>{" "}
+                    từ vựng ({Math.round((typingScore / vocabularies.length) * 100)}%).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestartTyping}
+                  className="h-11 px-6 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                >
+                  Luyện gõ lại từ đầu
+                </button>
+              </div>
+            ) : currentTypingWord ? (
+              <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-md flex flex-col gap-5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                  <span>
+                    Từ {typingIndex + 1} / {vocabularies.length}
+                  </span>
+                  <span className="text-emerald-600">Chính xác: {typingScore}</span>
+                </div>
+
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-rose-500 h-full transition-all duration-300"
+                    style={{
+                      width: `${Math.round(((typingIndex + 1) / vocabularies.length) * 100)}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="py-3 text-center flex flex-col items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 text-[10px] font-bold uppercase">
+                    {currentTypingWord.partOfSpeech}
+                  </span>
+                  <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
+                    {studySettings.direction === "en-vi"
+                      ? currentTypingWord.meaning
+                      : currentTypingWord.word}
+                  </h2>
+                  {currentTypingWord.exampleMeaning && studySettings.direction === "en-vi" && (
+                    <p className="text-xs text-slate-500 italic max-w-md">
+                      &quot;{currentTypingWord.exampleMeaning}&quot;
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => handlePronounce(currentTypingWord.word)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+                    >
+                      <Volume2 className="size-3.5 text-emerald-600" /> Nghe phát âm
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        setTypingShowHint(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-xs font-bold cursor-pointer"
+                    >
+                      <HelpCircle className="size-3.5" /> Gợi ý
+                    </button>
+                  </div>
+
+                  {typingShowHint && (
+                    <span className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold">
+                      Gợi ý:{" "}
+                      {studySettings.direction === "en-vi"
+                        ? `${currentTypingWord.word[0]}${"_".repeat(
+                            Math.max(1, currentTypingWord.word.length - 1)
+                          )} (${currentTypingWord.word.length} ký tự)`
+                        : `${currentTypingWord.meaning.slice(0, 6)}...`}
+                    </span>
+                  )}
+                </div>
+
+                <form onSubmit={handleCheckTyping} className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    autoFocus
+                    disabled={typingStatus !== "idle"}
+                    placeholder={
+                      studySettings.direction === "en-vi"
+                        ? "Nhập từ tiếng Anh chính xác..."
+                        : "Nhập nghĩa tiếng Việt..."
+                    }
+                    value={typingInput}
+                    onChange={(e) => setTypingInput(e.target.value)}
+                    className={`h-12 px-4 rounded-2xl border text-sm font-bold focus:outline-none transition ${
+                      typingStatus === "correct"
+                        ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-200"
+                        : typingStatus === "wrong"
+                        ? "bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300"
+                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
+                    }`}
+                  />
+
+                  {studySettings.instantAnswer && typingStatus !== "idle" && (
+                    <div
+                      className={`p-3 rounded-xl text-xs font-bold flex items-center justify-between ${
+                        typingStatus === "correct"
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                          : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                      }`}
+                    >
+                      <span>
+                        {typingStatus === "correct"
+                          ? "Chính xác tuyệt đối!"
+                          : `Chưa đúng! Đáp án: ${
+                              studySettings.direction === "en-vi"
+                                ? currentTypingWord.word
+                                : currentTypingWord.meaning
+                            }`}
+                      </span>
+                      {currentTypingWord.phonetic && (
+                        <span className="font-mono">{currentTypingWord.phonetic}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    {typingStatus === "idle" ? (
+                      <button
+                        type="submit"
+                        disabled={!typingInput.trim()}
+                        className="h-10.5 px-6 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white text-xs font-bold cursor-pointer transition"
+                      >
+                        Kiểm tra đáp án
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleNextTyping}
+                        className="h-10.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>
+                          {typingIndex < vocabularies.length - 1 ? "Từ tiếp theo" : "Xem kết quả"}
+                        </span>
+                        <ArrowRight className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* VIEW MODE 4: VOCABULARY LIST TABLE */}
         {viewMode === "list" && (
           <div className="flex flex-col gap-4">
             {/* Search within topic (Clean & Dedicated Search Bar) */}
@@ -1262,8 +1849,8 @@ function TopicDetailInner() {
                       Thêm Từ Vựng Mới
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Chủ đề: <span className="font-semibold text-emerald-600">{topic.title}</span>{" "}
-                      ({topic.category === "TOEIC" ? `TOEIC ${topic.targetScore || ""}` : topic.category === "IELTS" ? `IELTS ${topic.targetScore || ""}` : topic.level})
+                      Bài {topic.lessonNumber || 1}:{" "}
+                      <span className="font-semibold text-emerald-600">{topic.title}</span>
                     </p>
                   </div>
                 </div>
@@ -1691,6 +2278,105 @@ function TopicDetailInner() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: CÀI ĐẶT PHIÊN HỌC */}
+        {showStudySettingsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 flex flex-col gap-5">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 flex items-center justify-center">
+                    <Settings className="size-4.5" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    Cài Đặt Phiên Học
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowStudySettingsModal(false)}
+                  className="size-8 rounded-full text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Chiều học từ vựng (Mặt trước → Mặt sau)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateStudySettings({ direction: "en-vi" })}
+                    className={`h-11 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                      studySettings.direction === "en-vi"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                    }`}
+                  >
+                    ANH → VIỆT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateStudySettings({ direction: "vi-en" })}
+                    className={`h-11 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                      studySettings.direction === "vi-en"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                    }`}
+                  >
+                    VIỆT → ANH
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 cursor-pointer">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-white">
+                      Đáp án tức thì
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Hiện kết quả đúng/sai ngay khi chọn đáp án Quiz hoặc Gõ từ
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={studySettings.instantAnswer}
+                    onChange={(e) => updateStudySettings({ instantAnswer: e.target.checked })}
+                    className="size-4 accent-emerald-600 cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 cursor-pointer">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-white">
+                      Tự động phát âm tiếng Anh
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Tự đọc phát âm từ vựng khi chuyển thẻ mới
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={studySettings.autoAudio}
+                    onChange={(e) => updateStudySettings({ autoAudio: e.target.checked })}
+                    className="size-4 accent-emerald-600 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowStudySettingsModal(false)}
+                className="h-10.5 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
+              >
+                Xong
+              </button>
             </div>
           </div>
         )}
