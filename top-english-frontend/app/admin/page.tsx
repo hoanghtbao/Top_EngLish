@@ -206,11 +206,16 @@ export default function AdminDashboardPage() {
   const [expandedBannerKey, setExpandedBannerKey] = useState<string | null>(
     "topics",
   );
+  const [previewTarget, setPreviewTarget] = useState<"homepage" | "section">(
+    "homepage",
+  );
 
   const updateSectionBannerConfig = (
     sectionKey: string,
     patch: Partial<PageBannerConfig>,
   ) => {
+    setExpandedBannerKey(sectionKey);
+    setPreviewTarget("section");
     setPageBannerBackgrounds((prev) => {
       const current = normalizeBannerConfig(prev[sectionKey]);
       return {
@@ -503,6 +508,7 @@ export default function AdminDashboardPage() {
         };
         setPageBannerBackgrounds(nextMap);
         setExpandedBannerKey(sectionKey);
+        setPreviewTarget("section");
 
         await fetchApi("/admin/settings/homepage", {
           method: "PATCH",
@@ -2049,9 +2055,14 @@ export default function AdminDashboardPage() {
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      setExpandedBannerKey(isExpanded ? null : sec.key)
-                                    }
+                                    onClick={() => {
+                                      if (isExpanded) {
+                                        setExpandedBannerKey(null);
+                                      } else {
+                                        setExpandedBannerKey(sec.key);
+                                        setPreviewTarget("section");
+                                      }
+                                    }}
                                     className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
                                       isExpanded
                                         ? "bg-emerald-600 text-white border-emerald-600"
@@ -2077,60 +2088,9 @@ export default function AdminDashboardPage() {
                             </div>
                           </div>
 
-                          {/* Expandable Live Preview + Tuning Controls when URL is set */}
+                          {/* Expandable Tuning Controls when URL is set (Live Preview stays sticky on the right!) */}
                           {currentUrl && isExpanded && (
-                            <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-col gap-3.5">
-                              {/* Full Banner Simulator Preview */}
-                              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-4 sm:p-5 border border-slate-200 dark:border-slate-700">
-                                <BannerBackgroundLayer
-                                  overrideConfig={{
-                                    ...cfg,
-                                    url: getFullImageUrl(cfg.url),
-                                  }}
-                                />
-                                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                  <div className="flex flex-col gap-1">
-                                    <span
-                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
-                                        isDarkPreviewText
-                                          ? "bg-white/85 border-emerald-200 text-emerald-800"
-                                          : "bg-white/15 border-white/25 text-white"
-                                      }`}
-                                    >
-                                      Xem trước trực tiếp • {sec.label}
-                                    </span>
-                                    <div
-                                      className={`text-lg font-black ${
-                                        isDarkPreviewText
-                                          ? "text-emerald-950"
-                                          : "text-white"
-                                      }`}
-                                    >
-                                      {sec.label}
-                                    </div>
-                                    <div
-                                      className={`text-[11px] ${
-                                        isDarkPreviewText
-                                          ? "text-slate-800 font-semibold"
-                                          : "text-emerald-50/95"
-                                      }`}
-                                    >
-                                      Ví dụ dòng mô tả hiển thị trên banner chuyên mục này.
-                                    </div>
-                                  </div>
-
-                                  <span
-                                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold shrink-0 w-fit shadow-xs ${
-                                      isDarkPreviewText
-                                        ? "bg-emerald-600 text-white"
-                                        : "bg-white text-emerald-800"
-                                    }`}
-                                  >
-                                    + Nút hành động
-                                  </span>
-                                </div>
-                              </div>
-
+                            <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-col gap-3">
                               {/* 1-Click Presets for Bright Illustration vs Dark Photo */}
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[11px] font-bold text-slate-500">
@@ -2399,14 +2359,204 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Simulator Canvas Frame */}
-                  <div
-                    className={`relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 transition-colors ${
-                      previewTheme === "dark"
-                        ? "bg-slate-950 text-white"
-                        : "bg-white text-slate-900"
-                    }`}
-                  >
+                  {/* Preview Target Switcher: Homepage Hero vs Section Banner */}
+                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTarget("homepage")}
+                      className={`h-8 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        previewTarget === "homepage"
+                          ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      Trang Chủ (Mục 1–5)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTarget("section")}
+                      className={`h-8 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        previewTarget === "section"
+                          ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      Banner Chuyên Mục (Mục 6)
+                    </button>
+                  </div>
+
+                  {previewTarget === "section" ? (
+                    (() => {
+                      const activeSec =
+                        BANNER_SECTION_ITEMS.find(
+                          (s) => s.key === expandedBannerKey,
+                        ) || BANNER_SECTION_ITEMS[0];
+                      const activeCfg = normalizeBannerConfig(
+                        pageBannerBackgrounds[activeSec.key],
+                      );
+                      const hasImg = Boolean(activeCfg.url);
+                      const isDarkTxt =
+                        hasImg && activeCfg.textColor === "dark";
+
+                      return (
+                        <div className="flex flex-col gap-3">
+                          {/* Quick Section Picker */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-slate-500">
+                              Đang xem trước:
+                            </span>
+                            <select
+                              value={activeSec.key}
+                              onChange={(e) =>
+                                setExpandedBannerKey(e.target.value)
+                              }
+                              className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                            >
+                              {BANNER_SECTION_ITEMS.map((item) => (
+                                <option key={item.key} value={item.key}>
+                                  {item.label} ({item.route})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Simulated Page Frame */}
+                          <div
+                            className={`rounded-2xl p-3.5 border border-slate-200/80 dark:border-slate-800 transition-colors ${
+                              previewTheme === "dark"
+                                ? "bg-slate-950"
+                                : "bg-slate-50"
+                            }`}
+                          >
+                            {/* Actual Banner Simulator */}
+                            <div
+                              className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 shadow-md ${
+                                isDarkTxt
+                                  ? "text-slate-900 border border-emerald-200/80"
+                                  : "text-white"
+                              }`}
+                            >
+                              {hasImg ? (
+                                <BannerBackgroundLayer
+                                  overrideConfig={{
+                                    ...activeCfg,
+                                    url: getFullImageUrl(activeCfg.url),
+                                  }}
+                                />
+                              ) : (
+                                <BannerBackgroundLayer />
+                              )}
+
+                              <div className="relative z-10 flex flex-col gap-3">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
+                                    isDarkTxt
+                                      ? "bg-white/85 border-emerald-200 text-emerald-800"
+                                      : "bg-white/15 border-white/25 text-white"
+                                  }`}
+                                >
+                                  <Sparkles className="size-3" />
+                                  {activeSec.label}
+                                </span>
+
+                                <div>
+                                  <h4
+                                    className={`text-lg font-black tracking-tight ${
+                                      isDarkTxt
+                                        ? "text-emerald-950"
+                                        : "text-white"
+                                    }`}
+                                  >
+                                    {activeSec.label}
+                                  </h4>
+                                  <p
+                                    className={`text-[11px] mt-0.5 leading-relaxed ${
+                                      isDarkTxt
+                                        ? "text-slate-800 font-semibold"
+                                        : "text-emerald-50/95"
+                                    }`}
+                                  >
+                                    Mô tả chuyên mục và lộ trình học tập hiển thị trên phần đầu trang {activeSec.route}.
+                                  </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <div
+                                      className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
+                                        isDarkTxt
+                                          ? "bg-white/85 border-emerald-200 text-emerald-900"
+                                          : "bg-black/25 border-white/20 text-white"
+                                      }`}
+                                    >
+                                      Số liệu • 12
+                                    </div>
+                                    <div
+                                      className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
+                                        isDarkTxt
+                                          ? "bg-white/85 border-emerald-200 text-emerald-900"
+                                          : "bg-black/25 border-white/20 text-white"
+                                      }`}
+                                    >
+                                      Tổng • 240
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold shadow-xs ${
+                                      isDarkTxt
+                                        ? "bg-emerald-600 text-white"
+                                        : "bg-white text-emerald-800"
+                                    }`}
+                                  >
+                                    + Hành động chính
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Mock cards grid underneath so Admin sees balance */}
+                            <div className="grid grid-cols-3 gap-2 mt-3">
+                              {[1, 2, 3].map((k) => (
+                                <div
+                                  key={k}
+                                  className={`h-14 rounded-xl border ${
+                                    previewTheme === "dark"
+                                      ? "bg-slate-900 border-slate-800"
+                                      : "bg-white border-slate-200/80"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                            <span>
+                              Zoom: <strong>{activeCfg.zoom}%</strong> • Phủ:{" "}
+                              <strong>
+                                {activeCfg.overlayMode === "none"
+                                  ? "Trong suốt"
+                                  : `${activeCfg.overlayMode === "dark" ? "Tối" : "Sáng"} ${Math.round(
+                                      activeCfg.overlayOpacity * 100,
+                                    )}%`}
+                              </strong>
+                            </span>
+                            <span>
+                              Chữ: <strong>{isDarkTxt ? "Tối đậm" : "Trắng"}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    /* Simulator Canvas Frame */
+                    <div
+                      className={`relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 transition-colors ${
+                        previewTheme === "dark"
+                          ? "bg-slate-950 text-white"
+                          : "bg-white text-slate-900"
+                      }`}
+                    >
                     {/* Simulated Background Image */}
                     {isHeroBgEnabled && heroBgUrl ? (
                       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -2506,6 +2656,7 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Simulator Footer note */}
                   <div className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
