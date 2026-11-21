@@ -2756,7 +2756,7 @@ export default function AdminDashboardPage() {
                                 transform: `scale(${sectionPreviewScale})`,
                                 transformOrigin: "top left",
                               }}
-                              className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-9 shadow-md ${
+                              className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-[33px] shadow-md ${
                                 hasImg
                                   ? "touch-none select-none cursor-grab active:cursor-grabbing"
                                   : ""
@@ -2931,7 +2931,7 @@ export default function AdminDashboardPage() {
                                 }}
                                 onPointerUp={() => setBannerDragState(null)}
                                 onPointerCancel={() => setBannerDragState(null)}
-                                className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-9 shadow-lg ${
+                                className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-[33px] shadow-lg ${
                                   hasImg
                                     ? "touch-none select-none cursor-grab active:cursor-grabbing"
                                     : ""

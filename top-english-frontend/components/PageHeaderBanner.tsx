@@ -198,7 +198,7 @@ export default function PageHeaderBanner({
   return (
     <section
       data-banner-tone={isDarkText ? "light" : "dark"}
-      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-16 lg:px-36 xl:px-44 py-7 sm:py-9 shadow-lg shadow-emerald-900/10 ${
+      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-16 lg:px-36 xl:px-44 py-6 sm:py-[33px] shadow-lg shadow-emerald-900/10 ${
         isDarkText ? "text-slate-900 border border-emerald-200/70" : "text-white"
       } ${className}`}
     >
