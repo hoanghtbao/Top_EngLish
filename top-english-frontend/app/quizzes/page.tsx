@@ -19,9 +19,11 @@ import {
   Clock,
   Filter,
   FolderOpen,
+  Globe2,
   GraduationCap,
   Layers,
   Loader2,
+  Lock,
   Search,
   Shuffle,
   Sparkles,
@@ -1096,20 +1098,23 @@ export default function QuizzesCatalogPage() {
         </section>
 
         {/* SECTION 2: MY CUSTOM QUIZZES & PUBLIC QUIZZES */}
-        <section className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 self-start">
+        <section className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 self-start">
               <button
                 type="button"
                 onClick={() => setListTab("custom")}
                 className={`h-10 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
                   listTab === "custom"
                     ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                 }`}
               >
-                <Shuffle className="size-3.5" />
+                <Lock className="size-3.5" />
                 <span>Đề Tự Luyện Của Tôi ({myCustomQuizzes.length})</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                  Riêng tư
+                </span>
               </button>
 
               <button
@@ -1117,14 +1122,37 @@ export default function QuizzesCatalogPage() {
                 onClick={() => setListTab("public")}
                 className={`h-10 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
                   listTab === "public"
-                    ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400"
+                    ? "bg-white dark:bg-slate-800 text-sky-700 dark:text-sky-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                 }`}
               >
-                <CheckSquare className="size-3.5" />
+                <Globe2 className="size-3.5" />
                 <span>Đề Chuẩn Hệ Thống ({quizzes.length})</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300">
+                  Công khai
+                </span>
               </button>
             </div>
+
+            {listTab === "custom" ? (
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200">
+                <Lock className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Riêng tư (Private — Chỉ mình bạn thấy):</strong> Danh sách đề tự luyện do
+                  chính bạn tạo từ các bài Flashcard/Ngữ pháp đã chọn. Tài khoản khác sẽ không nhìn
+                  thấy các đề này; bạn có thể bấm thi lại hoặc xóa bất cứ lúc nào.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/60 text-xs text-sky-900 dark:text-sky-200">
+                <Globe2 className="size-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Công khai (Public — Bài chung toàn hệ thống):</strong> Bộ đề chuẩn do hệ
+                  thống hoặc Giáo viên phát hành công khai để tất cả học viên cùng luyện tập và lưu
+                  lịch sử điểm.
+                </p>
+              </div>
+            )}
           </div>
 
           {listTab === "custom" ? (
