@@ -31,10 +31,12 @@ import { useAuth } from "../../../../context/auth-context";
 import { useSound } from "../../../../context/sound-context";
 import {
   DEFAULT_STUDY_SETTINGS,
+  getDirectionBadgeLabel,
   loadStudySettings,
   saveStudySettings,
   StudySessionSettings,
 } from "../../../../lib/study-settings";
+import { StudySettingsModal } from "../../../../components/StudySettingsModal";
 
 interface VocabClassInfo {
   _id: string;
@@ -337,7 +339,7 @@ function VocabClassDetailInner() {
                   <Settings className="size-4 text-emerald-600" />
                   <span>Cài Đặt Phiên Học</span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60">
-                    {studySettings.direction === "en-vi" ? "ANH → VIỆT" : "VIỆT → ANH"}
+                    {getDirectionBadgeLabel(studySettings.direction)}
                   </span>
                 </button>
               </div>
@@ -533,105 +535,12 @@ function VocabClassDetailInner() {
         )}
 
         {/* MODAL: CÀI ĐẶT PHIÊN HỌC */}
-        {showStudySettingsModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 flex flex-col gap-5">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 flex items-center justify-center">
-                    <Settings className="size-4.5" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                    Cài Đặt Phiên Học
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowStudySettingsModal(false)}
-                  className="size-8 rounded-full text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-
-              {/* Direction */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Chiều học từ vựng (Mặt trước → Mặt sau)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ direction: "en-vi" })}
-                    className={`h-11 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                      studySettings.direction === "en-vi"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    ANH → VIỆT
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ direction: "vi-en" })}
-                    className={`h-11 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                      studySettings.direction === "vi-en"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    VIỆT → ANH
-                  </button>
-                </div>
-              </div>
-
-              {/* Toggles */}
-              <div className="flex flex-col gap-3">
-                <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 cursor-pointer">
-                  <div>
-                    <div className="text-xs font-bold text-slate-800 dark:text-white">
-                      Đáp án tức thì
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Hiện kết quả đúng/sai ngay khi chọn đáp án Quiz hoặc Gõ từ
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={studySettings.instantAnswer}
-                    onChange={(e) => updateSettings({ instantAnswer: e.target.checked })}
-                    className="size-4 accent-emerald-600 cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 cursor-pointer">
-                  <div>
-                    <div className="text-xs font-bold text-slate-800 dark:text-white">
-                      Tự động phát âm tiếng Anh
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Tự đọc phát âm từ vựng khi chuyển thẻ hoặc câu hỏi mới
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={studySettings.autoAudio}
-                    onChange={(e) => updateSettings({ autoAudio: e.target.checked })}
-                    className="size-4 accent-emerald-600 cursor-pointer"
-                  />
-                </label>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowStudySettingsModal(false)}
-                className="h-10.5 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
-              >
-                Xong
-              </button>
-            </div>
-          </div>
-        )}
+        <StudySettingsModal
+          isOpen={showStudySettingsModal}
+          onClose={() => setShowStudySettingsModal(false)}
+          settings={studySettings}
+          onChange={updateSettings}
+        />
 
         {/* MODAL: TẠO BÀI HỌC MỚI TRONG LỚP */}
         {showCreateLessonModal && (

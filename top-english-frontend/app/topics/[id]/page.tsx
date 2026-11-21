@@ -7,7 +7,7 @@
 
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -41,10 +41,13 @@ import { useSound } from "../../../context/sound-context";
 import { fetchApi } from "../../../lib/api-client";
 import {
   DEFAULT_STUDY_SETTINGS,
+  getDirectionBadgeLabel,
   loadStudySettings,
   saveStudySettings,
+  StudyDirection,
   StudySessionSettings,
 } from "../../../lib/study-settings";
+import { StudySettingsModal } from "../../../components/StudySettingsModal";
 
 interface Topic {
   _id: string;
@@ -111,6 +114,13 @@ function normalizePartOfSpeech(raw?: string): string {
   return "noun";
 }
 
+function isWordEnToVi(direction: StudyDirection, seedKey: string): boolean {
+  if (direction === "en-vi") return true;
+  if (direction === "vi-en") return false;
+  const hash = seedKey.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return hash % 2 === 0;
+}
+
 function TopicDetailSkeleton() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex">
@@ -169,9 +179,10 @@ function TopicDetailInner() {
 
   // Quiz ABCD states (Chế độ 2. Quiz ABCD)
   const [quizIndex, setQuizIndex] = useState<number>(0);
-  const [quizSelectedOption, setQuizSelectedOption] = useState<string | null>(null);
-  const [quizScore, setQuizScore] = useState<number>(0);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [quizFinished, setQuizFinished] = useState<boolean>(false);
+  const quizTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [quizSeed, setQuizSeed] = useState<number>(0);
 
   // Typing states (Chế độ 3. Gõ Từ)
@@ -418,18 +429,23 @@ function TopicDetailInner() {
     setIsFlipped((prev) => !prev);
   }, [playClickSound]);
 
+  const isFlashcardEnToVi = useMemo(() => {
+    if (!currentWord) return true;
+    return isWordEnToVi(studySettings.direction, `fc-${currentWord._id}-${currentIndex}`);
+  }, [studySettings.direction, currentWord, currentIndex]);
+
   // Tự động phát âm khi chuyển thẻ Flashcard nếu bật Phát âm
   useEffect(() => {
     if (
       viewMode === "flashcard" &&
       !isCompleted &&
       studySettings.autoAudio &&
-      studySettings.direction === "en-vi" &&
+      isFlashcardEnToVi &&
       currentWord?.word
     ) {
       speakText(currentWord.word).catch(() => {});
     }
-  }, [viewMode, isCompleted, studySettings.autoAudio, studySettings.direction, currentWord]);
+  }, [viewMode, isCompleted, studySettings.autoAudio, isFlashcardEnToVi, currentWord]);
 
   // --- CHẾ ĐỘ 2: QUIZ ABCD TỰ ĐỘNG TỪ DANH SÁCH TỪ VỰNG ---
   const quizQuestions = useMemo(() => {
@@ -441,15 +457,17 @@ function TopicDetailInner() {
       return (ha % 17) - (hb % 17);
     });
 
-    return shuffled.map((item) => {
-      const isEnToVi = studySettings.direction === "en-vi";
-      const prompt = isEnToVi ? item.word : item.meaning;
+    return shuffled.map((item, idx) => {
+      const isEnToVi = isWordEnToVi(studySettings.direction, `quiz-${item._id}-${quizSeed}-${idx}`);
+      const prompt = isEnToVi
+        ? item.word
+        : `Từ nào sau đây mang nghĩa "${item.meaning}"?`;
       const correct = isEnToVi ? item.meaning : item.word;
 
       const distractors = vocabularies
         .filter((v) => v._id !== item._id)
         .map((v) => (isEnToVi ? v.meaning : v.word))
-        .filter((val, idx, arr) => val !== correct && arr.indexOf(val) === idx)
+        .filter((val, idx2, arr) => val !== correct && arr.indexOf(val) === idx2)
         .slice(0, 3);
 
       const options = [correct, ...distractors].sort((a, b) => {
@@ -460,8 +478,9 @@ function TopicDetailInner() {
 
       return {
         vocab: item,
+        isEnToVi,
         prompt,
-        phonetic: isEnToVi ? item.phonetic : "",
+        phonetic: item.phonetic || "",
         partOfSpeech: item.partOfSpeech,
         correct,
         options,
@@ -470,60 +489,126 @@ function TopicDetailInner() {
   }, [vocabularies, studySettings.direction, quizSeed]);
 
   const currentQuiz = quizQuestions[quizIndex];
+  const quizSelectedOption = quizAnswers[quizIndex] ?? null;
+  const quizScore = useMemo(
+    () =>
+      Object.entries(quizAnswers).filter(
+        ([idx, ans]) => quizQuestions[Number(idx)]?.correct === ans
+      ).length,
+    [quizAnswers, quizQuestions]
+  );
+
+  const clearQuizTimer = useCallback(() => {
+    if (quizTimerRef.current) {
+      clearTimeout(quizTimerRef.current);
+      quizTimerRef.current = null;
+    }
+  }, []);
+
+  const clearTypingTimer = useCallback(() => {
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearQuizTimer();
+      clearTypingTimer();
+    };
+  }, [clearQuizTimer, clearTypingTimer]);
+
+  // Tự động phát âm tiếng Anh khi sang câu Quiz mới (nếu bật Tự động phát âm)
+  useEffect(() => {
+    if (
+      viewMode === "quiz" &&
+      !quizFinished &&
+      studySettings.autoAudio &&
+      currentQuiz?.vocab?.word
+    ) {
+      speakText(currentQuiz.vocab.word).catch(() => {});
+    }
+  }, [viewMode, quizFinished, studySettings.autoAudio, quizIndex, currentQuiz?.vocab?.word]);
 
   const handleSelectQuizOption = (option: string) => {
     if (!currentQuiz || quizSelectedOption !== null) return;
-    setQuizSelectedOption(option);
+    clearQuizTimer();
+    setQuizAnswers((prev) => ({ ...prev, [quizIndex]: option }));
     const isRight = option === currentQuiz.correct;
     if (isRight) {
       playSuccessSound();
-      setQuizScore((prev) => prev + 1);
     } else {
       playClickSound();
     }
 
-    if (!studySettings.instantAnswer) {
-      setTimeout(() => {
+    const shouldAutoAdvance =
+      !studySettings.instantAnswer || (studySettings.autoAdvance && isRight);
+    if (shouldAutoAdvance) {
+      const delay = studySettings.instantAnswer ? 1200 : 280;
+      quizTimerRef.current = setTimeout(() => {
         if (quizIndex < quizQuestions.length - 1) {
           setQuizIndex((prev) => prev + 1);
-          setQuizSelectedOption(null);
         } else {
           setQuizFinished(true);
         }
-      }, 280);
+      }, delay);
     }
   };
 
+  const handlePrevQuiz = () => {
+    if (quizIndex <= 0) return;
+    clearQuizTimer();
+    playClickSound();
+    setQuizIndex((prev) => prev - 1);
+  };
+
   const handleNextQuiz = () => {
+    clearQuizTimer();
     playClickSound();
     if (quizIndex < quizQuestions.length - 1) {
       setQuizIndex((prev) => prev + 1);
-      setQuizSelectedOption(null);
     } else {
       setQuizFinished(true);
     }
   };
 
   const handleRestartQuiz = () => {
+    clearQuizTimer();
     playClickSound();
     setQuizIndex(0);
-    setQuizSelectedOption(null);
-    setQuizScore(0);
+    setQuizAnswers({});
     setQuizFinished(false);
     setQuizSeed((s) => s + 1);
   };
 
   // --- CHẾ ĐỘ 3: GÕ TỪ (TYPING PRACTICE) ---
   const currentTypingWord = vocabularies[typingIndex];
+  const isTypingEnToVi = useMemo(() => {
+    if (!currentTypingWord) return true;
+    return isWordEnToVi(studySettings.direction, `type-${currentTypingWord._id}-${typingIndex}`);
+  }, [studySettings.direction, currentTypingWord, typingIndex]);
+
+  useEffect(() => {
+    if (
+      viewMode === "typing" &&
+      !typingFinished &&
+      studySettings.autoAudio &&
+      !isTypingEnToVi &&
+      currentTypingWord?.word
+    ) {
+      speakText(currentTypingWord.word).catch(() => {});
+    }
+  }, [viewMode, typingFinished, studySettings.autoAudio, isTypingEnToVi, typingIndex, currentTypingWord?.word]);
 
   const handleCheckTyping = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!currentTypingWord || typingStatus !== "idle") return;
+    clearTypingTimer();
 
-    const target =
-      studySettings.direction === "en-vi"
-        ? currentTypingWord.word.trim().toLowerCase()
-        : currentTypingWord.meaning.trim().toLowerCase();
+    const target = isTypingEnToVi
+      ? currentTypingWord.word.trim().toLowerCase()
+      : currentTypingWord.meaning.trim().toLowerCase();
     const answer = typingInput.trim().toLowerCase();
     if (!answer) return;
 
@@ -540,8 +625,11 @@ function TopicDetailInner() {
       setTypingStatus("wrong");
     }
 
-    if (!studySettings.instantAnswer) {
-      setTimeout(() => {
+    const shouldAutoAdvance =
+      !studySettings.instantAnswer || (studySettings.autoAdvance && isRight);
+    if (shouldAutoAdvance) {
+      const delay = studySettings.instantAnswer ? 1200 : 280;
+      typingTimerRef.current = setTimeout(() => {
         if (typingIndex < vocabularies.length - 1) {
           setTypingIndex((prev) => prev + 1);
           setTypingInput("");
@@ -550,11 +638,12 @@ function TopicDetailInner() {
         } else {
           setTypingFinished(true);
         }
-      }, 280);
+      }, delay);
     }
   };
 
   const handleNextTyping = () => {
+    clearTypingTimer();
     playClickSound();
     if (typingIndex < vocabularies.length - 1) {
       setTypingIndex((prev) => prev + 1);
@@ -567,6 +656,7 @@ function TopicDetailInner() {
   };
 
   const handleRestartTyping = () => {
+    clearTypingTimer();
     playClickSound();
     setTypingIndex(0);
     setTypingInput("");
@@ -930,8 +1020,10 @@ function TopicDetailInner() {
   return (
     <AppLayout>
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 w-full flex flex-col gap-6">
-        {/* Breadcrumb & Navigation Back */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {!(viewMode === "quiz" && vocabularies.length > 0 && !quizFinished) && (
+          <>
+            {/* Breadcrumb & Navigation Back */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href={backHref}
             onClick={() => playClickSound()}
@@ -1010,7 +1102,7 @@ function TopicDetailInner() {
             >
               <Settings className="size-3.5 text-emerald-600" />
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300">
-                {studySettings.direction === "en-vi" ? "ANH → VIỆT" : "VIỆT → ANH"}
+                {getDirectionBadgeLabel(studySettings.direction)}
               </span>
             </button>
 
@@ -1082,6 +1174,8 @@ function TopicDetailInner() {
             </div>
           </div>
         </div>
+          </>
+        )}
 
         {/* VIEW MODE 1: FLASHCARD 3D */}
         {viewMode === "flashcard" && (
@@ -1190,7 +1284,7 @@ function TopicDetailInner() {
                     <div className="absolute inset-0 w-full h-full rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-xl p-8 flex flex-col justify-between items-center text-center backface-hidden">
                       <div className="w-full flex items-center justify-between text-xs font-semibold text-slate-400">
                         <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] uppercase font-bold tracking-wider">
-                          {studySettings.direction === "en-vi"
+                          {isFlashcardEnToVi
                             ? "Mặt trước: Tiếng Anh"
                             : "Mặt trước: Tiếng Việt"}
                         </span>
@@ -1201,18 +1295,18 @@ function TopicDetailInner() {
 
                       <div className="flex flex-col items-center gap-3">
                         <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-xs">
-                          {studySettings.direction === "en-vi"
+                          {isFlashcardEnToVi
                             ? currentWord?.word
                             : currentWord?.meaning}
                         </h2>
 
-                        {studySettings.direction === "en-vi" && currentWord?.phonetic && (
+                        {isFlashcardEnToVi && currentWord?.phonetic && (
                           <span className="text-base sm:text-lg font-mono text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide">
                             {currentWord.phonetic}
                           </span>
                         )}
 
-                        {studySettings.direction === "en-vi" && (
+                        {isFlashcardEnToVi && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1235,7 +1329,7 @@ function TopicDetailInner() {
                       <div className="w-full flex items-center justify-center gap-1 text-[11px] text-slate-400">
                         <RotateCw className="size-3" />
                         <span>
-                          {studySettings.direction === "en-vi"
+                          {isFlashcardEnToVi
                             ? "Chạm để lật xem nghĩa tiếng Việt"
                             : "Chạm để lật xem từ tiếng Anh & phát âm"}
                         </span>
@@ -1255,16 +1349,16 @@ function TopicDetailInner() {
 
                       <div className="flex flex-col items-center gap-3 max-w-md">
                         <span className="text-xs text-emerald-200 uppercase font-bold tracking-wider">
-                          {studySettings.direction === "en-vi"
+                          {isFlashcardEnToVi
                             ? "Ý nghĩa tiếng Việt"
                             : "Từ vựng tiếng Anh"}
                         </span>
                         <h3 className="text-2xl sm:text-3xl font-black drop-shadow-sm leading-snug">
-                          {studySettings.direction === "en-vi"
+                          {isFlashcardEnToVi
                             ? currentWord?.meaning
                             : currentWord?.word}
                         </h3>
-                        {studySettings.direction === "vi-en" && currentWord?.phonetic && (
+                        {!isFlashcardEnToVi && currentWord?.phonetic && (
                           <span className="text-sm font-mono text-emerald-100">
                             {currentWord.phonetic}
                           </span>
@@ -1356,9 +1450,9 @@ function TopicDetailInner() {
 
         {/* VIEW MODE 2: QUIZ ABCD */}
         {viewMode === "quiz" && (
-          <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
+          <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
             {vocabularies.length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-8 w-full flex flex-col items-center gap-3">
+              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-8 w-full max-w-2xl flex flex-col items-center gap-3">
                 <Target className="size-12 text-slate-300 dark:text-slate-700" />
                 <p className="text-sm font-semibold text-slate-500">
                   Bài học này chưa có từ vựng để tạo Quiz ABCD.
@@ -1374,7 +1468,7 @@ function TopicDetailInner() {
                 )}
               </div>
             ) : quizFinished ? (
-              <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center shadow-lg flex flex-col items-center gap-5">
+              <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center shadow-lg flex flex-col items-center gap-5">
                 <div className="size-20 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
                   <Trophy className="size-10" />
                 </div>
@@ -1409,96 +1503,186 @@ function TopicDetailInner() {
                 </div>
               </div>
             ) : currentQuiz ? (
-              <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-md flex flex-col gap-5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                  <span>
-                    Câu {quizIndex + 1} / {quizQuestions.length}
-                  </span>
-                  <span className="text-emerald-600">Điểm: {quizScore}</span>
+              <div className="w-full flex flex-col gap-5 py-2">
+                {/* Distraction-free Quiz Top Bar */}
+                <div className="flex items-center justify-between gap-3">
+                  <Link
+                    href={backHref}
+                    onClick={() => playClickSound()}
+                    className="h-10 px-4 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                    <span>Thoát</span>
+                  </Link>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 tabular-nums">
+                      Câu {quizIndex + 1} / {quizQuestions.length}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border border-blue-200/70 dark:border-blue-800/60 text-xs font-extrabold tabular-nums">
+                      {Math.round(((quizIndex + 1) / quizQuestions.length) * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        setShowStudySettingsModal(true);
+                      }}
+                      className="h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300/90 dark:border-slate-700 hover:border-emerald-500 text-xs font-bold text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    >
+                      <Settings className="size-3.5 text-emerald-500" />
+                      <span>Cài đặt</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                {/* Thin Emerald Progress Bar */}
+                <div className="w-full bg-slate-200/80 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-emerald-500 h-full transition-all duration-300"
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${Math.round(((quizIndex + 1) / quizQuestions.length) * 100)}%`,
                     }}
                   />
                 </div>
 
-                <div className="py-4 text-center flex flex-col items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 text-[10px] font-bold uppercase">
-                    {currentQuiz.partOfSpeech}
-                  </span>
-                  <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white">
-                    {currentQuiz.prompt}
-                  </h2>
-                  {currentQuiz.phonetic && (
-                    <span className="text-sm font-mono text-emerald-600">
-                      {currentQuiz.phonetic}
+                {/* Large Centered Question Card */}
+                <div className="w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 sm:p-10 flex flex-col gap-6">
+                  <div className="flex flex-col items-center text-center gap-3 pt-1">
+                    <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      {currentQuiz.isEnToVi
+                        ? "CHỌN NGHĨA TIẾNG VIỆT CHÍNH XÁC"
+                        : "CHỌN TỪ TIẾNG ANH CHÍNH XÁC"}
                     </span>
+
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug max-w-2xl">
+                      {currentQuiz.prompt}
+                    </h2>
+
+                    <div className="flex flex-col items-center gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => handlePronounce(currentQuiz.vocab.word)}
+                        aria-label="Nghe phát âm tiếng Anh"
+                        className="w-10 h-10 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-emerald-500 flex items-center justify-center transition cursor-pointer"
+                      >
+                        <Volume2 className="size-5" />
+                      </button>
+
+                      {currentQuiz.phonetic && (
+                        <span className="text-sm sm:text-base font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                          {currentQuiz.phonetic}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2x2 Options Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-1">
+                    {currentQuiz.options.map((opt, idx) => {
+                      const letter = String.fromCharCode(65 + idx);
+                      const isPicked = quizSelectedOption === opt;
+                      const isCorrect = opt === currentQuiz.correct;
+                      const showFeedback =
+                        studySettings.instantAnswer && quizSelectedOption !== null;
+
+                      let btnStyle =
+                        "bg-white dark:bg-slate-800/80 border-slate-200/90 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 text-slate-800 dark:text-slate-100";
+                      let badgeStyle =
+                        "bg-slate-100 dark:bg-slate-900 border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300";
+
+                      if (showFeedback) {
+                        if (isCorrect) {
+                          btnStyle =
+                            "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/20";
+                          badgeStyle =
+                            "bg-emerald-500 border-emerald-500 text-white";
+                        } else if (isPicked && !isCorrect) {
+                          btnStyle =
+                            "bg-rose-50 dark:bg-rose-950/60 border-rose-500 text-rose-700 dark:text-rose-200";
+                          badgeStyle =
+                            "bg-rose-500 border-rose-500 text-white";
+                        }
+                      } else if (isPicked) {
+                        btnStyle =
+                          "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-200";
+                        badgeStyle =
+                          "bg-emerald-500 border-emerald-500 text-white";
+                      }
+
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          disabled={quizSelectedOption !== null}
+                          onClick={() => handleSelectQuizOption(opt)}
+                          className={`min-h-[56px] px-4 py-3.5 rounded-2xl border text-left text-sm font-bold flex items-center gap-3.5 shadow-2xs transition cursor-pointer ${btnStyle}`}
+                        >
+                          <span
+                            className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-black shrink-0 transition ${badgeStyle}`}
+                          >
+                            {letter}
+                          </span>
+                          <span className="flex-1 leading-snug">{opt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Instant explanation & example when answered */}
+                  {studySettings.instantAnswer && quizSelectedOption !== null && (
+                    <div
+                      className={`rounded-2xl p-4 border text-xs sm:text-sm flex flex-col gap-1 ${
+                        quizSelectedOption === currentQuiz.correct
+                          ? "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200"
+                          : "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200"
+                      }`}
+                    >
+                      <div className="font-extrabold flex items-center justify-between gap-2">
+                        <span>
+                          {quizSelectedOption === currentQuiz.correct
+                            ? "Chính xác!"
+                            : `Chưa đúng! Đáp án đúng: ${currentQuiz.correct}`}
+                        </span>
+                        <span className="text-[11px] uppercase px-2 py-0.5 rounded-full bg-white/70 dark:bg-slate-900/60">
+                          {currentQuiz.partOfSpeech}
+                        </span>
+                      </div>
+                      {currentQuiz.vocab.exampleSentence && (
+                        <p className="text-xs opacity-90 mt-1">
+                          <strong>Ví dụ:</strong> {currentQuiz.vocab.exampleSentence}
+                          {currentQuiz.vocab.exampleMeaning
+                            ? ` — ${currentQuiz.vocab.exampleMeaning}`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
                   )}
+                </div>
+
+                {/* Bottom Navigation Bar */}
+                <div className="flex items-center justify-between gap-4 pt-1">
                   <button
                     type="button"
-                    onClick={() => handlePronounce(currentQuiz.vocab.word)}
-                    className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+                    onClick={handlePrevQuiz}
+                    disabled={quizIndex === 0}
+                    className="h-11 px-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/90 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 disabled:opacity-45 disabled:cursor-not-allowed inline-flex items-center gap-2 transition cursor-pointer"
                   >
-                    <Volume2 className="size-3.5 text-emerald-600" /> Nghe phát âm
+                    <ArrowLeft className="size-4" />
+                    <span>Câu Trước</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextQuiz}
+                    className="h-11 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-extrabold shadow-md shadow-emerald-500/25 inline-flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <span>
+                      {quizIndex < quizQuestions.length - 1 ? "Câu Tiếp" : "Hoàn Thành"}
+                    </span>
+                    <ArrowRight className="size-4" />
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 gap-2.5">
-                  {currentQuiz.options.map((opt, idx) => {
-                    const letter = String.fromCharCode(65 + idx);
-                    const isPicked = quizSelectedOption === opt;
-                    const isCorrect = opt === currentQuiz.correct;
-                    const showFeedback = studySettings.instantAnswer && quizSelectedOption !== null;
-
-                    let btnStyle =
-                      "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-800 dark:text-slate-200";
-                    if (showFeedback) {
-                      if (isCorrect) {
-                        btnStyle =
-                          "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/20";
-                      } else if (isPicked && !isCorrect) {
-                        btnStyle =
-                          "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300";
-                      }
-                    } else if (isPicked) {
-                      btnStyle = "bg-emerald-600 border-emerald-600 text-white";
-                    }
-
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        disabled={quizSelectedOption !== null}
-                        onClick={() => handleSelectQuizOption(opt)}
-                        className={`min-h-[48px] px-4 py-3 rounded-2xl border text-left text-xs sm:text-sm font-bold flex items-center gap-3 transition cursor-pointer ${btnStyle}`}
-                      >
-                        <span className="size-7 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-700 flex items-center justify-center text-xs font-black shrink-0 text-slate-700 dark:text-slate-200">
-                          {letter}
-                        </span>
-                        <span className="flex-1">{opt}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {studySettings.instantAnswer && quizSelectedOption !== null && (
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={handleNextQuiz}
-                      className="h-10.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span>
-                        {quizIndex < quizQuestions.length - 1 ? "Câu tiếp theo" : "Xem kết quả"}
-                      </span>
-                      <ArrowRight className="size-4" />
-                    </button>
-                  </div>
-                )}
               </div>
             ) : null}
           </div>
@@ -1560,11 +1744,11 @@ function TopicDetailInner() {
                     {currentTypingWord.partOfSpeech}
                   </span>
                   <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
-                    {studySettings.direction === "en-vi"
+                    {isTypingEnToVi
                       ? currentTypingWord.meaning
                       : currentTypingWord.word}
                   </h2>
-                  {currentTypingWord.exampleMeaning && studySettings.direction === "en-vi" && (
+                  {currentTypingWord.exampleMeaning && isTypingEnToVi && (
                     <p className="text-xs text-slate-500 italic max-w-md">
                       &quot;{currentTypingWord.exampleMeaning}&quot;
                     </p>
@@ -1594,7 +1778,7 @@ function TopicDetailInner() {
                   {typingShowHint && (
                     <span className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold">
                       Gợi ý:{" "}
-                      {studySettings.direction === "en-vi"
+                      {isTypingEnToVi
                         ? `${currentTypingWord.word[0]}${"_".repeat(
                             Math.max(1, currentTypingWord.word.length - 1)
                           )} (${currentTypingWord.word.length} ký tự)`
@@ -1609,7 +1793,7 @@ function TopicDetailInner() {
                     autoFocus
                     disabled={typingStatus !== "idle"}
                     placeholder={
-                      studySettings.direction === "en-vi"
+                      isTypingEnToVi
                         ? "Nhập từ tiếng Anh chính xác..."
                         : "Nhập nghĩa tiếng Việt..."
                     }
@@ -1636,7 +1820,7 @@ function TopicDetailInner() {
                         {typingStatus === "correct"
                           ? "Chính xác tuyệt đối!"
                           : `Chưa đúng! Đáp án: ${
-                              studySettings.direction === "en-vi"
+                              isTypingEnToVi
                                 ? currentTypingWord.word
                                 : currentTypingWord.meaning
                             }`}
@@ -2283,103 +2467,12 @@ function TopicDetailInner() {
         )}
 
         {/* MODAL: CÀI ĐẶT PHIÊN HỌC */}
-        {showStudySettingsModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 flex flex-col gap-5">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 flex items-center justify-center">
-                    <Settings className="size-4.5" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                    Cài Đặt Phiên Học
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowStudySettingsModal(false)}
-                  className="size-8 rounded-full text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Chiều học từ vựng (Mặt trước → Mặt sau)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateStudySettings({ direction: "en-vi" })}
-                    className={`h-11 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                      studySettings.direction === "en-vi"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    ANH → VIỆT
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateStudySettings({ direction: "vi-en" })}
-                    className={`h-11 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                      studySettings.direction === "vi-en"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    VIỆT → ANH
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 cursor-pointer">
-                  <div>
-                    <div className="text-xs font-bold text-slate-800 dark:text-white">
-                      Đáp án tức thì
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Hiện kết quả đúng/sai ngay khi chọn đáp án Quiz hoặc Gõ từ
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={studySettings.instantAnswer}
-                    onChange={(e) => updateStudySettings({ instantAnswer: e.target.checked })}
-                    className="size-4 accent-emerald-600 cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 cursor-pointer">
-                  <div>
-                    <div className="text-xs font-bold text-slate-800 dark:text-white">
-                      Tự động phát âm tiếng Anh
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Tự đọc phát âm từ vựng khi chuyển thẻ mới
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={studySettings.autoAudio}
-                    onChange={(e) => updateStudySettings({ autoAudio: e.target.checked })}
-                    className="size-4 accent-emerald-600 cursor-pointer"
-                  />
-                </label>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowStudySettingsModal(false)}
-                className="h-10.5 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
-              >
-                Xong
-              </button>
-            </div>
-          </div>
-        )}
+        <StudySettingsModal
+          isOpen={showStudySettingsModal}
+          onClose={() => setShowStudySettingsModal(false)}
+          settings={studySettings}
+          onChange={updateStudySettings}
+        />
       </main>
     </AppLayout>
   );
