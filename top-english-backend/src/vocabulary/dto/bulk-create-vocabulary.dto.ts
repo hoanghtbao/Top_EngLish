@@ -13,6 +13,7 @@ import {
   IsEnum,
   IsMongoId,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -54,6 +55,28 @@ export class BulkVocabularyItemDto {
   @IsOptional()
   @IsString()
   audioUrl?: string;
+
+  @ApiPropertyOptional({ example: 'w001' })
+  @IsOptional()
+  @IsString()
+  externalId?: string;
+
+  @ApiPropertyOptional({ example: ['thực hiện', 'thi hành'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  meanings?: string[];
+
+  @ApiPropertyOptional({ example: ['bỏ qua', 'lên kế hoạch', 'đánh giá'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  distractors?: string[];
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsOptional()
+  @IsNumber()
+  difficulty?: number;
 }
 
 export class BulkCreateVocabularyDto {
@@ -62,10 +85,10 @@ export class BulkCreateVocabularyDto {
   @IsNotEmpty({ message: 'topicId không được để trống' })
   topicId: string;
 
-  @ApiProperty({ type: [BulkVocabularyItemDto], description: 'Danh sách từ vựng cần nhập hàng loạt (tối đa 200 từ/lần)' })
+  @ApiProperty({ type: [BulkVocabularyItemDto], description: 'Danh sách từ vựng cần nhập hàng loạt (tối đa 300 từ/lần)' })
   @IsArray({ message: 'items phải là một mảng danh sách từ vựng' })
   @ArrayMinSize(1, { message: 'Danh sách phải có ít nhất 1 từ vựng' })
-  @ArrayMaxSize(200, { message: 'Mỗi lần chỉ được nhập tối đa 200 từ vựng' })
+  @ArrayMaxSize(300, { message: 'Mỗi lần chỉ được nhập tối đa 300 từ vựng' })
   @ValidateNested({ each: true })
   @Type(() => BulkVocabularyItemDto)
   items: BulkVocabularyItemDto[];

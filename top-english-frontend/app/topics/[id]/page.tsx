@@ -71,6 +71,10 @@ interface Vocabulary {
   exampleSentence?: string;
   exampleMeaning?: string;
   audioUrl?: string;
+  externalId?: string;
+  meanings?: string[];
+  distractors?: string[];
+  difficulty?: number | null;
 }
 
 const PARTS_OF_SPEECH = [
@@ -243,8 +247,8 @@ function TopicDetailInner() {
         return { items: [], error: "Danh sách từ vựng trong JSON đang rỗng." };
       }
 
-      if (list.length > 200) {
-        return { items: [], error: "Mỗi lần chỉ hỗ trợ nhập tối đa 200 từ vựng." };
+      if (list.length > 300) {
+        return { items: [], error: "Mỗi lần chỉ hỗ trợ nhập tối đa 300 từ vựng." };
       }
 
       const normalized: Array<{
@@ -254,6 +258,10 @@ function TopicDetailInner() {
         meaning: string;
         exampleSentence?: string;
         exampleMeaning?: string;
+        externalId?: string;
+        meanings?: string[];
+        distractors?: string[];
+        difficulty?: number;
       }> = [];
 
       for (let i = 0; i < list.length; i++) {
@@ -261,34 +269,88 @@ function TopicDetailInner() {
         if (!entry || typeof entry !== "object") {
           return { items: [], error: `Phần tử thứ ${i + 1} không phải là đối tượng JSON hợp lệ.` };
         }
-        const word = typeof entry.word === "string" ? entry.word.trim() : "";
-        const meaning = typeof entry.meaning === "string" ? entry.meaning.trim() : "";
+        const rawWord =
+          typeof entry.word === "string"
+            ? entry.word
+            : typeof entry.english === "string"
+            ? entry.english
+            : "";
+        const word = rawWord.trim();
+
+        const rawMeaningsSource: unknown[] = Array.isArray(entry.vietnamese)
+          ? entry.vietnamese
+          : Array.isArray(entry.meanings)
+          ? entry.meanings
+          : [];
+        const rawMeaningsArray: string[] = Array.from(
+          new Set<string>(
+            rawMeaningsSource
+              .filter((v): v is string => typeof v === "string")
+              .map((v) => v.trim())
+              .filter(Boolean)
+          )
+        );
+
+        const meaning =
+          typeof entry.meaning === "string" && entry.meaning.trim()
+            ? entry.meaning.trim()
+            : rawMeaningsArray.join(", ");
+
         if (!word || !meaning) {
           return {
             items: [],
-            error: `Mục thứ ${i + 1} bị thiếu trường bắt buộc "word" (từ tiếng Anh) hoặc "meaning" (nghĩa tiếng Việt).`,
+            error: `Mục thứ ${i + 1} bị thiếu trường bắt buộc "word"/"english" hoặc "meaning"/"vietnamese".`,
           };
         }
+
+        const rawPos =
+          typeof entry.partOfSpeech === "string"
+            ? entry.partOfSpeech
+            : typeof entry.part_of_speech === "string"
+            ? entry.part_of_speech
+            : undefined;
+
+        const rawExample =
+          typeof entry.exampleSentence === "string"
+            ? entry.exampleSentence.trim()
+            : typeof entry.example_sentence === "string"
+            ? entry.example_sentence.trim()
+            : typeof entry.example === "string"
+            ? entry.example.trim()
+            : undefined;
+
+        const rawExampleMeaning =
+          typeof entry.exampleMeaning === "string"
+            ? entry.exampleMeaning.trim()
+            : typeof entry.example_meaning === "string"
+            ? entry.example_meaning.trim()
+            : typeof entry.exampleTranslation === "string"
+            ? entry.exampleTranslation.trim()
+            : undefined;
+
+        const rawDistractors = Array.isArray(entry.distractors)
+          ? entry.distractors
+              .filter((d: unknown): d is string => typeof d === "string")
+              .map((d: string) => d.trim())
+              .filter(Boolean)
+          : undefined;
 
         normalized.push({
           word,
           phonetic: typeof entry.phonetic === "string" ? entry.phonetic.trim() : undefined,
-          partOfSpeech: normalizePartOfSpeech(
-            typeof entry.partOfSpeech === "string" ? entry.partOfSpeech : undefined
-          ),
+          partOfSpeech: normalizePartOfSpeech(rawPos),
           meaning,
-          exampleSentence:
-            typeof entry.exampleSentence === "string"
-              ? entry.exampleSentence.trim()
-              : typeof entry.example === "string"
-              ? entry.example.trim()
+          exampleSentence: rawExample || undefined,
+          exampleMeaning: rawExampleMeaning || undefined,
+          externalId:
+            typeof entry.externalId === "string"
+              ? entry.externalId.trim()
+              : typeof entry.external_id === "string"
+              ? entry.external_id.trim()
               : undefined,
-          exampleMeaning:
-            typeof entry.exampleMeaning === "string"
-              ? entry.exampleMeaning.trim()
-              : typeof entry.exampleTranslation === "string"
-              ? entry.exampleTranslation.trim()
-              : undefined,
+          meanings: rawMeaningsArray.length > 0 ? rawMeaningsArray : undefined,
+          distractors: rawDistractors && rawDistractors.length > 0 ? rawDistractors : undefined,
+          difficulty: typeof entry.difficulty === "number" ? entry.difficulty : undefined,
         });
       }
 
@@ -464,11 +526,24 @@ function TopicDetailInner() {
         : `Từ nào sau đây mang nghĩa "${item.meaning}"?`;
       const correct = isEnToVi ? item.meaning : item.word;
 
-      const distractors = vocabularies
+      const curatedDistractors =
+        isEnToVi && Array.isArray(item.distractors)
+          ? item.distractors
+              .map((d) => d.trim())
+              .filter((d, i, arr) => d && d !== correct && arr.indexOf(d) === i)
+          : [];
+
+      const fallbackDistractors = vocabularies
         .filter((v) => v._id !== item._id)
         .map((v) => (isEnToVi ? v.meaning : v.word))
-        .filter((val, idx2, arr) => val !== correct && arr.indexOf(val) === idx2)
-        .slice(0, 3);
+        .filter(
+          (val, idx2, arr) =>
+            val !== correct &&
+            !curatedDistractors.includes(val) &&
+            arr.indexOf(val) === idx2
+        );
+
+      const distractors = [...curatedDistractors, ...fallbackDistractors].slice(0, 3);
 
       const options = [correct, ...distractors].sort((a, b) => {
         const ha = (a + item._id + quizSeed).length + a.charCodeAt(0);

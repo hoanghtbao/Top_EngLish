@@ -494,6 +494,14 @@ export class VocabularyService implements OnModuleInit {
       exampleSentence: item.exampleSentence?.trim() || '',
       exampleMeaning: item.exampleMeaning?.trim() || '',
       audioUrl: item.audioUrl?.trim() || '',
+      externalId: item.externalId?.trim() || '',
+      meanings: Array.isArray(item.meanings)
+        ? item.meanings.map((m) => m.trim()).filter(Boolean)
+        : [],
+      distractors: Array.isArray(item.distractors)
+        ? item.distractors.map((d) => d.trim()).filter(Boolean)
+        : [],
+      difficulty: typeof item.difficulty === 'number' ? item.difficulty : null,
       createdBy: creatorObjectId,
     }));
 

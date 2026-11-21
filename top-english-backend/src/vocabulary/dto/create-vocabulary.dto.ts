@@ -5,7 +5,7 @@
  */
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { PartOfSpeech } from '../enums/part-of-speech.enum';
 
 export class CreateVocabularyDto {
@@ -48,4 +48,26 @@ export class CreateVocabularyDto {
   @IsOptional()
   @IsString()
   audioUrl?: string;
+
+  @ApiPropertyOptional({ example: 'te2_l8_001' })
+  @IsOptional()
+  @IsString()
+  externalId?: string;
+
+  @ApiPropertyOptional({ example: ['chịu trách nhiệm', 'có trách nhiệm giải trình'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  meanings?: string[];
+
+  @ApiPropertyOptional({ example: ['bỏ qua', 'lên kế hoạch', 'đánh giá'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  distractors?: string[];
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsOptional()
+  @IsNumber()
+  difficulty?: number;
 }

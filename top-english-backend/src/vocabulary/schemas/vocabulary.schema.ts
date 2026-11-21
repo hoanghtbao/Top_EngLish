@@ -43,6 +43,22 @@ export class Vocabulary {
   @Prop({ default: null })
   audioUrl: string;
 
+  // Mã định danh gốc khi import từ nguồn ngoài (ví dụ: te2_l8_001, w001)
+  @Prop({ default: '', trim: true, index: true })
+  externalId: string;
+
+  // Danh sách các nghĩa tiếng Việt dạng mảng (tương thích nguồn export đa nghĩa)
+  @Prop({ type: [String], default: [] })
+  meanings: string[];
+
+  // Danh sách đáp án nhiễu chuẩn cho chế độ Quiz ABCD (Anh -> Việt)
+  @Prop({ type: [String], default: [] })
+  distractors: string[];
+
+  // Độ khó từ vựng (thang 1 - 5)
+  @Prop({ type: Number, default: null })
+  difficulty: number | null;
+
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   createdBy: Types.ObjectId;
 }
