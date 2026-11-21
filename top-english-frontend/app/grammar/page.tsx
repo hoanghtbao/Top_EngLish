@@ -302,8 +302,8 @@ export default function GrammarCatalogPage() {
           className="mb-6"
           badgeIcon={<Sparkles className="size-3.5" />}
           badgeText="Ngữ pháp tiếng Anh thông minh & Tương tác lớp học"
-          title="Chuyên mục Ngữ pháp tiếng Anh"
-          description="Học ngữ pháp qua công thức linh hoạt, ví dụ song ngữ phát âm, lỗi sai thường gặp, trình chiếu giảng bài và bài tập thực hành."
+          title="Ngữ Pháp Tiếng Anh"
+          description="Công thức trực quan, ví dụ song ngữ, lỗi sai thường gặp và bài tập thực hành."
           stats={[
             {
               icon: <BookOpen className="size-4" />,

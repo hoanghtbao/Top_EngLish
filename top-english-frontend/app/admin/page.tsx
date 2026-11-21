@@ -285,9 +285,9 @@ export default function AdminDashboardPage() {
       label: "Ngữ pháp Chuyên sâu",
       route: "/grammar",
       badgeText: "Ngữ pháp tiếng Anh thông minh & Tương tác lớp học",
-      title: "Chuyên mục Ngữ pháp tiếng Anh",
+      title: "Ngữ Pháp Tiếng Anh",
       description:
-        "Học ngữ pháp qua công thức linh hoạt, ví dụ song ngữ phát âm, lỗi sai thường gặp, trình chiếu giảng bài và bài tập thực hành.",
+        "Công thức trực quan, ví dụ song ngữ, lỗi sai thường gặp và bài tập thực hành.",
       pills: ["Bài học: 5", "Chuyên đề: 2"],
       cta: "+ Thêm bài ngữ pháp",
     },
