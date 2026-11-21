@@ -40,6 +40,8 @@ export interface GrammarStructureItem {
   pattern: string;
   color?: string;
   note?: string;
+  patternPlaceholder?: string;
+  notePlaceholder?: string;
 }
 
 export interface GrammarLessonData {
@@ -89,42 +91,170 @@ const FORMULA_PRESETS: Array<{ name: string; items: GrammarStructureItem[] }> = 
   {
     name: "3 thể (+ / - / ?)",
     items: [
-      { badge: "+", label: "Thể Khẳng định", pattern: "", color: "emerald", note: "" },
-      { badge: "-", label: "Thể Phủ định", pattern: "", color: "rose", note: "" },
-      { badge: "?", label: "Thể Nghi vấn", pattern: "", color: "sky", note: "" },
+      {
+        badge: "+",
+        label: "Thể Khẳng định",
+        pattern: "",
+        color: "emerald",
+        note: "",
+        patternPlaceholder: "VD: S + V(s/es) + O",
+        notePlaceholder: "VD: Chủ ngữ ngôi 3 số ít thêm -s/-es",
+      },
+      {
+        badge: "-",
+        label: "Thể Phủ định",
+        pattern: "",
+        color: "rose",
+        note: "",
+        patternPlaceholder: "VD: S + do/does not + V(bare) + O",
+        notePlaceholder: "VD: Dùng doesn't với He/She/It",
+      },
+      {
+        badge: "?",
+        label: "Thể Nghi vấn",
+        pattern: "",
+        color: "sky",
+        note: "",
+        patternPlaceholder: "VD: Do/Does + S + V(bare) + O?",
+        notePlaceholder: "VD: Đảo trợ động từ lên đầu câu",
+      },
     ],
   },
   {
     name: "Điều kiện (If)",
     items: [
-      { badge: "If", label: "Cấu trúc chuẩn", pattern: "If + S + V(...), S + will/would + V", color: "emerald", note: "" },
-      { badge: "!", label: "Biến thể với Unless", pattern: "Unless + S + V(khẳng định), ...", color: "amber", note: "Unless = If ... not" },
-      { badge: "⇄", label: "Dạng Đảo ngữ", pattern: "Should / Were / Had + S + ..., ...", color: "indigo", note: "Trang trọng hơn khi lược bỏ If" },
+      {
+        badge: "If",
+        label: "Cấu trúc chuẩn",
+        pattern: "",
+        color: "emerald",
+        note: "",
+        patternPlaceholder: "VD: If + S + V(HTĐ), S + will + V(bare)",
+        notePlaceholder: "VD: Điều kiện có thật ở hiện tại hoặc tương lai",
+      },
+      {
+        badge: "!",
+        label: "Biến thể với Unless",
+        pattern: "",
+        color: "amber",
+        note: "",
+        patternPlaceholder: "VD: Unless + S + V(khẳng định), S + will + V",
+        notePlaceholder: "VD: Unless = If ... not",
+      },
+      {
+        badge: "⇄",
+        label: "Dạng Đảo ngữ",
+        pattern: "",
+        color: "indigo",
+        note: "",
+        patternPlaceholder: "VD: Should / Were / Had + S + ..., S + will/would + V",
+        notePlaceholder: "VD: Trang trọng hơn khi lược bỏ If",
+      },
     ],
   },
   {
     name: "So sánh",
     items: [
-      { badge: "=", label: "So sánh bằng", pattern: "S + V + as + adj/adv + as + O", color: "emerald", note: "" },
-      { badge: ">", label: "So sánh hơn", pattern: "S + V + adj-er / more + adj + than + O", color: "sky", note: "" },
-      { badge: "★", label: "So sánh nhất", pattern: "S + V + the + adj-est / most + adj + (N)", color: "amber", note: "" },
-      { badge: "↗", label: "So sánh kép", pattern: "The + adj-er/more..., the + adj-er/more...", color: "purple", note: "Càng... càng..." },
+      {
+        badge: "=",
+        label: "So sánh bằng",
+        pattern: "",
+        color: "emerald",
+        note: "",
+        patternPlaceholder: "VD: S + V + as + adj/adv + as + O",
+        notePlaceholder: "VD: Phủ định dùng not so/as ... as",
+      },
+      {
+        badge: ">",
+        label: "So sánh hơn",
+        pattern: "",
+        color: "sky",
+        note: "",
+        patternPlaceholder: "VD: S + V + adj-er / more + adj + than + O",
+        notePlaceholder: "VD: Tính từ ngắn thêm -er, dài thêm more",
+      },
+      {
+        badge: "★",
+        label: "So sánh nhất",
+        pattern: "",
+        color: "amber",
+        note: "",
+        patternPlaceholder: "VD: S + V + the + adj-est / most + adj + (N)",
+        notePlaceholder: "VD: Thường đi kèm in + nơi chốn / of + nhóm",
+      },
+      {
+        badge: "↗",
+        label: "So sánh kép",
+        pattern: "",
+        color: "purple",
+        note: "",
+        patternPlaceholder: "VD: The + adj-er/more..., the + adj-er/more...",
+        notePlaceholder: "VD: Diễn tả ý 'Càng... càng...'",
+      },
     ],
   },
   {
     name: "Mệnh đề quan hệ",
     items: [
-      { badge: "👤", label: "Chỉ người (who / whom)", pattern: "N (person) + who/whom + (S) + V...", color: "emerald", note: "" },
-      { badge: "📦", label: "Chỉ vật / Sở hữu", pattern: "N (thing) + which/that... | N + whose + N", color: "sky", note: "" },
-      { badge: "✂", label: "Rút gọn mệnh đề", pattern: "N + V-ing (chủ động) / V3-ed (bị động) / to V", color: "indigo", note: "" },
+      {
+        badge: "👤",
+        label: "Chỉ người (who / whom)",
+        pattern: "",
+        color: "emerald",
+        note: "",
+        patternPlaceholder: "VD: N (người) + who/whom + (S) + V...",
+        notePlaceholder: "VD: who làm chủ/tân ngữ, whom chỉ làm tân ngữ",
+      },
+      {
+        badge: "📦",
+        label: "Chỉ vật / Sở hữu",
+        pattern: "",
+        color: "sky",
+        note: "",
+        patternPlaceholder: "VD: N (vật) + which/that... | N + whose + N",
+        notePlaceholder: "VD: Không dùng that sau dấu phẩy",
+      },
+      {
+        badge: "✂",
+        label: "Rút gọn mệnh đề",
+        pattern: "",
+        color: "indigo",
+        note: "",
+        patternPlaceholder: "VD: N + V-ing (chủ động) / V3-ed (bị động) / to V",
+        notePlaceholder: "VD: Dùng to V sau the first, the last, the only...",
+      },
     ],
   },
   {
     name: "Tường thuật",
     items: [
-      { badge: "💬", label: "Câu trần thuật", pattern: "S + said/told O + (that) + S + V(lùi thì)", color: "emerald", note: "" },
-      { badge: "?", label: "Câu hỏi Yes/No & Wh-", pattern: "S + asked + O + if/whether/Wh- + S + V(lùi thì)", color: "sky", note: "" },
-      { badge: "!", label: "Mệnh lệnh / Đề nghị", pattern: "S + told/asked + O + (not) to V", color: "amber", note: "" },
+      {
+        badge: "💬",
+        label: "Câu trần thuật",
+        pattern: "",
+        color: "emerald",
+        note: "",
+        patternPlaceholder: "VD: S + said/told O + (that) + S + V(lùi thì)",
+        notePlaceholder: "VD: Nhớ đổi ngôi, lùi 1 thì và trạng từ",
+      },
+      {
+        badge: "?",
+        label: "Câu hỏi Yes/No & Wh-",
+        pattern: "",
+        color: "sky",
+        note: "",
+        patternPlaceholder: "VD: S + asked + O + if/whether/Wh- + S + V(lùi thì)",
+        notePlaceholder: "VD: Không đảo trợ động từ sau từ để hỏi",
+      },
+      {
+        badge: "!",
+        label: "Mệnh lệnh / Đề nghị",
+        pattern: "",
+        color: "amber",
+        note: "",
+        patternPlaceholder: "VD: S + told/asked + O + (not) to V",
+        notePlaceholder: "VD: Dùng khi tường thuật lời yêu cầu, khuyên nhủ",
+      },
     ],
   },
 ];
@@ -180,6 +310,9 @@ export function GrammarEditorModal({
   const [structures, setStructures] = useState<GrammarStructureItem[]>(
     FORMULA_PRESETS[0].items.map((x) => ({ ...x }))
   );
+  const [activePresetName, setActivePresetName] = useState<string | null>(
+    FORMULA_PRESETS[0].name
+  );
 
   // Usage, Signals & Content
   const [usageText, setUsageText] = useState("");
@@ -219,6 +352,7 @@ export function GrammarEditorModal({
       setStatus(editingLesson.status || "published");
       setSummary(editingLesson.summary || "");
       setStructures(hydrateStructuresFromLesson(editingLesson));
+      setActivePresetName(null);
       setUsageText((editingLesson.usage || []).join("\n"));
       setSignalsText((editingLesson.signals || []).join(", "));
       setContent(editingLesson.content || "");
@@ -248,6 +382,7 @@ export function GrammarEditorModal({
       setStatus("published");
       setSummary("");
       setStructures(FORMULA_PRESETS[0].items.map((x) => ({ ...x })));
+      setActivePresetName(FORMULA_PRESETS[0].name);
       setUsageText("");
       setSignalsText("");
       setContent("");
@@ -518,10 +653,10 @@ export function GrammarEditorModal({
           </div>
           <input
             type="text"
-            placeholder="Nhập chủ đề (VD: Passive Voice - B1, Câu điều kiện loại 2)..."
+            placeholder="VD: Passive Voice - B1, Câu điều kiện loại 2..."
             value={aiTopicPrompt}
             onChange={(e) => setAiTopicPrompt(e.target.value)}
-            className="flex-1 h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <button
             type="button"
@@ -598,7 +733,7 @@ export function GrammarEditorModal({
                     placeholder="VD: Câu Bị Động (Passive Voice)"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="h-10.5 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="h-10.5 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -610,10 +745,10 @@ export function GrammarEditorModal({
                     type="text"
                     required
                     list="grammar-category-list"
-                    placeholder="VD: Tenses, Passive Voice..."
+                    placeholder="VD: Tenses, Passive Voice, Comparisons..."
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <datalist id="grammar-category-list">
                     {CATEGORY_SUGGESTIONS.map((c) => (
@@ -662,10 +797,10 @@ export function GrammarEditorModal({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Mô tả ngắn mục tiêu kiến thức của bài học..."
+                  placeholder="VD: Nắm vững công thức, cách dùng và dấu hiệu nhận biết để áp dụng vào giao tiếp & bài thi."
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                 />
               </div>
 
@@ -677,12 +812,13 @@ export function GrammarEditorModal({
                       Công thức &amp; Cấu trúc ngữ pháp linh hoạt
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Chọn mẫu có sẵn phù hợp chuyên đề hoặc tự thêm các dạng công thức riêng
+                      Chọn mẫu nhanh phù hợp chuyên đề — các ô có chữ <span className="text-slate-400 font-semibold">VD: ...</span> màu xám nhạt gợi ý để bạn tự điền hoặc bấm <strong>Dùng VD</strong>
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setActivePresetName(null);
                       setStructures([
                         ...structures,
                         {
@@ -691,28 +827,40 @@ export function GrammarEditorModal({
                           pattern: "",
                           color: "emerald",
                           note: "",
+                          patternPlaceholder: "VD: S + V + O...",
+                          notePlaceholder: "VD: Ghi chú ngắn về cách dùng công thức này",
                         },
-                      ])
-                    }
+                      ]);
+                    }}
                     className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="size-3.5" /> Thêm công thức
                   </button>
                 </div>
 
-                {/* Preset Template Pills */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-400 mr-1">Mẫu nhanh:</span>
-                  {FORMULA_PRESETS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => setStructures(preset.items.map((x) => ({ ...x })))}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer transition"
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
+                {/* Preset Template Pills (Glowing active state) */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400 mr-0.5">Mẫu nhanh:</span>
+                  {FORMULA_PRESETS.map((preset) => {
+                    const isActive = activePresetName === preset.name;
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          setActivePresetName(preset.name);
+                          setStructures(preset.items.map((x) => ({ ...x })));
+                        }}
+                        className={`px-3 py-1.5 rounded-xl border text-[11px] font-extrabold cursor-pointer transition-all duration-200 ${
+                          isActive
+                            ? "bg-emerald-500 text-white border-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.6)] ring-2 ring-emerald-400/50 scale-[1.03]"
+                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-600"
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="grid grid-cols-1 gap-2.5">
@@ -725,7 +873,7 @@ export function GrammarEditorModal({
                         <input
                           type="text"
                           maxLength={6}
-                          placeholder="Ký hiệu"
+                          placeholder="VD: +"
                           title="Ký hiệu (+, -, ?, =, >, If, 1...)"
                           value={st.badge}
                           onChange={(e) => {
@@ -733,21 +881,21 @@ export function GrammarEditorModal({
                             next[idx] = { ...next[idx], badge: e.target.value };
                             setStructures(next);
                           }}
-                          className={`w-12 h-8.5 text-center rounded-lg text-xs font-black text-white ${
+                          className={`w-12 h-8.5 text-center rounded-lg text-xs font-black text-white placeholder:text-white/70 ${
                             BADGE_COLOR_CLASSES[st.color || "emerald"] || "bg-emerald-600"
                           }`}
                         />
 
                         <input
                           type="text"
-                          placeholder="Tên dạng (VD: Thể khẳng định, So sánh hơn, Đảo ngữ If...)"
+                          placeholder="VD: Thể khẳng định / So sánh hơn / Đảo ngữ If"
                           value={st.label}
                           onChange={(e) => {
                             const next = [...structures];
                             next[idx] = { ...next[idx], label: e.target.value };
                             setStructures(next);
                           }}
-                          className="flex-1 min-w-[160px] h-8.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                          className="flex-1 min-w-[160px] h-8.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal"
                         />
 
                         <select
@@ -781,28 +929,47 @@ export function GrammarEditorModal({
                         )}
                       </div>
 
-                      <input
-                        type="text"
-                        placeholder="Công thức (VD: S + V + adj-er + than + O)"
-                        value={st.pattern}
-                        onChange={(e) => {
-                          const next = [...structures];
-                          next[idx] = { ...next[idx], pattern: e.target.value };
-                          setStructures(next);
-                        }}
-                        className="h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white"
-                      />
+                      <div className="relative flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder={st.patternPlaceholder || "VD: S + V + adj-er + than + O"}
+                          value={st.pattern}
+                          onChange={(e) => {
+                            const next = [...structures];
+                            next[idx] = { ...next[idx], pattern: e.target.value };
+                            setStructures(next);
+                          }}
+                          className="flex-1 h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal"
+                        />
+                        {!st.pattern && st.patternPlaceholder?.startsWith("VD: ") && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...structures];
+                              next[idx] = {
+                                ...next[idx],
+                                pattern: st.patternPlaceholder!.replace(/^VD:\s*/, ""),
+                              };
+                              setStructures(next);
+                            }}
+                            className="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/60 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 hover:text-emerald-600 shrink-0 cursor-pointer transition"
+                            title="Điền công thức ví dụ gợi ý"
+                          >
+                            Dùng VD
+                          </button>
+                        )}
+                      </div>
 
                       <input
                         type="text"
-                        placeholder="Ghi chú ngắn cho công thức này (tùy chọn)..."
+                        placeholder={st.notePlaceholder || "VD: Ghi chú ngắn cho công thức này (tùy chọn)"}
                         value={st.note || ""}
                         onChange={(e) => {
                           const next = [...structures];
                           next[idx] = { ...next[idx], note: e.target.value };
                           setStructures(next);
                         }}
-                        className="h-8 px-3 rounded-lg bg-slate-50/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-600 dark:text-slate-300"
+                        className="h-8 px-3 rounded-lg bg-slate-50/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-[11px] text-slate-600 dark:text-slate-300 placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                       />
                     </div>
                   ))}
@@ -816,10 +983,10 @@ export function GrammarEditorModal({
                   </label>
                   <textarea
                     rows={4}
-                    placeholder={"Nhấn mạnh đối tượng chịu tác động...\nKhông rõ hoặc không cần nêu chủ thể..."}
+                    placeholder={"VD: Nhấn mạnh đối tượng chịu tác động...\nVD: Dùng khi không rõ chủ thể thực hiện hành động..."}
                     value={usageText}
                     onChange={(e) => setUsageText(e.target.value)}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white resize-y"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 resize-y"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -828,10 +995,10 @@ export function GrammarEditorModal({
                   </label>
                   <textarea
                     rows={4}
-                    placeholder="always, usually, by + O, every day..."
+                    placeholder="VD: always, usually, by + O, every day..."
                     value={signalsText}
                     onChange={(e) => setSignalsText(e.target.value)}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white resize-y"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-sans resize-y"
                   />
                 </div>
               </div>
@@ -842,10 +1009,10 @@ export function GrammarEditorModal({
                 </label>
                 <textarea
                   rows={4}
-                  placeholder="### Lưu ý đặc biệt..."
+                  placeholder="VD: ### Lưu ý đặc biệt về trường hợp ngoại lệ hoặc cách chuyển đổi câu..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white resize-y"
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500 resize-y"
                 />
               </div>
             </div>
@@ -887,37 +1054,37 @@ export function GrammarEditorModal({
                     </div>
                     <input
                       type="text"
-                      placeholder="Câu tiếng Anh..."
+                      placeholder="VD: She drinks coffee every morning."
                       value={ex.en}
                       onChange={(e) => {
                         const next = [...examples];
                         next[idx] = { ...next[idx], en: e.target.value };
                         setExamples(next);
                       }}
-                      className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+                      className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal"
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                         type="text"
-                        placeholder="Nghĩa tiếng Việt..."
+                        placeholder="VD: Cô ấy uống cà phê mỗi buổi sáng."
                         value={ex.vi}
                         onChange={(e) => {
                           const next = [...examples];
                           next[idx] = { ...next[idx], vi: e.target.value };
                           setExamples(next);
                         }}
-                        className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
+                        className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                       />
                       <input
                         type="text"
-                        placeholder="Ghi chú ngữ pháp (tùy chọn)..."
+                        placeholder="VD: Chủ ngữ ngôi 3 số ít thêm -s (tùy chọn)"
                         value={ex.note || ""}
                         onChange={(e) => {
                           const next = [...examples];
                           next[idx] = { ...next[idx], note: e.target.value };
                           setExamples(next);
                         }}
-                        className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
+                        className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                       />
                     </div>
                   </div>
@@ -972,37 +1139,37 @@ export function GrammarEditorModal({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                         type="text"
-                        placeholder="Câu sai (Wrong)..."
+                        placeholder="VD: He go to school."
                         value={m.wrong}
                         onChange={(e) => {
                           const next = [...commonMistakes];
                           next[idx] = { ...next[idx], wrong: e.target.value };
                           setCommonMistakes(next);
                         }}
-                        className="h-9 px-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs"
+                        className="h-9 px-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                       />
                       <input
                         type="text"
-                        placeholder="Câu đúng (Correct)..."
+                        placeholder="VD: He goes to school."
                         value={m.correct}
                         onChange={(e) => {
                           const next = [...commonMistakes];
                           next[idx] = { ...next[idx], correct: e.target.value };
                           setCommonMistakes(next);
                         }}
-                        className="h-9 px-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs"
+                        className="h-9 px-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                       />
                     </div>
                     <input
                       type="text"
-                      placeholder="Giải thích lý do..."
+                      placeholder="VD: Chủ ngữ 'He' là ngôi thứ 3 số ít nên động từ phải thêm -es."
                       value={m.reason}
                       onChange={(e) => {
                         const next = [...commonMistakes];
                         next[idx] = { ...next[idx], reason: e.target.value };
                         setCommonMistakes(next);
                       }}
-                      className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
+                      className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                     />
                   </div>
                 ))}
@@ -1133,14 +1300,14 @@ export function GrammarEditorModal({
 
                       <input
                         type="text"
-                        placeholder="Nội dung câu hỏi (dùng ____ cho chỗ trống)..."
+                        placeholder="VD: She ____ to school every day."
                         value={ex.question}
                         onChange={(e) => {
                           const next = [...exercises];
                           next[idx] = { ...next[idx], question: e.target.value };
                           setExercises(next);
                         }}
-                        className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+                        className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal"
                       />
 
                       {ex.type === "mcq" && (
@@ -1149,7 +1316,7 @@ export function GrammarEditorModal({
                             <input
                               key={optIdx}
                               type="text"
-                              placeholder={`Đáp án ${String.fromCharCode(65 + optIdx)}`}
+                              placeholder={`VD: Đáp án ${String.fromCharCode(65 + optIdx)}`}
                               value={ex.options?.[optIdx] || ""}
                               onChange={(e) => {
                                 const next = [...exercises];
@@ -1158,7 +1325,7 @@ export function GrammarEditorModal({
                                 next[idx] = { ...next[idx], options: opts };
                                 setExercises(next);
                               }}
-                              className="h-8.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
+                              className="h-8.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                             />
                           ))}
                         </div>
@@ -1167,25 +1334,25 @@ export function GrammarEditorModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                           type="text"
-                          placeholder="Đáp án đúng chính xác..."
+                          placeholder="VD: goes"
                           value={ex.correctAnswer}
                           onChange={(e) => {
                             const next = [...exercises];
                             next[idx] = { ...next[idx], correctAnswer: e.target.value };
                             setExercises(next);
                           }}
-                          className="h-9 px-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-bold"
+                          className="h-9 px-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-bold placeholder:text-slate-400/80 dark:placeholder:text-slate-500 placeholder:font-normal"
                         />
                         <input
                           type="text"
-                          placeholder="Giải thích đáp án..."
+                          placeholder="VD: Chủ ngữ She là ngôi 3 số ít nên thêm -es."
                           value={ex.explanation || ""}
                           onChange={(e) => {
                             const next = [...exercises];
                             next[idx] = { ...next[idx], explanation: e.target.value };
                             setExercises(next);
                           }}
-                          className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
+                          className="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs placeholder:text-slate-400/80 dark:placeholder:text-slate-500"
                         />
                       </div>
                     </div>
