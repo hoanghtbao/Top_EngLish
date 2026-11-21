@@ -14,8 +14,10 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  Check,
   CheckCircle2,
   ChevronLeft,
+  Copy,
   Edit2,
   FileJson,
   HelpCircle,
@@ -26,6 +28,7 @@ import {
   RotateCw,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   Target,
   Trash2,
@@ -202,8 +205,22 @@ function TopicDetailInner() {
 
   // --- TEACHER & ADMIN AUTHORING MODAL STATES ---
   const [showAddWordModal, setShowAddWordModal] = useState<boolean>(false);
-  const [addModalTab, setAddModalTab] = useState<"single" | "json">("single");
+  const [addModalTab, setAddModalTab] = useState<"single" | "ai" | "json">("single");
   const [jsonInput, setJsonInput] = useState<string>("");
+  const [aiMode, setAiMode] = useState<"topic" | "provided">("topic");
+  const [aiTopicContext, setAiTopicContext] = useState<string>("");
+  const [aiLevel, setAiLevel] = useState<string>("B1");
+  const [aiCount, setAiCount] = useState<number>(10);
+  const [aiProvidedText, setAiProvidedText] = useState<string>("");
+  const [aiExtraNotes, setAiExtraNotes] = useState<string>("");
+  const [aiGenerating, setAiGenerating] = useState<boolean>(false);
+  const [aiGeneratedJson, setAiGeneratedJson] = useState<string>("");
+  const [aiGeneratedMeta, setAiGeneratedMeta] = useState<{
+    totalGenerated: number;
+    provider: string;
+    strictTeacherListApplied: boolean;
+  } | null>(null);
+  const [aiCopied, setAiCopied] = useState<boolean>(false);
   const [showEditWordModal, setShowEditWordModal] = useState<boolean>(false);
   const [editingWord, setEditingWord] = useState<Vocabulary | null>(null);
   const [isAuthoringSubmitting, setIsAuthoringSubmitting] = useState<boolean>(false);
@@ -824,12 +841,39 @@ function TopicDetailInner() {
   }, [viewMode, isCompleted, handleToggleFlip, handleNextCard, handlePrevCard, handlePronounce, currentWord]);
 
   // --- TEACHER ACTION HANDLERS ---
+  const parsedAiProvidedWords = useMemo(() => {
+    const tokens = aiProvidedText
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const token of tokens) {
+      const lower = token.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        unique.push(token);
+      }
+    }
+    return unique;
+  }, [aiProvidedText]);
+
   // Mở modal thêm từ vựng mới
   const openAddModal = () => {
     playClickSound();
     setAuthoringError(null);
     setAddModalTab("single");
     setJsonInput("");
+    setAiTopicContext(
+      topic ? `${topic.title}${topic.tag ? ` (${topic.tag})` : ""}` : ""
+    );
+    setAiLevel(topic?.level || "B1");
+    setAiCount(10);
+    setAiProvidedText("");
+    setAiExtraNotes("");
+    setAiGeneratedJson("");
+    setAiGeneratedMeta(null);
+    setAiCopied(false);
     setWordForm({
       word: "",
       phonetic: "",
@@ -839,6 +883,77 @@ function TopicDetailInner() {
       exampleMeaning: "",
     });
     setShowAddWordModal(true);
+  };
+
+  // Gọi AI tạo danh sách từ vựng JSON (Tự tạo hoặc Đúng theo danh sách GV cung cấp)
+  const handleGenerateVocabWithAi = async () => {
+    if (aiMode === "topic" && !aiTopicContext.trim()) {
+      setAuthoringError("Vui lòng nhập chủ đề hoặc ngữ cảnh để AI tự tạo từ vựng!");
+      return;
+    }
+    if (aiMode === "provided" && parsedAiProvidedWords.length === 0) {
+      setAuthoringError("Vui lòng nhập danh sách từ vựng tiếng Anh do bạn cung cấp!");
+      return;
+    }
+
+    try {
+      setAiGenerating(true);
+      setAuthoringError(null);
+      setAiCopied(false);
+
+      const res = await fetchApi<{
+        totalGenerated: number;
+        provider: string;
+        strictTeacherListApplied: boolean;
+        jsonText: string;
+      }>("/ai/generate-vocab-json", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: aiMode,
+          topicContext: aiTopicContext.trim() || topic?.title || "Business English",
+          level: aiLevel,
+          count: aiMode === "topic" ? Math.min(Math.max(aiCount || 10, 1), 50) : undefined,
+          providedWords: aiMode === "provided" ? parsedAiProvidedWords : undefined,
+          extraInstructions: aiExtraNotes.trim() || undefined,
+        }),
+      });
+
+      if (res.success && res.data?.jsonText) {
+        playSuccessSound();
+        setAiGeneratedJson(res.data.jsonText);
+        setAiGeneratedMeta({
+          totalGenerated: res.data.totalGenerated,
+          provider: res.data.provider,
+          strictTeacherListApplied: res.data.strictTeacherListApplied,
+        });
+      } else {
+        setAuthoringError(res.message || "AI không thể tạo danh sách từ vựng lúc này.");
+      }
+    } catch (err: any) {
+      setAuthoringError(err.message || "Không thể kết nối AI tạo từ vựng. Vui lòng thử lại!");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleCopyAiJson = async () => {
+    if (!aiGeneratedJson) return;
+    try {
+      await navigator.clipboard.writeText(aiGeneratedJson);
+      playClickSound();
+      setAiCopied(true);
+      setTimeout(() => setAiCopied(false), 2000);
+    } catch {
+      setAuthoringError("Không thể sao chép tự động, vui lòng bôi đen và copy thủ công.");
+    }
+  };
+
+  const handleUseAiJsonInImportTab = () => {
+    if (!aiGeneratedJson) return;
+    playClickSound();
+    setAuthoringError(null);
+    setJsonInput(aiGeneratedJson);
+    setAddModalTab("json");
   };
 
   // Đọc file .json từ máy tính
@@ -2079,6 +2194,8 @@ function TopicDetailInner() {
                   <div className="size-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                     {addModalTab === "json" ? (
                       <FileJson className="size-5" />
+                    ) : addModalTab === "ai" ? (
+                      <Sparkles className="size-5" />
                     ) : (
                       <Plus className="size-5 stroke-[3]" />
                     )}
@@ -2102,8 +2219,8 @@ function TopicDetailInner() {
                 </button>
               </div>
 
-              {/* CHUYỂN CHẾ ĐỘ: NHẬP TỪNG TỪ / NHẬP HÀNG LOẠT BẰNG JSON */}
-              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/70">
+              {/* CHUYỂN CHẾ ĐỘ: NHẬP TỪNG TỪ / AI TẠO JSON / NHẬP HÀNG LOẠT BẰNG JSON */}
+              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/70">
                 <button
                   type="button"
                   onClick={() => {
@@ -2111,14 +2228,30 @@ function TopicDetailInner() {
                     setAuthoringError(null);
                     setAddModalTab("single");
                   }}
-                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                     addModalTab === "single"
                       ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <Plus className="size-3.5" />
-                  Nhập từng từ (Form)
+                  <span>Nhập từng từ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickSound();
+                    setAuthoringError(null);
+                    setAddModalTab("ai");
+                  }}
+                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    addModalTab === "ai"
+                      ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="size-3.5 text-amber-500" />
+                  <span>AI Tạo Từ</span>
                 </button>
                 <button
                   type="button"
@@ -2127,14 +2260,14 @@ function TopicDetailInner() {
                     setAuthoringError(null);
                     setAddModalTab("json");
                   }}
-                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                     addModalTab === "json"
                       ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <FileJson className="size-3.5" />
-                  Nhập hàng loạt bằng JSON
+                  <span>Nhập JSON</span>
                 </button>
               </div>
 
@@ -2249,12 +2382,263 @@ function TopicDetailInner() {
                     </button>
                   </div>
                 </form>
+              ) : addModalTab === "ai" ? (
+                <div className="flex flex-col gap-4">
+                  {/* Chọn 1 trong 2 chế độ AI */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        setAuthoringError(null);
+                        setAiMode("topic");
+                      }}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                        aiMode === "topic"
+                          ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20"
+                          : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-emerald-400"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900 dark:text-white">
+                        <Sparkles className="size-4 text-amber-500 shrink-0" />
+                        <span>AI tự tạo từ theo chủ đề</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Nhập chủ đề &amp; số lượng, AI tự chọn bộ từ vựng chuẩn kèm IPA, ví dụ &amp; Quiz.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        setAuthoringError(null);
+                        setAiMode("provided");
+                      }}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                        aiMode === "provided"
+                          ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20"
+                          : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-emerald-400"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900 dark:text-white">
+                        <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+                        <span>Từ danh sách GV cung cấp</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Rule cứng: AI chỉ soạn đúng các từ bạn nhập, tuyệt đối không thêm/bớt từ.
+                      </p>
+                    </button>
+                  </div>
+
+                  {aiMode === "topic" ? (
+                    <div className="flex flex-col gap-3.5">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Chủ đề / Ngữ cảnh bài học <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ví dụ: Lesson 8: Articles & Reports (TOEIC Reading Part 7)"
+                          value={aiTopicContext}
+                          onChange={(e) => setAiTopicContext(e.target.value)}
+                          className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Trình độ CEFR
+                          </label>
+                          <select
+                            value={aiLevel}
+                            onChange={(e) => setAiLevel(e.target.value)}
+                            className="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                          >
+                            {["A1", "A2", "B1", "B2", "C1", "C2"].map((lv) => (
+                              <option key={lv} value={lv}>
+                                Trình độ {lv}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Số lượng từ muốn tạo (1–50)
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={aiCount}
+                            onChange={(e) => setAiCount(Number(e.target.value) || 10)}
+                            className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <div className="p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 flex items-start gap-2.5 text-[11px] text-amber-800 dark:text-amber-200">
+                        <ShieldCheck className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Quy tắc giữ nguyên danh sách giáo viên:</strong> Hệ thống khóa cứng kết quả đầu ra để AI chỉ biên soạn phiên âm, từ loại, nghĩa tiếng Việt, ví dụ &amp; đáp án nhiễu cho <strong>đúng các từ bạn nhập bên dưới</strong> — không tự ý thêm từ mới hay bỏ sót từ.
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Danh sách từ vựng của giáo viên <span className="text-rose-500">*</span>
+                          </label>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+                            Đã nhận diện {parsedAiProvidedWords.length} từ
+                          </span>
+                        </div>
+                        <textarea
+                          rows={5}
+                          placeholder={"Mỗi dòng 1 từ hoặc cách nhau bằng dấu phẩy, ví dụ:\naccountable\ncollaborate\nnegotiate\ninformed decision"}
+                          value={aiProvidedText}
+                          onChange={(e) => setAiProvidedText(e.target.value)}
+                          className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Ngữ cảnh bài học (tùy chọn)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ví dụ: TOEIC 2 - Thương mại & Văn phòng"
+                            value={aiTopicContext}
+                            onChange={(e) => setAiTopicContext(e.target.value)}
+                            className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Trình độ mục tiêu
+                          </label>
+                          <select
+                            value={aiLevel}
+                            onChange={(e) => setAiLevel(e.target.value)}
+                            className="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                          >
+                            {["A1", "A2", "B1", "B2", "C1", "C2"].map((lv) => (
+                              <option key={lv} value={lv}>
+                                Trình độ {lv}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Yêu cầu bổ sung cho AI (tùy chọn)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: Câu ví dụ ngắn gọn dưới 12 từ, bám sát TOEIC"
+                      value={aiExtraNotes}
+                      onChange={(e) => setAiExtraNotes(e.target.value)}
+                      className="h-10 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={aiGenerating}
+                    onClick={handleGenerateVocabWithAi}
+                    className="h-11 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                  >
+                    <Sparkles className={`size-4 ${aiGenerating ? "animate-spin" : ""}`} />
+                    <span>
+                      {aiGenerating
+                        ? "AI đang biên soạn dữ liệu JSON..."
+                        : aiMode === "provided"
+                        ? `AI Tạo JSON Cho Đúng ${parsedAiProvidedWords.length || 0} Từ Đã Nhập`
+                        : `AI Tạo ${aiCount} Từ Vựng Chuẩn JSON`}
+                    </span>
+                  </button>
+
+                  {/* Kết quả JSON do AI tạo xong -> Copy hoặc Đưa thẳng sang tab Nhập JSON */}
+                  {aiGeneratedJson && aiGeneratedMeta && (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-emerald-200 dark:border-emerald-800/70 flex flex-col gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+                            <CheckCircle2 className="size-4" />
+                            Đã tạo xong {aiGeneratedMeta.totalGenerated} từ ({aiGeneratedMeta.provider})
+                          </span>
+                          {aiGeneratedMeta.strictTeacherListApplied && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/70 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                              Khớp 100% danh sách GV
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleCopyAiJson}
+                            className="h-8.5 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-xs font-bold text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 cursor-pointer transition"
+                          >
+                            {aiCopied ? (
+                              <>
+                                <Check className="size-3.5 text-emerald-600" />
+                                <span className="text-emerald-600">Đã Copy JSON!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="size-3.5 text-emerald-600" />
+                                <span>Copy JSON</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleUseAiJsonInImportTab}
+                            className="h-8.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition"
+                          >
+                            <span>Đưa vào Nhập JSON</span>
+                            <ArrowRight className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <textarea
+                        readOnly
+                        rows={7}
+                        value={aiGeneratedJson}
+                        className="p-3 rounded-xl bg-slate-950 text-emerald-300 border border-slate-800 text-[11px] font-mono leading-relaxed focus:outline-none resize-y"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddWordModal(false)}
+                      className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <form onSubmit={handleBulkImportJson} className="flex flex-col gap-4">
                   {/* Thanh công cụ JSON: Tải file .json hoặc chèn JSON mẫu */}
                   <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/70">
                     <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Hỗ trợ mảng JSON các đối tượng có trường <code className="font-bold text-emerald-600 dark:text-emerald-400">word</code> &amp; <code className="font-bold text-emerald-600 dark:text-emerald-400">meaning</code> (tối đa 200 từ/lần).
+                      Hỗ trợ mảng JSON các đối tượng có trường <code className="font-bold text-emerald-600 dark:text-emerald-400">word</code> &amp; <code className="font-bold text-emerald-600 dark:text-emerald-400">meaning</code> (tối đa 300 từ/lần).
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">

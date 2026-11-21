@@ -5,7 +5,7 @@
  *              và Smart Offline Heuristic Engine bảo đảm độ sẵn sàng 100% không gián đoạn
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,7 +13,9 @@ import { CheckGrammarDto } from './dto/check-grammar.dto';
 import { ExplainWordDto } from './dto/explain-word.dto';
 import { ChatAiDto } from './dto/chat-ai.dto';
 import { AnalyzeQuizDto } from './dto/analyze-quiz.dto';
+import { GenerateVocabJsonDto } from './dto/generate-vocab-json.dto';
 import { AI_TUTOR_SYSTEM_GUARDRAILS } from './constants/ai-guardrails.constant';
+import { PartOfSpeech } from '../vocabulary/enums/part-of-speech.enum';
 
 export interface GrammarIssue {
   type: string;
@@ -56,6 +58,27 @@ export interface AnalyzeQuizResponse {
   reasoning: string;
   grammarRule: string;
   tipToRemember: string;
+}
+
+export interface GeneratedVocabJsonItem {
+  word: string;
+  phonetic: string;
+  partOfSpeech: PartOfSpeech;
+  meaning: string;
+  exampleSentence: string;
+  exampleMeaning: string;
+  distractors: string[];
+  difficulty: number;
+}
+
+export interface GenerateVocabJsonResponse {
+  mode: 'topic' | 'provided';
+  provider: string;
+  totalGenerated: number;
+  requestedCount: number;
+  strictTeacherListApplied: boolean;
+  items: GeneratedVocabJsonItem[];
+  jsonText: string;
 }
 
 @Injectable()
@@ -843,5 +866,298 @@ Bạn muốn tìm hiểu hoặc thực hành về chủ đề nào hôm nay?`,
     );
 
     return sanitized;
+  }
+
+  /**
+   * 5. Tạo danh sách từ vựng chuẩn JSON cho Giáo viên / Admin (Hỗ trợ 2 chế độ: Tự tạo theo chủ đề & Đúng danh sách giáo viên cung cấp)
+   */
+  async generateVocabJson(
+    dto: GenerateVocabJsonDto,
+  ): Promise<GenerateVocabJsonResponse> {
+    const level = dto.level?.trim() || 'B1';
+    const topicContext = dto.topicContext?.trim() || 'Business & Everyday English';
+    const extraInstructions = dto.extraInstructions?.trim() || '';
+    const hasKey = !!this.getApiKey();
+
+    if (dto.mode === 'provided') {
+      const seen = new Set<string>();
+      const providedList: string[] = [];
+      for (const raw of dto.providedWords || []) {
+        const cleaned = String(raw || '').trim();
+        if (!cleaned) continue;
+        const keyLower = cleaned.toLowerCase();
+        if (!seen.has(keyLower)) {
+          seen.add(keyLower);
+          providedList.push(cleaned);
+        }
+      }
+
+      if (providedList.length === 0) {
+        throw new BadRequestException(
+          'Vui lòng nhập ít nhất 1 từ vựng do giáo viên cung cấp.',
+        );
+      }
+
+      let rawAiItems: any[] = [];
+      if (hasKey) {
+        const systemRule = `You are a strict lexicographer assistant for TopEnglish teachers.
+STRICT NON-NEGOTIABLE RULE FOR TEACHER-PROVIDED WORD LISTS:
+1. You MUST generate vocabulary entries ONLY for the EXACT English words provided in the teacher's list, in the EXACT spelling and order given.
+2. NEVER add extra words, synonyms as separate entries, or related words that are NOT in the teacher's list.
+3. NEVER omit, skip, merge, or rename any word from the teacher's list.
+4. The returned "items" array length MUST equal ${providedList.length}.`;
+
+        const prompt = `Compile Vietnamese vocabulary JSON entries strictly for ONLY these ${providedList.length} English words/phrases:
+${providedList.map((w, idx) => `${idx + 1}. "${w}"`).join('\n')}
+
+Lesson context: "${topicContext}"
+Target CEFR level: ${level}
+${extraInstructions ? `Additional teacher notes: "${extraInstructions}"` : ''}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "items": [
+    {
+      "word": "exact word from the numbered list above",
+      "phonetic": "/IPA transcription/",
+      "partOfSpeech": "noun | verb | adjective | adverb | preposition | conjunction | phrase",
+      "meaning": "concise, accurate Vietnamese meaning(s) separated by comma",
+      "exampleSentence": "natural English example sentence using this word",
+      "exampleMeaning": "Vietnamese translation of exampleSentence",
+      "distractors": ["3 plausible but clearly WRONG Vietnamese distractors for ABCD quiz"],
+      "difficulty": 3
+    }
+  ]
+}`;
+
+        const geminiResult = await this.callGemini(prompt, true, systemRule);
+        if (geminiResult && Array.isArray(geminiResult.items)) {
+          rawAiItems = geminiResult.items;
+        }
+      }
+
+      // Hard deterministic enforcement: align strictly 1-to-1 with teacher's providedList (zero extra words allowed)
+      const aiMap = new Map<string, any>();
+      for (const item of rawAiItems) {
+        if (item && typeof item.word === 'string') {
+          const k = item.word.trim().toLowerCase();
+          if (seen.has(k) && !aiMap.has(k)) {
+            aiMap.set(k, item);
+          }
+        }
+      }
+
+      const finalItems: GeneratedVocabJsonItem[] = providedList.map((teacherWord) => {
+        const matched = aiMap.get(teacherWord.toLowerCase());
+        if (matched) {
+          return this.normalizeGeneratedVocabItem(matched, teacherWord, level);
+        }
+        return this.buildOfflineVocabItem(teacherWord, topicContext, level);
+      });
+
+      return {
+        mode: 'provided',
+        provider: hasKey && rawAiItems.length > 0 ? 'Google Gemini 2.5 Flash' : 'Smart Offline Engine',
+        totalGenerated: finalItems.length,
+        requestedCount: providedList.length,
+        strictTeacherListApplied: true,
+        items: finalItems,
+        jsonText: JSON.stringify(finalItems, null, 2),
+      };
+    }
+
+    // Mode: 'topic' — AI tự tạo danh sách từ vựng mới theo chủ đề
+    if (!dto.topicContext || !dto.topicContext.trim()) {
+      throw new BadRequestException(
+        'Vui lòng nhập chủ đề hoặc ngữ cảnh bài học để AI tự tạo từ vựng.',
+      );
+    }
+
+    const requestedCount = Math.min(Math.max(dto.count ?? 10, 1), 50);
+    let rawTopicItems: any[] = [];
+
+    if (hasKey) {
+      const systemRule = `You are a curriculum designer and lexicographer for TopEnglish. Generate high-quality, practical English-Vietnamese vocabulary items strictly tailored to the requested topic and CEFR level.`;
+      const prompt = `Generate ${requestedCount} distinct English vocabulary words or phrases for this lesson topic:
+Topic / Context: "${topicContext}"
+Target CEFR level: ${level}
+${extraInstructions ? `Additional teacher notes: "${extraInstructions}"` : ''}
+
+Return ONLY a valid JSON object with an "items" array of exactly ${requestedCount} unique items:
+{
+  "items": [
+    {
+      "word": "English word or phrase",
+      "phonetic": "/IPA transcription/",
+      "partOfSpeech": "noun | verb | adjective | adverb | preposition | conjunction | phrase",
+      "meaning": "concise, accurate Vietnamese meaning(s) separated by comma",
+      "exampleSentence": "natural English example sentence using this word",
+      "exampleMeaning": "Vietnamese translation of exampleSentence",
+      "distractors": ["3 plausible but clearly WRONG Vietnamese distractors for ABCD quiz"],
+      "difficulty": 3
+    }
+  ]
+}`;
+
+      const geminiResult = await this.callGemini(prompt, true, systemRule);
+      if (geminiResult && Array.isArray(geminiResult.items)) {
+        rawTopicItems = geminiResult.items;
+      }
+    }
+
+    const dedupMap = new Map<string, GeneratedVocabJsonItem>();
+    for (const item of rawTopicItems) {
+      if (!item || typeof item.word !== 'string' || !item.word.trim()) continue;
+      const cleanedWord = item.word.trim();
+      const key = cleanedWord.toLowerCase();
+      if (!dedupMap.has(key)) {
+        dedupMap.set(key, this.normalizeGeneratedVocabItem(item, cleanedWord, level));
+      }
+      if (dedupMap.size >= requestedCount) break;
+    }
+
+    let finalTopicItems = Array.from(dedupMap.values());
+    if (finalTopicItems.length === 0) {
+      finalTopicItems = this.buildOfflineTopicFallback(topicContext, level, requestedCount);
+    }
+
+    return {
+      mode: 'topic',
+      provider: hasKey && rawTopicItems.length > 0 ? 'Google Gemini 2.5 Flash' : 'Smart Offline Engine',
+      totalGenerated: finalTopicItems.length,
+      requestedCount,
+      strictTeacherListApplied: false,
+      items: finalTopicItems,
+      jsonText: JSON.stringify(finalTopicItems, null, 2),
+    };
+  }
+
+  private normalizeVocabPos(raw?: string): PartOfSpeech {
+    const val = String(raw || '').trim().toLowerCase();
+    if (val === 'n' || val === 'n.' || val === 'noun') return PartOfSpeech.NOUN;
+    if (val === 'v' || val === 'v.' || val === 'verb') return PartOfSpeech.VERB;
+    if (val === 'adj' || val === 'adj.' || val === 'adjective') return PartOfSpeech.ADJECTIVE;
+    if (val === 'adv' || val === 'adv.' || val === 'adverb') return PartOfSpeech.ADVERB;
+    if (val === 'prep' || val === 'prep.' || val === 'preposition') return PartOfSpeech.PREPOSITION;
+    if (val === 'conj' || val === 'conj.' || val === 'conjunction') return PartOfSpeech.CONJUNCTION;
+    if (val === 'phrase' || val === 'idiom') return PartOfSpeech.PHRASE;
+    return PartOfSpeech.NOUN;
+  }
+
+  private defaultDifficultyForLevel(level: string): number {
+    const lv = level.toUpperCase();
+    if (lv.includes('A1')) return 1;
+    if (lv.includes('A2')) return 2;
+    if (lv.includes('B1')) return 3;
+    if (lv.includes('B2')) return 4;
+    if (lv.includes('C1') || lv.includes('C2')) return 5;
+    return 3;
+  }
+
+  private normalizeGeneratedVocabItem(
+    raw: any,
+    exactWord: string,
+    level: string,
+  ): GeneratedVocabJsonItem {
+    const meaning =
+      typeof raw?.meaning === 'string' && raw.meaning.trim()
+        ? raw.meaning.trim()
+        : `Nghĩa của từ "${exactWord}"`;
+
+    const distractors = Array.isArray(raw?.distractors)
+      ? raw.distractors
+          .filter((d: unknown): d is string => typeof d === 'string')
+          .map((d: string) => d.trim())
+          .filter((d: string, i: number, arr: string[]) => d && d !== meaning && arr.indexOf(d) === i)
+          .slice(0, 3)
+      : [];
+
+    const fallbackDistractors = [
+      'từ chối thực hiện',
+      'trì hoãn vô thời hạn',
+      'hủy bỏ hoàn toàn',
+    ].filter((d) => d !== meaning && !distractors.includes(d));
+
+    while (distractors.length < 3 && fallbackDistractors.length > 0) {
+      distractors.push(fallbackDistractors.shift()!);
+    }
+
+    const diffNum = Number(raw?.difficulty);
+    const difficulty =
+      Number.isFinite(diffNum) && diffNum >= 1 && diffNum <= 5
+        ? Math.round(diffNum)
+        : this.defaultDifficultyForLevel(level);
+
+    return {
+      word: exactWord,
+      phonetic:
+        typeof raw?.phonetic === 'string' && raw.phonetic.trim()
+          ? raw.phonetic.trim()
+          : `/${exactWord.toLowerCase()}/`,
+      partOfSpeech: this.normalizeVocabPos(raw?.partOfSpeech),
+      meaning,
+      exampleSentence:
+        typeof raw?.exampleSentence === 'string' && raw.exampleSentence.trim()
+          ? raw.exampleSentence.trim()
+          : `We practiced using "${exactWord}" in our lesson today.`,
+      exampleMeaning:
+        typeof raw?.exampleMeaning === 'string' && raw.exampleMeaning.trim()
+          ? raw.exampleMeaning.trim()
+          : `Chúng tôi đã luyện tập sử dụng từ "${exactWord}" trong bài học hôm nay.`,
+      distractors,
+      difficulty,
+    };
+  }
+
+  private buildOfflineVocabItem(
+    word: string,
+    topicContext: string,
+    level: string,
+  ): GeneratedVocabJsonItem {
+    const offline = this.smartOfflineWordExplain(word, topicContext);
+    const pos = word.includes(' ')
+      ? PartOfSpeech.PHRASE
+      : this.normalizeVocabPos(offline.partOfSpeech);
+    return {
+      word,
+      phonetic: offline.phonetic || `/${word.toLowerCase()}/`,
+      partOfSpeech: pos,
+      meaning: offline.vietnameseMeaning || `Từ vựng: ${word}`,
+      exampleSentence:
+        offline.examples?.[0]?.sentence ||
+        `This sentence illustrates the usage of "${word}" in ${topicContext}.`,
+      exampleMeaning:
+        offline.examples?.[0]?.translation ||
+        `Câu này minh họa cách dùng từ "${word}" trong ngữ cảnh ${topicContext}.`,
+      distractors: ['bỏ qua hoàn toàn', 'trì hoãn kế hoạch', 'giảm thiểu hiệu quả'],
+      difficulty: this.defaultDifficultyForLevel(level),
+    };
+  }
+
+  private buildOfflineTopicFallback(
+    topicContext: string,
+    level: string,
+    count: number,
+  ): GeneratedVocabJsonItem[] {
+    const bank = [
+      { word: 'collaborate', phonetic: '/kəˈlæb.ə.reɪt/', pos: PartOfSpeech.VERB, meaning: 'hợp tác, cộng tác', ex: 'Teams collaborate closely to meet tight project deadlines.', exVi: 'Các nhóm hợp tác chặt chẽ để kịp thời hạn dự án.' },
+      { word: 'efficiency', phonetic: '/ɪˈfɪʃ.ən.si/', pos: PartOfSpeech.NOUN, meaning: 'hiệu suất, năng suất', ex: 'New workflow tools significantly improve operational efficiency.', exVi: 'Công cụ quy trình mới cải thiện đáng kể hiệu suất vận hành.' },
+      { word: 'implement', phonetic: '/ˈɪm.plɪ.ment/', pos: PartOfSpeech.VERB, meaning: 'thực hiện, triển khai', ex: 'The company will implement the updated policy next quarter.', exVi: 'Công ty sẽ triển khai chính sách cập nhật vào quý tới.' },
+      { word: 'negotiate', phonetic: '/nɪˈɡəʊ.ʃi.eɪt/', pos: PartOfSpeech.VERB, meaning: 'đàm phán, thương lượng', ex: 'Both parties met to negotiate the contract renewal terms.', exVi: 'Hai bên gặp nhau để đàm phán các điều khoản gia hạn hợp đồng.' },
+      { word: 'proposal', phonetic: '/prəˈpəʊ.zəl/', pos: PartOfSpeech.NOUN, meaning: 'bản đề xuất, phương án', ex: 'The marketing team submitted a detailed budget proposal.', exVi: 'Nhóm tiếp thị đã nộp bản đề xuất ngân sách chi tiết.' },
+      { word: 'reliable', phonetic: '/rɪˈlaɪ.ə.bəl/', pos: PartOfSpeech.ADJECTIVE, meaning: 'đáng tin cậy, ổn định', ex: 'We need a reliable supplier for raw materials.', exVi: 'Chúng tôi cần một nhà cung cấp nguyên liệu đáng tin cậy.' },
+      { word: 'deadline', phonetic: '/ˈded.laɪn/', pos: PartOfSpeech.NOUN, meaning: 'hạn chót, thời hạn', ex: 'All reports must be submitted before Friday deadline.', exVi: 'Mọi báo cáo phải được nộp trước hạn chót thứ Sáu.' },
+      { word: 'confirm', phonetic: '/kənˈfɜːm/', pos: PartOfSpeech.VERB, meaning: 'xác nhận', ex: 'Please confirm your attendance via email before noon.', exVi: 'Vui lòng xác nhận sự tham dự của bạn qua email trước trưa.' },
+    ];
+    return bank.slice(0, Math.min(count, bank.length)).map((item) => ({
+      word: item.word,
+      phonetic: item.phonetic,
+      partOfSpeech: item.pos,
+      meaning: item.meaning,
+      exampleSentence: item.ex,
+      exampleMeaning: item.exVi,
+      distractors: ['bỏ lỡ cơ hội', 'hủy bỏ hợp đồng', 'từ chối tiếp nhận'],
+      difficulty: this.defaultDifficultyForLevel(level),
+    }));
   }
 }

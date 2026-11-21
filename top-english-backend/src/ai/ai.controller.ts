@@ -4,13 +4,18 @@
  * @description Controller cung cấp các REST API cho Trợ lý Trí tuệ Nhân tạo AI
  */
 
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { CheckGrammarDto } from './dto/check-grammar.dto';
 import { ExplainWordDto } from './dto/explain-word.dto';
 import { ChatAiDto } from './dto/chat-ai.dto';
 import { AnalyzeQuizDto } from './dto/analyze-quiz.dto';
+import { GenerateVocabJsonDto } from './dto/generate-vocab-json.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/enums/role.enum';
 
 @ApiTags('Trợ lý AI (AI Assistant)')
 @Controller('ai')
@@ -96,6 +101,27 @@ export class AiController {
       success: true,
       statusCode: HttpStatus.OK,
       message: 'Phân tích câu hỏi hoàn tất',
+      data,
+    };
+  }
+
+  @Post('generate-vocab-json')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'AI tạo danh sách từ vựng chuẩn JSON cho giáo viên / admin',
+    description:
+      'Chế độ "topic": AI tự gợi ý từ theo chủ đề; Chế độ "provided": AI tuân thủ rule chỉ biên soạn đúng các từ giáo viên cung cấp (không thêm/bớt từ), xuất ra JSON sẵn sàng để copy vào mục Thêm từ vựng JSON.',
+  })
+  @ApiResponse({ status: 200, description: 'Tạo danh sách từ vựng JSON hoàn tất' })
+  async generateVocabJson(@Body() dto: GenerateVocabJsonDto) {
+    const data = await this.aiService.generateVocabJson(dto);
+    return {
+      success: true,
+      statusCode: HttpStatus.OK,
+      message: 'AI đã tạo xong danh sách từ vựng chuẩn JSON',
       data,
     };
   }
