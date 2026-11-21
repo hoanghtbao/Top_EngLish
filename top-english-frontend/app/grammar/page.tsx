@@ -752,6 +752,30 @@ export default function GrammarCatalogPage() {
                 </div>
               );
             })}
+
+            {/* Card "+ Thêm bài học" ở cuối danh sách dành cho Giáo viên / Admin */}
+            {isTeacherOrAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLesson(null);
+                  setEditorOpen(true);
+                }}
+                className="group min-h-[240px] rounded-2xl border-2 border-dashed border-emerald-300/80 dark:border-emerald-800/70 bg-emerald-50/25 dark:bg-emerald-950/15 hover:bg-emerald-50/75 dark:hover:bg-emerald-950/35 hover:border-emerald-500 p-6 flex flex-col items-center justify-center text-center gap-3 transition-all duration-200 cursor-pointer"
+              >
+                <div className="size-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white flex items-center justify-center shadow-xs transition-all duration-200 group-hover:scale-105">
+                  <Plus className="size-7 stroke-[2.75]" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-extrabold text-slate-800 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                    Thêm bài ngữ pháp mới
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+                    Tạo bài học theo mẫu công thức linh hoạt hoặc dùng AI soạn gợi ý &amp; bài tập nhanh
+                  </span>
+                </div>
+              </button>
+            )}
           </div>
         )}
 
