@@ -1,7 +1,7 @@
 /**
  * @project TopEnglish - Nền tảng học tiếng Anh trực tuyến
  * @author HoangBao
- * @description Banner tiêu đề trang chuẩn UI/UX Pro Max — hỗ trợ nền mặc định Jade hoặc ảnh nền riêng kèm tinh chỉnh độ mờ, độ phóng to (cắt viền trắng) và tông chữ sáng/tối
+ * @description Banner tiêu đề trang chuẩn UI/UX Pro Max — bố cục căn giữa hài hòa (chừa khoảng thoáng 2 bên cho ảnh minh họa), hỗ trợ nền mặc định Jade hoặc ảnh nền riêng do Admin cấu hình
  */
 
 "use client";
@@ -161,7 +161,7 @@ export function BannerBackgroundLayer({
   return (
     <>
       <div className="absolute -right-10 -bottom-10 size-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-      <div className="absolute right-1/3 -top-12 size-40 rounded-full bg-emerald-300/15 blur-2xl pointer-events-none" />
+      <div className="absolute -left-10 -top-10 size-44 rounded-full bg-teal-300/15 blur-2xl pointer-events-none" />
     </>
   );
 }
@@ -190,7 +190,7 @@ export default function PageHeaderBanner({
   return (
     <section
       data-banner-tone={isDarkText ? "light" : "dark"}
-      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-6 sm:p-8 shadow-lg shadow-emerald-900/10 ${
+      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-12 lg:px-20 py-7 sm:py-9 shadow-lg shadow-emerald-900/10 ${
         isDarkText ? "text-slate-900 border border-emerald-200/70" : "text-white"
       } ${className}`}
     >
@@ -199,88 +199,83 @@ export default function PageHeaderBanner({
         backgroundImageUrl={backgroundImageUrl}
       />
 
-      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-        {/* Left: Badge + Heading + Description */}
-        <div className="flex flex-col gap-2 max-w-2xl">
-          <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md border text-[11px] sm:text-xs font-bold w-fit ${
-              isDarkText
-                ? "bg-white/85 border-emerald-200/90 text-emerald-800 shadow-xs"
-                : "bg-white/15 border-white/25 text-white"
-            }`}
-          >
-            {badgeIcon}
-            <span>{badgeText}</span>
-          </div>
-
-          <h1
-            className={`text-2xl sm:text-3xl font-black tracking-tight ${
-              isDarkText ? "text-emerald-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]" : "text-white"
-            }`}
-          >
-            {title}
-          </h1>
-
-          <p
-            className={`text-xs sm:text-sm leading-relaxed max-w-xl ${
-              isDarkText
-                ? "text-slate-800 font-semibold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
-                : "text-emerald-50/95"
-            }`}
-          >
-            {description}
-          </p>
+      {/* Centered Content Block */}
+      <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center text-center gap-3">
+        {/* Badge */}
+        <div
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full backdrop-blur-md border text-[11px] sm:text-xs font-bold w-fit ${
+            isDarkText
+              ? "bg-white/90 border-emerald-200/90 text-emerald-800 shadow-xs"
+              : "bg-white/15 border-white/25 text-white"
+          }`}
+        >
+          {badgeIcon}
+          <span>{badgeText}</span>
         </div>
 
-        {/* Right: Quick Stats Pills + Primary Actions */}
+        {/* Title */}
+        <h1
+          className={`text-2xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight ${
+            isDarkText
+              ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+              : "text-white"
+          }`}
+        >
+          {title}
+        </h1>
+
+        {/* Description */}
+        <p
+          className={`text-xs sm:text-sm leading-relaxed max-w-xl ${
+            isDarkText
+              ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+              : "text-emerald-50/95"
+          }`}
+        >
+          {description}
+        </p>
+
+        {/* Centered Stats Pills + Action Buttons Row */}
         {(stats.length > 0 || actions) && (
-          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-3 shrink-0">
-            {stats.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                {stats.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-2.5 backdrop-blur-md px-3.5 py-2 rounded-xl border ${
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
+            {stats.map((item, idx) => (
+              <div
+                key={idx}
+                className={`inline-flex items-center gap-2 backdrop-blur-md px-3.5 py-2 rounded-full border transition ${
+                  isDarkText
+                    ? "bg-white/90 border-emerald-200/90 text-slate-900 shadow-xs"
+                    : "bg-black/25 border-white/20 text-white"
+                }`}
+              >
+                {item.icon && (
+                  <span
+                    className={`size-6 rounded-full flex items-center justify-center shrink-0 ${
                       isDarkText
-                        ? "bg-white/85 border-emerald-200/90 text-slate-900 shadow-xs"
-                        : "bg-black/25 border-white/20 text-white"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-white/15 text-white"
                     }`}
                   >
-                    {item.icon && (
-                      <div
-                        className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          isDarkText
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-white/15 text-white"
-                        }`}
-                      >
-                        {item.icon}
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <span
-                        className={`text-[10px] font-semibold uppercase tracking-wider leading-tight ${
-                          isDarkText ? "text-slate-500" : "text-emerald-100/90"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-                      <span
-                        className={`text-sm sm:text-base font-black leading-tight ${
-                          isDarkText ? "text-emerald-900" : "text-white"
-                        }`}
-                      >
-                        {item.value}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                    {item.icon}
+                  </span>
+                )}
+                <span
+                  className={`text-[11px] font-semibold ${
+                    isDarkText ? "text-slate-600" : "text-emerald-100/90"
+                  }`}
+                >
+                  {item.label}:
+                </span>
+                <span
+                  className={`text-xs sm:text-sm font-black ${
+                    isDarkText ? "text-emerald-900" : "text-white"
+                  }`}
+                >
+                  {item.value}
+                </span>
               </div>
-            )}
+            ))}
 
-            {actions && (
-              <div className="flex flex-wrap items-center gap-2.5">{actions}</div>
-            )}
+            {actions}
           </div>
         )}
       </div>

@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
-import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 
@@ -199,47 +199,26 @@ export default function LiveGameLobbyPage() {
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-8">
-        {/* HERO BANNER - THEME NGỌC BÍCH EMERALD-TEAL */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white p-6 sm:p-10 shadow-xl shadow-teal-900/10 border border-teal-500/20">
-          <BannerBackgroundLayer pageKey="live_game" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="max-w-2xl flex flex-col gap-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-emerald-500/30 backdrop-blur-md border border-emerald-300/30 text-emerald-100 w-fit">
-                <Radio className="size-3.5 text-emerald-200 animate-pulse" />
-                Live Arena Realtime
-              </div>
-              <h1 className="text-2xl sm:text-4xl font-black tracking-tight flex items-center gap-3">
-                <Mountain className="size-8 sm:size-10 text-emerald-200" />
-                Đấu Trường Leo Núi Thời Gian Thực
-              </h1>
-              <p className="text-sm sm:text-base text-emerald-50 leading-relaxed font-normal">
-                Nhập mã phòng, hóa thân thành 8 linh vật leo núi dũng cảm. Mỗi câu trả lời tiếng Anh chính xác giúp bạn nhích lên sườn dốc ngay tức khắc trước mắt đối thủ!
-              </p>
-            </div>
-
-            {/* Quick Stats Banner */}
-            <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 sm:gap-3 shrink-0">
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl">
-                <Trophy className="size-6 text-amber-300" />
-                <div>
-                  <div className="text-xs text-emerald-100 font-medium">Bục vinh quang</div>
-                  <div className="text-base font-bold text-white">Top 3 Chạm Đỉnh</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl">
-                <Flame className="size-6 text-orange-300" />
-                <div>
-                  <div className="text-xs text-emerald-100 font-medium">Điểm số bứt phá</div>
-                  <div className="text-base font-bold text-white">Combo & Tốc độ</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Decorative Background Elements */}
-          <div className="absolute -right-12 -bottom-16 size-80 rounded-full bg-emerald-400/20 blur-3xl pointer-events-none" />
-          <div className="absolute right-1/3 -top-12 size-60 rounded-full bg-teal-300/15 blur-2xl pointer-events-none" />
-        </section>
+        {/* CENTERED HERO BANNER - THEME NGỌC BÍCH EMERALD-TEAL */}
+        <PageHeaderBanner
+          pageKey="live_game"
+          badgeIcon={<Radio className="size-3.5 animate-pulse" />}
+          badgeText="Live Arena Realtime"
+          title="Đấu Trường Leo Núi Thời Gian Thực"
+          description="Nhập mã phòng, hóa thân thành 8 linh vật leo núi dũng cảm. Mỗi câu trả lời tiếng Anh chính xác giúp bạn nhích lên sườn dốc ngay tức khắc trước mắt đối thủ!"
+          stats={[
+            {
+              icon: <Trophy className="size-4" />,
+              label: "Bục vinh quang",
+              value: "Top 3 Chạm Đỉnh",
+            },
+            {
+              icon: <Flame className="size-4" />,
+              label: "Điểm số bứt phá",
+              value: "Combo & Tốc độ",
+            },
+          ]}
+        />
 
         {/* MAIN INTERACTIVE CARD: TABS FOR JOIN VS HOST */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">

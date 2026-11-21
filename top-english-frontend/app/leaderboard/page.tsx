@@ -21,7 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
-import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 import UserAvatar from "../../components/UserAvatar";
@@ -118,41 +118,21 @@ export default function LeaderboardPage() {
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
-        {/* COMPACT & ELEGANT JADE BANNER */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 sm:p-6 text-white shadow-lg shadow-emerald-900/10">
-          <BannerBackgroundLayer pageKey="leaderboard" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur text-[11px] font-semibold w-fit border border-white/20">
-                <Trophy className="size-3.5" />
-                <span>Đấu Trường Thi Đua Toàn Hệ Thống</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                Bảng Vàng Danh Dự TopEnglish
-              </h1>
-              <p className="text-emerald-50 text-xs sm:text-sm leading-relaxed">
-                Tích lũy XP từ bài tập Quiz, thẻ từ vựng Flashcard và lớp học để chinh phục các giải đấu và vinh danh trên bục Quán quân!
-              </p>
-            </div>
-
-            {/* Total Learners Pill */}
-            <div className="flex items-center gap-3 bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20 self-start md:self-auto shrink-0">
-              <div className="size-9 rounded-lg bg-white/20 flex items-center justify-center">
-                <Users className="size-4.5 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-medium text-emerald-200 uppercase tracking-wider">
-                  Tổng Học Viên
-                </span>
-                <span className="text-lg font-black text-white">
-                  {data?.totalLearners || 0}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="absolute -right-8 -bottom-8 size-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        </div>
+        {/* CENTERED JADE BANNER */}
+        <PageHeaderBanner
+          pageKey="leaderboard"
+          badgeIcon={<Trophy className="size-3.5" />}
+          badgeText="Đấu Trường Thi Đua Toàn Hệ Thống"
+          title="Bảng Vàng Danh Dự TopEnglish"
+          description="Tích lũy XP từ bài tập Quiz, thẻ từ vựng Flashcard và lớp học để chinh phục các giải đấu và vinh danh trên bục Quán quân!"
+          stats={[
+            {
+              icon: <Users className="size-4" />,
+              label: "Tổng Học Viên",
+              value: data?.totalLearners || 0,
+            },
+          ]}
+        />
 
         {/* TIME PERIOD TABS & REFRESH */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">

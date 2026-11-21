@@ -2543,9 +2543,9 @@ export default function AdminDashboardPage() {
                               : "bg-slate-50"
                           }`}
                         >
-                          {/* Actual Banner Simulator */}
+                          {/* Actual Centered Banner Simulator */}
                           <div
-                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 shadow-md ${
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-6 py-6 shadow-md ${
                               isDarkTxt
                                 ? "text-slate-900 border border-emerald-200/80"
                                 : "text-white"
@@ -2562,11 +2562,11 @@ export default function AdminDashboardPage() {
                               <BannerBackgroundLayer />
                             )}
 
-                            <div className="relative z-10 flex flex-col gap-3">
+                            <div className="relative z-10 max-w-md mx-auto flex flex-col items-center text-center gap-2.5">
                               <span
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
                                   isDarkTxt
-                                    ? "bg-white/85 border-emerald-200 text-emerald-800"
+                                    ? "bg-white/90 border-emerald-200 text-emerald-800"
                                     : "bg-white/15 border-white/25 text-white"
                                 }`}
                               >
@@ -2574,57 +2574,53 @@ export default function AdminDashboardPage() {
                                 {activeSec.label}
                               </span>
 
-                              <div>
-                                <h4
-                                  className={`text-lg font-black tracking-tight ${
-                                    isDarkTxt
-                                      ? "text-emerald-950"
-                                      : "text-white"
-                                  }`}
-                                >
-                                  {activeSec.label}
-                                </h4>
-                                <p
-                                  className={`text-[11px] mt-0.5 leading-relaxed ${
-                                    isDarkTxt
-                                      ? "text-slate-800 font-semibold"
-                                      : "text-emerald-50/95"
-                                  }`}
-                                >
-                                  Mô tả chuyên mục và lộ trình học tập hiển thị trên phần đầu trang {activeSec.route}.
-                                </p>
-                              </div>
+                              <h4
+                                className={`text-lg font-black tracking-tight ${
+                                  isDarkTxt
+                                    ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+                                    : "text-white"
+                                }`}
+                              >
+                                {activeSec.label}
+                              </h4>
 
-                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                <div className="flex items-center gap-1.5">
-                                  <div
-                                    className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
-                                      isDarkTxt
-                                        ? "bg-white/85 border-emerald-200 text-emerald-900"
-                                        : "bg-black/25 border-white/20 text-white"
-                                    }`}
-                                  >
-                                    Số liệu • 12
-                                  </div>
-                                  <div
-                                    className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
-                                      isDarkTxt
-                                        ? "bg-white/85 border-emerald-200 text-emerald-900"
-                                        : "bg-black/25 border-white/20 text-white"
-                                    }`}
-                                  >
-                                    Tổng • 240
-                                  </div>
+                              <p
+                                className={`text-[11px] leading-relaxed ${
+                                  isDarkTxt
+                                    ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+                                    : "text-emerald-50/95"
+                                }`}
+                              >
+                                Mô tả chuyên mục hiển thị căn giữa trên phần đầu trang {activeSec.route}.
+                              </p>
+
+                              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                                <div
+                                  className={`px-2.5 py-1 rounded-full border text-[10px] font-bold ${
+                                    isDarkTxt
+                                      ? "bg-white/90 border-emerald-200 text-emerald-900"
+                                      : "bg-black/25 border-white/20 text-white"
+                                  }`}
+                                >
+                                  Số liệu • 12
                                 </div>
-
+                                <div
+                                  className={`px-2.5 py-1 rounded-full border text-[10px] font-bold ${
+                                    isDarkTxt
+                                      ? "bg-white/90 border-emerald-200 text-emerald-900"
+                                      : "bg-black/25 border-white/20 text-white"
+                                  }`}
+                                >
+                                  Tổng • 240
+                                </div>
                                 <span
-                                  className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold shadow-xs ${
+                                  className={`px-3 py-1 rounded-full text-[10px] font-extrabold shadow-xs ${
                                     isDarkTxt
                                       ? "bg-emerald-600 text-white"
                                       : "bg-white text-emerald-800"
                                   }`}
                                 >
-                                  + Hành động chính
+                                  + Hành động
                                 </span>
                               </div>
                             </div>

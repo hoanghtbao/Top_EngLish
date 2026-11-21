@@ -26,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
-import { BannerBackgroundLayer } from "../../components/PageHeaderBanner";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 
@@ -208,28 +208,23 @@ export default function ClassroomsPage() {
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
-        {/* COMPACT JADE BANNER */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 sm:p-6 text-white shadow-lg shadow-emerald-900/10">
-          <BannerBackgroundLayer pageKey="classrooms" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur text-[11px] font-semibold w-fit border border-white/20">
-                <GraduationCap className="size-3.5" />
-                <span>Hệ Thống Lớp Học Trực Tuyến</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                {isTeacher
-                  ? "Không Gian Giảng Dạy & Giao Bài Tập"
-                  : "Lớp Học Trực Tuyến Của Bạn"}
-              </h1>
-              <p className="text-emerald-50 text-xs sm:text-sm leading-relaxed">
-                {isTeacher
-                  ? "Khởi tạo lớp học mới, cấp mã mời, giao bài tập về nhà và quản lý sổ điểm học viên."
-                  : "Tham gia lớp học của giáo viên bằng mã mời, hoàn thành bài tập và nhận điểm thưởng."}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
+        {/* CENTERED JADE BANNER */}
+        <PageHeaderBanner
+          pageKey="classrooms"
+          badgeIcon={<GraduationCap className="size-3.5" />}
+          badgeText="Hệ Thống Lớp Học Trực Tuyến"
+          title={
+            isTeacher
+              ? "Không Gian Giảng Dạy & Giao Bài Tập"
+              : "Lớp Học Trực Tuyến Của Bạn"
+          }
+          description={
+            isTeacher
+              ? "Khởi tạo lớp học mới, cấp mã mời, giao bài tập về nhà và quản lý sổ điểm học viên."
+              : "Tham gia lớp học của giáo viên bằng mã mời, hoàn thành bài tập và nhận điểm thưởng."
+          }
+          actions={
+            <>
               {isTeacher && (
                 <button
                   onClick={() => {
@@ -237,7 +232,7 @@ export default function ClassroomsPage() {
                     setModalSuccess("");
                     setIsCreateModalOpen(true);
                   }}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white text-emerald-800 font-bold text-xs shadow hover:bg-emerald-50 active:scale-95 transition cursor-pointer min-h-[38px]"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-white text-emerald-800 group-data-[banner-tone=light]:bg-emerald-600 group-data-[banner-tone=light]:text-white group-data-[banner-tone=light]:hover:bg-emerald-700 font-bold text-xs shadow hover:bg-emerald-50 active:scale-95 transition cursor-pointer min-h-[38px]"
                 >
                   <Plus className="size-4" />
                   <span>Tạo lớp học mới</span>
@@ -250,16 +245,14 @@ export default function ClassroomsPage() {
                   setModalSuccess("");
                   setIsJoinModalOpen(true);
                 }}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-300/30 text-white font-bold text-xs backdrop-blur active:scale-95 transition cursor-pointer min-h-[38px]"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-300/30 text-white group-data-[banner-tone=light]:bg-white/90 group-data-[banner-tone=light]:text-emerald-800 group-data-[banner-tone=light]:border-emerald-200 group-data-[banner-tone=light]:hover:bg-white font-bold text-xs backdrop-blur active:scale-95 transition cursor-pointer min-h-[38px]"
               >
                 <UserCheck className="size-4" />
                 <span>Gia nhập bằng mã</span>
               </button>
-            </div>
-          </div>
-
-          <div className="absolute -right-8 -bottom-8 size-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        </div>
+            </>
+          }
+        />
 
         {/* COMPACT STATS OVERVIEW */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">

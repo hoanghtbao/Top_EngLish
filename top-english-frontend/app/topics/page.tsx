@@ -243,7 +243,7 @@ export default function TopicsClassesPage() {
               <button
                 type="button"
                 onClick={openCreateModal}
-                className="h-11 px-4 sm:px-5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 group-data-[banner-tone=light]:bg-emerald-600 group-data-[banner-tone=light]:hover:bg-emerald-700 group-data-[banner-tone=light]:text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md active:scale-95 transition cursor-pointer shrink-0"
+                className="h-10 px-4 sm:px-5 rounded-full bg-white hover:bg-emerald-50 text-emerald-800 group-data-[banner-tone=light]:bg-emerald-600 group-data-[banner-tone=light]:hover:bg-emerald-700 group-data-[banner-tone=light]:text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md active:scale-95 transition cursor-pointer shrink-0"
               >
                 <Plus className="size-4 stroke-[3]" />
                 <span>Tạo lớp học mới</span>
