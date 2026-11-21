@@ -90,6 +90,15 @@ const PARTS_OF_SPEECH = [
   { value: "phrase", label: "Cụm từ / Thành ngữ (Phrase / Idiom)" },
 ];
 
+const AI_EXAMPLE_LEVELS = [
+  { value: "A1", label: "Dễ - Cơ bản (Câu ví dụ ngắn gọn)" },
+  { value: "A2", label: "Sơ cấp (Câu ví dụ thông dụng)" },
+  { value: "B1", label: "Trung bình (Ví dụ giao tiếp / TOEIC)" },
+  { value: "B2", label: "Khá (Ví dụ công sở / chuyên đề)" },
+  { value: "C1", label: "Nâng cao (Ví dụ học thuật / chuyên sâu)" },
+  { value: "C2", label: "Thành thạo (Ví dụ tự nhiên bản ngữ)" },
+];
+
 const SAMPLE_JSON_TEMPLATE = `[
   {
     "word": "Collaborate",
@@ -2449,16 +2458,16 @@ function TopicDetailInner() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            Trình độ CEFR
+                            Chọn cấp độ cho ví dụ
                           </label>
                           <select
                             value={aiLevel}
                             onChange={(e) => setAiLevel(e.target.value)}
                             className="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                           >
-                            {["A1", "A2", "B1", "B2", "C1", "C2"].map((lv) => (
-                              <option key={lv} value={lv}>
-                                Trình độ {lv}
+                            {AI_EXAMPLE_LEVELS.map((lv) => (
+                              <option key={lv.value} value={lv.value}>
+                                {lv.label}
                               </option>
                             ))}
                           </select>
@@ -2521,16 +2530,16 @@ function TopicDetailInner() {
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            Trình độ mục tiêu
+                            Chọn cấp độ cho ví dụ
                           </label>
                           <select
                             value={aiLevel}
                             onChange={(e) => setAiLevel(e.target.value)}
                             className="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                           >
-                            {["A1", "A2", "B1", "B2", "C1", "C2"].map((lv) => (
-                              <option key={lv} value={lv}>
-                                Trình độ {lv}
+                            {AI_EXAMPLE_LEVELS.map((lv) => (
+                              <option key={lv.value} value={lv.value}>
+                                {lv.label}
                               </option>
                             ))}
                           </select>
