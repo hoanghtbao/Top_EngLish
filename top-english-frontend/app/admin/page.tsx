@@ -206,16 +206,12 @@ export default function AdminDashboardPage() {
   const [expandedBannerKey, setExpandedBannerKey] = useState<string | null>(
     "topics",
   );
-  const [previewTarget, setPreviewTarget] = useState<"homepage" | "section">(
-    "homepage",
-  );
 
   const updateSectionBannerConfig = (
     sectionKey: string,
     patch: Partial<PageBannerConfig>,
   ) => {
     setExpandedBannerKey(sectionKey);
-    setPreviewTarget("section");
     setPageBannerBackgrounds((prev) => {
       const current = normalizeBannerConfig(prev[sectionKey]);
       return {
@@ -508,7 +504,6 @@ export default function AdminDashboardPage() {
         };
         setPageBannerBackgrounds(nextMap);
         setExpandedBannerKey(sectionKey);
-        setPreviewTarget("section");
 
         await fetchApi("/admin/settings/homepage", {
           method: "PATCH",
@@ -1933,7 +1928,159 @@ export default function AdminDashboardPage() {
                     </button>
                   </div>
                 </div>
+              </div>
 
+              {/* ROW 1 RIGHT COLUMN: Live Homepage Hero Simulator (5 cols) */}
+              <div className="lg:col-span-5 sticky top-20 flex flex-col gap-4">
+                <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Eye className="size-4 text-emerald-600" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        Bản Xem Trước Trang Chủ (Mục 1–5)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTheme("light")}
+                        className={`size-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                          previewTheme === "light"
+                            ? "bg-white text-amber-500 shadow-xs font-bold"
+                            : "text-slate-400 hover:text-slate-600"
+                        }`}
+                        title="Xem chế độ Sáng (Light Mode)"
+                      >
+                        <Sun className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTheme("dark")}
+                        className={`size-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                          previewTheme === "dark"
+                            ? "bg-slate-900 text-amber-300 shadow-xs font-bold"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                        title="Xem chế độ Tối (Dark Mode)"
+                      >
+                        <Moon className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Homepage Hero Canvas Frame */}
+                  <div
+                    className={`relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 transition-colors ${
+                      previewTheme === "dark"
+                        ? "bg-slate-950 text-white"
+                        : "bg-white text-slate-900"
+                    }`}
+                  >
+                    {isHeroBgEnabled && heroBgUrl ? (
+                      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                        <img
+                          src={getFullImageUrl(heroBgUrl)}
+                          alt="Hero Background Preview"
+                          className="w-full h-full object-cover transition-all duration-300"
+                          style={{
+                            filter: blurAmount ? `blur(${blurAmount}px)` : undefined,
+                            transform: blurAmount ? "scale(1.08)" : undefined,
+                          }}
+                        />
+                        <div
+                          className={`absolute inset-0 transition-opacity ${
+                            previewTheme === "dark"
+                              ? "bg-gradient-to-b from-slate-950/80 via-slate-950/65 to-slate-950/95"
+                              : "bg-gradient-to-b from-white/75 via-white/55 to-white/95"
+                          }`}
+                          style={{ opacity: overlayOpacity }}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className={`absolute inset-0 -z-0 ${
+                          previewTheme === "dark"
+                            ? "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(15,23,42,0))]"
+                            : "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.12),rgba(255,255,255,0))]"
+                        }`}
+                      />
+                    )}
+
+                    <div className="relative z-10 px-4 py-2.5 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-xs bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="size-6 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center font-black text-[10px] shadow-xs">
+                          {brandName.slice(0, 2).toUpperCase() || "TE"}
+                        </div>
+                        <div className="text-left">
+                          <span className="font-extrabold text-xs text-slate-900 dark:text-white block leading-tight">
+                            {brandName || "TopEnglish"}
+                          </span>
+                          <span className="text-[9px] text-slate-500 block leading-tight font-medium">
+                            {brandSubtitle || "by HoangBao"}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        Live Preview
+                      </span>
+                    </div>
+
+                    <div className="relative z-10 p-6 flex flex-col items-center text-center gap-3.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs">
+                        <Sparkles className="size-3" />
+                        {heroBadge || "Nền tảng học tiếng Anh thông minh"}
+                      </span>
+
+                      <h4 className="text-lg font-black tracking-tight leading-tight">
+                        {heroTitle || "Chinh phục tiếng Anh với"}{" "}
+                        <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 bg-clip-text text-transparent">
+                          {heroHighlight || brandName || "TopEnglish"}
+                        </span>
+                      </h4>
+
+                      <p
+                        className={`text-[11px] leading-relaxed max-w-xs ${
+                          previewTheme === "dark" ? "text-slate-300" : "text-slate-600"
+                        }`}
+                      >
+                        {heroSubtitle ||
+                          "Ghi nhớ từ vựng qua thẻ Flashcard 3D, thuật toán lặp lại ngắt quãng (SRS)..."}
+                      </p>
+
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-semibold bg-emerald-50/90 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-xs">
+                        <Flame className="size-3 fill-amber-500 text-amber-500" />
+                        <span>Chuỗi học: 6 ngày • 890 XP</span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                        <div className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] shadow-xs">
+                          Học Flashcard
+                        </div>
+                        <div
+                          className={`px-3 py-1.5 rounded-lg border text-[10px] font-semibold ${
+                            previewTheme === "dark"
+                              ? "bg-slate-900/90 border-slate-700 text-slate-200"
+                              : "bg-white/90 border-slate-300 text-slate-800"
+                          }`}
+                        >
+                          Phòng ôn SRS
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="size-3.5 text-emerald-500" />
+                    <span>Xem trực tiếp Trang Chủ trước khi lưu cấu hình</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ROW 2: Per-Section Page Banner Backgrounds (Left) + Dedicated Live Preview (Right) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div className="lg:col-span-7 flex flex-col gap-6">
                 {/* 6. Per-Section Page Banner Backgrounds */}
                 <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -2055,14 +2202,9 @@ export default function AdminDashboardPage() {
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      if (isExpanded) {
-                                        setExpandedBannerKey(null);
-                                      } else {
-                                        setExpandedBannerKey(sec.key);
-                                        setPreviewTarget("section");
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      setExpandedBannerKey(isExpanded ? null : sec.key)
+                                    }
                                     className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
                                       isExpanded
                                         ? "bg-emerald-600 text-white border-emerald-600"
@@ -2318,7 +2460,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: Live Interactive Simulator (5 cols) */}
+              {/* ROW 2 RIGHT COLUMN: Dedicated Live Simulator for Section 6 (5 cols) */}
               <div className="lg:col-span-5 sticky top-20 flex flex-col gap-4">
                 <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col gap-4">
                   {/* Simulator Control Bar */}
@@ -2326,7 +2468,7 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center gap-2">
                       <Eye className="size-4 text-emerald-600" />
                       <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                        Bản Xem Trước Trực Quan
+                        Xem Trước Banner Chuyên Mục
                       </span>
                     </div>
 
@@ -2359,309 +2501,173 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Preview Target Switcher: Homepage Hero vs Section Banner */}
-                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewTarget("homepage")}
-                      className={`h-8 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                        previewTarget === "homepage"
-                          ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs"
-                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                      }`}
-                    >
-                      Trang Chủ (Mục 1–5)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewTarget("section")}
-                      className={`h-8 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                        previewTarget === "section"
-                          ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs"
-                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                      }`}
-                    >
-                      Banner Chuyên Mục (Mục 6)
-                    </button>
-                  </div>
+                  {(() => {
+                    const activeSec =
+                      BANNER_SECTION_ITEMS.find(
+                        (s) => s.key === expandedBannerKey,
+                      ) || BANNER_SECTION_ITEMS[0];
+                    const activeCfg = normalizeBannerConfig(
+                      pageBannerBackgrounds[activeSec.key],
+                    );
+                    const hasImg = Boolean(activeCfg.url);
+                    const isDarkTxt =
+                      hasImg && activeCfg.textColor === "dark";
 
-                  {previewTarget === "section" ? (
-                    (() => {
-                      const activeSec =
-                        BANNER_SECTION_ITEMS.find(
-                          (s) => s.key === expandedBannerKey,
-                        ) || BANNER_SECTION_ITEMS[0];
-                      const activeCfg = normalizeBannerConfig(
-                        pageBannerBackgrounds[activeSec.key],
-                      );
-                      const hasImg = Boolean(activeCfg.url);
-                      const isDarkTxt =
-                        hasImg && activeCfg.textColor === "dark";
-
-                      return (
-                        <div className="flex flex-col gap-3">
-                          {/* Quick Section Picker */}
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-bold text-slate-500">
-                              Đang xem trước:
-                            </span>
-                            <select
-                              value={activeSec.key}
-                              onChange={(e) =>
-                                setExpandedBannerKey(e.target.value)
-                              }
-                              className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                            >
-                              {BANNER_SECTION_ITEMS.map((item) => (
-                                <option key={item.key} value={item.key}>
-                                  {item.label} ({item.route})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Simulated Page Frame */}
-                          <div
-                            className={`rounded-2xl p-3.5 border border-slate-200/80 dark:border-slate-800 transition-colors ${
-                              previewTheme === "dark"
-                                ? "bg-slate-950"
-                                : "bg-slate-50"
-                            }`}
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {/* Quick Section Picker */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-bold text-slate-500">
+                            Chuyên mục đang xem:
+                          </span>
+                          <select
+                            value={activeSec.key}
+                            onChange={(e) =>
+                              setExpandedBannerKey(e.target.value)
+                            }
+                            className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                           >
-                            {/* Actual Banner Simulator */}
-                            <div
-                              className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 shadow-md ${
-                                isDarkTxt
-                                  ? "text-slate-900 border border-emerald-200/80"
-                                  : "text-white"
-                              }`}
-                            >
-                              {hasImg ? (
-                                <BannerBackgroundLayer
-                                  overrideConfig={{
-                                    ...activeCfg,
-                                    url: getFullImageUrl(activeCfg.url),
-                                  }}
-                                />
-                              ) : (
-                                <BannerBackgroundLayer />
-                              )}
-
-                              <div className="relative z-10 flex flex-col gap-3">
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
-                                    isDarkTxt
-                                      ? "bg-white/85 border-emerald-200 text-emerald-800"
-                                      : "bg-white/15 border-white/25 text-white"
-                                  }`}
-                                >
-                                  <Sparkles className="size-3" />
-                                  {activeSec.label}
-                                </span>
-
-                                <div>
-                                  <h4
-                                    className={`text-lg font-black tracking-tight ${
-                                      isDarkTxt
-                                        ? "text-emerald-950"
-                                        : "text-white"
-                                    }`}
-                                  >
-                                    {activeSec.label}
-                                  </h4>
-                                  <p
-                                    className={`text-[11px] mt-0.5 leading-relaxed ${
-                                      isDarkTxt
-                                        ? "text-slate-800 font-semibold"
-                                        : "text-emerald-50/95"
-                                    }`}
-                                  >
-                                    Mô tả chuyên mục và lộ trình học tập hiển thị trên phần đầu trang {activeSec.route}.
-                                  </p>
-                                </div>
-
-                                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <div
-                                      className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
-                                        isDarkTxt
-                                          ? "bg-white/85 border-emerald-200 text-emerald-900"
-                                          : "bg-black/25 border-white/20 text-white"
-                                      }`}
-                                    >
-                                      Số liệu • 12
-                                    </div>
-                                    <div
-                                      className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
-                                        isDarkTxt
-                                          ? "bg-white/85 border-emerald-200 text-emerald-900"
-                                          : "bg-black/25 border-white/20 text-white"
-                                      }`}
-                                    >
-                                      Tổng • 240
-                                    </div>
-                                  </div>
-
-                                  <span
-                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold shadow-xs ${
-                                      isDarkTxt
-                                        ? "bg-emerald-600 text-white"
-                                        : "bg-white text-emerald-800"
-                                    }`}
-                                  >
-                                    + Hành động chính
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Mock cards grid underneath so Admin sees balance */}
-                            <div className="grid grid-cols-3 gap-2 mt-3">
-                              {[1, 2, 3].map((k) => (
-                                <div
-                                  key={k}
-                                  className={`h-14 rounded-xl border ${
-                                    previewTheme === "dark"
-                                      ? "bg-slate-900 border-slate-800"
-                                      : "bg-white border-slate-200/80"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                            <span>
-                              Zoom: <strong>{activeCfg.zoom}%</strong> • Phủ:{" "}
-                              <strong>
-                                {activeCfg.overlayMode === "none"
-                                  ? "Trong suốt"
-                                  : `${activeCfg.overlayMode === "dark" ? "Tối" : "Sáng"} ${Math.round(
-                                      activeCfg.overlayOpacity * 100,
-                                    )}%`}
-                              </strong>
-                            </span>
-                            <span>
-                              Chữ: <strong>{isDarkTxt ? "Tối đậm" : "Trắng"}</strong>
-                            </span>
-                          </div>
+                            {BANNER_SECTION_ITEMS.map((item) => (
+                              <option key={item.key} value={item.key}>
+                                {item.label} ({item.route})
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      );
-                    })()
-                  ) : (
-                    /* Simulator Canvas Frame */
-                    <div
-                      className={`relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 transition-colors ${
-                        previewTheme === "dark"
-                          ? "bg-slate-950 text-white"
-                          : "bg-white text-slate-900"
-                      }`}
-                    >
-                    {/* Simulated Background Image */}
-                    {isHeroBgEnabled && heroBgUrl ? (
-                      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                        <img
-                          src={getFullImageUrl(heroBgUrl)}
-                          alt="Hero Background Preview"
-                          className="w-full h-full object-cover transition-all duration-300"
-                          style={{
-                            filter: blurAmount ? `blur(${blurAmount}px)` : undefined,
-                            transform: blurAmount ? "scale(1.08)" : undefined,
-                          }}
-                        />
-                        {/* Adaptive Gradient Overlay */}
+
+                        {/* Simulated Page Frame */}
                         <div
-                          className={`absolute inset-0 transition-opacity ${
+                          className={`rounded-2xl p-3.5 border border-slate-200/80 dark:border-slate-800 transition-colors ${
                             previewTheme === "dark"
-                              ? "bg-gradient-to-b from-slate-950/80 via-slate-950/65 to-slate-950/95"
-                              : "bg-gradient-to-b from-white/75 via-white/55 to-white/95"
-                          }`}
-                          style={{
-                            opacity: overlayOpacity,
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className={`absolute inset-0 -z-0 ${
-                          previewTheme === "dark"
-                            ? "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(15,23,42,0))]"
-                            : "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.12),rgba(255,255,255,0))]"
-                        }`}
-                      />
-                    )}
-
-                    {/* Simulated Mini Logo Bar */}
-                    <div className="relative z-10 px-4 py-2.5 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-xs bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="size-6 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center font-black text-[10px] shadow-xs">
-                          {brandName.slice(0, 2).toUpperCase() || "TE"}
-                        </div>
-                        <div className="text-left">
-                          <span className="font-extrabold text-xs text-slate-900 dark:text-white block leading-tight">
-                            {brandName || "TopEnglish"}
-                          </span>
-                          <span className="text-[9px] text-slate-500 block leading-tight font-medium">
-                            {brandSubtitle || "by HoangBao"}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                        Live Preview
-                      </span>
-                    </div>
-
-                    {/* Simulated Hero Content */}
-                    <div className="relative z-10 p-6 flex flex-col items-center text-center gap-3.5">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs">
-                        <Sparkles className="size-3" />
-                        {heroBadge || "Nền tảng học tiếng Anh thông minh"}
-                      </span>
-
-                      <h4 className="text-lg font-black tracking-tight leading-tight">
-                        {heroTitle || "Chinh phục tiếng Anh với"}{" "}
-                        <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 bg-clip-text text-transparent">
-                          {heroHighlight || brandName || "TopEnglish"}
-                        </span>
-                      </h4>
-
-                      <p
-                        className={`text-[11px] leading-relaxed max-w-xs ${
-                          previewTheme === "dark" ? "text-slate-300" : "text-slate-600"
-                        }`}
-                      >
-                        {heroSubtitle ||
-                          "Ghi nhớ từ vựng qua thẻ Flashcard 3D, thuật toán lặp lại ngắt quãng (SRS)..."}
-                      </p>
-
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-semibold bg-emerald-50/90 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-xs">
-                        <Flame className="size-3 fill-amber-500 text-amber-500" />
-                        <span>Chuỗi học: 6 ngày • 890 XP</span>
-                      </div>
-
-                      {/* Mock Buttons */}
-                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                        <div className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] shadow-xs">
-                          Học Flashcard
-                        </div>
-                        <div
-                          className={`px-3 py-1.5 rounded-lg border text-[10px] font-semibold ${
-                            previewTheme === "dark"
-                              ? "bg-slate-900/90 border-slate-700 text-slate-200"
-                              : "bg-white/90 border-slate-300 text-slate-800"
+                              ? "bg-slate-950"
+                              : "bg-slate-50"
                           }`}
                         >
-                          Phòng ôn SRS
+                          {/* Actual Banner Simulator */}
+                          <div
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 shadow-md ${
+                              isDarkTxt
+                                ? "text-slate-900 border border-emerald-200/80"
+                                : "text-white"
+                            }`}
+                          >
+                            {hasImg ? (
+                              <BannerBackgroundLayer
+                                overrideConfig={{
+                                  ...activeCfg,
+                                  url: getFullImageUrl(activeCfg.url),
+                                }}
+                              />
+                            ) : (
+                              <BannerBackgroundLayer />
+                            )}
+
+                            <div className="relative z-10 flex flex-col gap-3">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold w-fit backdrop-blur-md border ${
+                                  isDarkTxt
+                                    ? "bg-white/85 border-emerald-200 text-emerald-800"
+                                    : "bg-white/15 border-white/25 text-white"
+                                }`}
+                              >
+                                <Sparkles className="size-3" />
+                                {activeSec.label}
+                              </span>
+
+                              <div>
+                                <h4
+                                  className={`text-lg font-black tracking-tight ${
+                                    isDarkTxt
+                                      ? "text-emerald-950"
+                                      : "text-white"
+                                  }`}
+                                >
+                                  {activeSec.label}
+                                </h4>
+                                <p
+                                  className={`text-[11px] mt-0.5 leading-relaxed ${
+                                    isDarkTxt
+                                      ? "text-slate-800 font-semibold"
+                                      : "text-emerald-50/95"
+                                  }`}
+                                >
+                                  Mô tả chuyên mục và lộ trình học tập hiển thị trên phần đầu trang {activeSec.route}.
+                                </p>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                  <div
+                                    className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
+                                      isDarkTxt
+                                        ? "bg-white/85 border-emerald-200 text-emerald-900"
+                                        : "bg-black/25 border-white/20 text-white"
+                                    }`}
+                                  >
+                                    Số liệu • 12
+                                  </div>
+                                  <div
+                                    className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
+                                      isDarkTxt
+                                        ? "bg-white/85 border-emerald-200 text-emerald-900"
+                                        : "bg-black/25 border-white/20 text-white"
+                                    }`}
+                                  >
+                                    Tổng • 240
+                                  </div>
+                                </div>
+
+                                <span
+                                  className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold shadow-xs ${
+                                    isDarkTxt
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-white text-emerald-800"
+                                  }`}
+                                >
+                                  + Hành động chính
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Mock cards grid underneath so Admin sees balance */}
+                          <div className="grid grid-cols-3 gap-2 mt-3">
+                            {[1, 2, 3].map((k) => (
+                              <div
+                                key={k}
+                                className={`h-14 rounded-xl border ${
+                                  previewTheme === "dark"
+                                    ? "bg-slate-900 border-slate-800"
+                                    : "bg-white border-slate-200/80"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                          <span>
+                            Zoom: <strong>{activeCfg.zoom}%</strong> • Phủ:{" "}
+                            <strong>
+                              {activeCfg.overlayMode === "none"
+                                ? "Trong suốt"
+                                : `${activeCfg.overlayMode === "dark" ? "Tối" : "Sáng"} ${Math.round(
+                                    activeCfg.overlayOpacity * 100,
+                                  )}%`}
+                            </strong>
+                          </span>
+                          <span>
+                            Chữ: <strong>{isDarkTxt ? "Tối đậm" : "Trắng"}</strong>
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Simulator Footer note */}
                   <div className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
                     <CheckCircle2 className="size-3.5 text-emerald-500" />
-                    <span>Xem trực tiếp trước khi áp dụng ra toàn bộ người dùng</span>
+                    <span>Xem trực tiếp Banner Mục 6 trước khi bấm Lưu</span>
                   </div>
                 </div>
               </div>
