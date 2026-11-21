@@ -2756,7 +2756,7 @@ export default function AdminDashboardPage() {
                                 transform: `scale(${sectionPreviewScale})`,
                                 transformOrigin: "top left",
                               }}
-                              className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-20 py-9 shadow-md ${
+                              className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-9 shadow-md ${
                                 hasImg
                                   ? "touch-none select-none cursor-grab active:cursor-grabbing"
                                   : ""
@@ -2777,7 +2777,7 @@ export default function AdminDashboardPage() {
                                 <BannerBackgroundLayer />
                               )}
 
-                              <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center text-center gap-3 pointer-events-none">
+                              <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5 pointer-events-none">
                                 <span
                                   className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
                                     isDarkTxt
@@ -2800,7 +2800,7 @@ export default function AdminDashboardPage() {
                                 </h4>
 
                                 <p
-                                  className={`text-sm leading-relaxed max-w-xl ${
+                                  className={`text-sm leading-relaxed max-w-[430px] ${
                                     isDarkTxt
                                       ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
                                       : "text-emerald-50/95"
@@ -2931,7 +2931,7 @@ export default function AdminDashboardPage() {
                                 }}
                                 onPointerUp={() => setBannerDragState(null)}
                                 onPointerCancel={() => setBannerDragState(null)}
-                                className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-20 py-9 shadow-lg ${
+                                className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-9 shadow-lg ${
                                   hasImg
                                     ? "touch-none select-none cursor-grab active:cursor-grabbing"
                                     : ""
@@ -2952,7 +2952,7 @@ export default function AdminDashboardPage() {
                                   <BannerBackgroundLayer />
                                 )}
 
-                                <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center text-center gap-3 pointer-events-none">
+                                <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5 pointer-events-none">
                                   <span
                                     className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
                                       isDarkTxt
@@ -2973,7 +2973,7 @@ export default function AdminDashboardPage() {
                                     {activeSec.title}
                                   </h4>
                                   <p
-                                    className={`text-sm leading-relaxed max-w-xl ${
+                                    className={`text-sm leading-relaxed max-w-[430px] ${
                                       isDarkTxt
                                         ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
                                         : "text-emerald-50/95"

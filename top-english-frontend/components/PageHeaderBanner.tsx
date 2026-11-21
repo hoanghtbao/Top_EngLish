@@ -198,7 +198,7 @@ export default function PageHeaderBanner({
   return (
     <section
       data-banner-tone={isDarkText ? "light" : "dark"}
-      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-12 lg:px-20 py-7 sm:py-9 shadow-lg shadow-emerald-900/10 ${
+      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-16 lg:px-36 xl:px-44 py-7 sm:py-9 shadow-lg shadow-emerald-900/10 ${
         isDarkText ? "text-slate-900 border border-emerald-200/70" : "text-white"
       } ${className}`}
     >
@@ -207,8 +207,8 @@ export default function PageHeaderBanner({
         backgroundImageUrl={backgroundImageUrl}
       />
 
-      {/* Centered Content Block */}
-      <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center text-center gap-3">
+      {/* Centered Content Block — thu gọn đoạn mô tả để nằm trọn vùng thoáng giữa ảnh */}
+      <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5">
         {/* Badge */}
         <div
           className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full backdrop-blur-md border text-[11px] sm:text-xs font-bold w-fit ${
@@ -234,7 +234,7 @@ export default function PageHeaderBanner({
 
         {/* Description */}
         <p
-          className={`text-xs sm:text-sm leading-relaxed max-w-xl ${
+          className={`text-xs sm:text-sm leading-relaxed max-w-[430px] ${
             isDarkText
               ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
               : "text-emerald-50/95"
