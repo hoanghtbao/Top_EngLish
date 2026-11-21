@@ -683,7 +683,25 @@ function ClassroomDetailContent() {
                       </div>
 
                       {/* ACTION BUTTONS */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {asg.targetId &&
+                          (asg.type === "grammar" ||
+                            asg.type === "vocabulary" ||
+                            asg.type === "quiz") && (
+                            <Link
+                              href={
+                                asg.type === "grammar"
+                                  ? `/grammar/${asg.targetId}`
+                                  : asg.type === "vocabulary"
+                                  ? `/topics/${asg.targetId}`
+                                  : `/quizzes/${asg.targetId}`
+                              }
+                              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs inline-flex items-center gap-1 transition min-h-[36px]"
+                            >
+                              <ExternalLink className="size-3.5 text-emerald-600" />
+                              <span>Mở bài học</span>
+                            </Link>
+                          )}
                         {isTeacher ? (
                           <button
                             onClick={() => openSubmissionsModal(asg)}
