@@ -223,35 +223,6 @@ export default function ClassroomsPage() {
               ? "Khởi tạo lớp học mới, cấp mã mời, giao bài tập về nhà và quản lý sổ điểm học viên."
               : "Tham gia lớp học của giáo viên bằng mã mời, hoàn thành bài tập và nhận điểm thưởng."
           }
-          actions={
-            <>
-              {isTeacher && (
-                <button
-                  onClick={() => {
-                    setModalError("");
-                    setModalSuccess("");
-                    setIsCreateModalOpen(true);
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-white text-emerald-800 group-data-[banner-tone=light]:bg-emerald-600 group-data-[banner-tone=light]:text-white group-data-[banner-tone=light]:hover:bg-emerald-700 font-bold text-xs shadow hover:bg-emerald-50 active:scale-95 transition cursor-pointer min-h-[38px]"
-                >
-                  <Plus className="size-4" />
-                  <span>Tạo lớp học mới</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  setModalError("");
-                  setModalSuccess("");
-                  setIsJoinModalOpen(true);
-                }}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-300/30 text-white group-data-[banner-tone=light]:bg-white/90 group-data-[banner-tone=light]:text-emerald-800 group-data-[banner-tone=light]:border-emerald-200 group-data-[banner-tone=light]:hover:bg-white font-bold text-xs backdrop-blur active:scale-95 transition cursor-pointer min-h-[38px]"
-              >
-                <UserCheck className="size-4" />
-                <span>Gia nhập bằng mã</span>
-              </button>
-            </>
-          }
         />
 
         {/* COMPACT STATS OVERVIEW */}
@@ -299,27 +270,55 @@ export default function ClassroomsPage() {
           </div>
         </div>
 
-        {/* SEARCH BAR & REFRESH */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+        {/* SEARCH BAR & ACTION TOOLBAR */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <input
               type="text"
               placeholder="Tìm theo tên, mã lớp..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
+              className="w-full h-10 pl-10 pr-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
             />
           </div>
 
-          <button
-            onClick={loadClassrooms}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition cursor-pointer self-end sm:self-auto min-h-[36px]"
-          >
-            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Làm mới</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              onClick={loadClassrooms}
+              disabled={loading}
+              className="h-10 inline-flex items-center gap-1.5 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition cursor-pointer"
+            >
+              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+              <span>Làm mới</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setModalError("");
+                setModalSuccess("");
+                setIsJoinModalOpen(true);
+              }}
+              className="h-10 inline-flex items-center justify-center gap-1.5 px-4 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs active:scale-95 transition cursor-pointer"
+            >
+              <UserCheck className="size-4 text-emerald-600" />
+              <span>Gia nhập bằng mã</span>
+            </button>
+
+            {isTeacher && (
+              <button
+                onClick={() => {
+                  setModalError("");
+                  setModalSuccess("");
+                  setIsCreateModalOpen(true);
+                }}
+                className="h-10 inline-flex items-center justify-center gap-1.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm shadow-emerald-600/20 active:scale-95 transition cursor-pointer"
+              >
+                <Plus className="size-4 stroke-[3]" />
+                <span>Tạo lớp học mới</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* CLASSROOMS LIST GRID */}

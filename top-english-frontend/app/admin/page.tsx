@@ -278,7 +278,7 @@ export default function AdminDashboardPage() {
       description:
         "Chọn lớp học bên dưới để xem danh sách bài học và luyện tập theo 3 chế độ: Học Từ (Flashcard), Quiz ABCD và Gõ Từ.",
       pills: ["Lớp học: 4", "Bài học: 11", "Từ vựng: 232"],
-      cta: "+ Tạo lớp học mới",
+      cta: "",
     },
     {
       key: "grammar",
@@ -289,7 +289,7 @@ export default function AdminDashboardPage() {
       description:
         "Công thức trực quan, ví dụ song ngữ, lỗi sai thường gặp và bài tập thực hành.",
       pills: ["Bài học: 5", "Chuyên đề: 2"],
-      cta: "+ Thêm bài ngữ pháp",
+      cta: "",
     },
     {
       key: "quizzes",
@@ -310,8 +310,8 @@ export default function AdminDashboardPage() {
       title: "Không Gian Giảng Dạy & Giao Bài Tập",
       description:
         "Khởi tạo lớp học mới, cấp mã mời, giao bài tập về nhà và quản lý sổ điểm học viên.",
-      pills: ["Gia nhập bằng mã"],
-      cta: "+ Tạo lớp học mới",
+      pills: [],
+      cta: "",
     },
     {
       key: "dashboard",

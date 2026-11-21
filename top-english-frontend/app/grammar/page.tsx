@@ -316,21 +316,6 @@ export default function GrammarCatalogPage() {
               value: loading ? "..." : categories.length,
             },
           ]}
-          actions={
-            isTeacherOrAdmin ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLesson(null);
-                  setEditorOpen(true);
-                }}
-                className="h-10 px-4 sm:px-5 rounded-full bg-white hover:bg-emerald-50 text-emerald-800 group-data-[banner-tone=light]:bg-emerald-600 group-data-[banner-tone=light]:hover:bg-emerald-700 group-data-[banner-tone=light]:text-white text-xs sm:text-sm font-extrabold inline-flex items-center justify-center gap-2 shadow-md active:scale-95 transition cursor-pointer shrink-0"
-              >
-                <Plus className="size-4 stroke-[3]" />
-                <span>Thêm bài ngữ pháp</span>
-              </button>
-            ) : undefined
-          }
         />
 
         {/* Notifications */}
@@ -512,16 +497,32 @@ export default function GrammarCatalogPage() {
               ))}
             </div>
 
-            <div className="relative min-w-[260px] lg:w-72">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
-              <input
-                id="search-grammar"
-                type="text"
-                placeholder="Tìm kiếm bài học ngữ pháp..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition text-slate-900 dark:text-slate-100"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+              <div className="relative min-w-[230px] lg:w-64">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+                <input
+                  id="search-grammar"
+                  type="text"
+                  placeholder="Tìm kiếm bài học ngữ pháp..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              {isTeacherOrAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLesson(null);
+                    setEditorOpen(true);
+                  }}
+                  className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold inline-flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/20 active:scale-95 transition cursor-pointer shrink-0"
+                >
+                  <Plus className="size-4 stroke-[3]" />
+                  <span>Thêm bài ngữ pháp</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

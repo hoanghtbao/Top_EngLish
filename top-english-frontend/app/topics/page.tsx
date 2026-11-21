@@ -238,18 +238,6 @@ export default function TopicsClassesPage() {
               value: loading ? "..." : totalWords,
             },
           ]}
-          actions={
-            isTeacherOrAdmin ? (
-              <button
-                type="button"
-                onClick={openCreateModal}
-                className="h-10 px-4 sm:px-5 rounded-full bg-white hover:bg-emerald-50 text-emerald-800 group-data-[banner-tone=light]:bg-emerald-600 group-data-[banner-tone=light]:hover:bg-emerald-700 group-data-[banner-tone=light]:text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md active:scale-95 transition cursor-pointer shrink-0"
-              >
-                <Plus className="size-4 stroke-[3]" />
-                <span>Tạo lớp học mới</span>
-              </button>
-            ) : undefined
-          }
         />
 
         {/* Success Banner */}
@@ -294,9 +282,22 @@ export default function TopicsClassesPage() {
             )}
           </div>
 
-          <div className="px-3.5 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 border border-slate-200/60 dark:border-slate-700/60 shrink-0 self-end sm:self-center">
-            <BookOpen className="size-3.5 text-emerald-600" />
-            <span>{loading ? "Đang tải..." : `${classes.length} lớp học`}</span>
+          <div className="flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+            <div className="h-11 px-3.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+              <BookOpen className="size-3.5 text-emerald-600" />
+              <span>{loading ? "Đang tải..." : `${classes.length} lớp học`}</span>
+            </div>
+
+            {isTeacherOrAdmin && (
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="h-11 px-4 sm:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 active:scale-95 transition cursor-pointer shrink-0"
+              >
+                <Plus className="size-4 stroke-[3]" />
+                <span>Tạo lớp học mới</span>
+              </button>
+            )}
           </div>
         </div>
 
