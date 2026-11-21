@@ -29,6 +29,7 @@ interface PageHeaderBannerProps {
   description: string;
   stats?: BannerStatItem[];
   actions?: React.ReactNode;
+  size?: "default" | "lg";
   className?: string;
 }
 
@@ -196,6 +197,7 @@ export default function PageHeaderBanner({
   description,
   stats = [],
   actions,
+  size = "default",
   className = "",
 }: PageHeaderBannerProps) {
   const { brandSettings } = useBrand();
@@ -216,12 +218,19 @@ export default function PageHeaderBanner({
   const visibleStats = hideStats ? [] : stats;
   const hasBottomRow = visibleStats.length > 0 || Boolean(actions);
 
+  const isLarge = size === "lg";
+  const layoutClasses = isLarge
+    ? "py-9 sm:py-14 min-h-[250px] sm:min-h-[330px] flex flex-col justify-center"
+    : `py-6 sm:py-[33px] ${
+        hideText
+          ? "min-h-[190px] sm:min-h-[225px] flex flex-col justify-end"
+          : ""
+      }`;
+
   return (
     <section
       data-banner-tone={isDarkText ? "light" : "dark"}
-      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-16 lg:px-36 xl:px-44 py-6 sm:py-[33px] shadow-lg shadow-emerald-900/10 ${
-        hideText ? "min-h-[190px] sm:min-h-[225px] flex flex-col justify-end" : ""
-      } ${
+      className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-16 lg:px-36 xl:px-44 ${layoutClasses} shadow-lg shadow-emerald-900/10 ${
         isDarkText ? "text-slate-900 border border-emerald-200/70" : "text-white"
       } ${className}`}
     >

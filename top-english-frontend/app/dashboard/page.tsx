@@ -343,6 +343,7 @@ function DashboardContent() {
         {/* --- HEADER BANNER --- */}
         <PageHeaderBanner
           pageKey="dashboard"
+          size="lg"
           badgeIcon={<Sparkles className="size-3.5" />}
           badgeText="Spaced Repetition System (SRS)"
           title={`Chào mừng trở lại, ${dashboardData?.user.fullName || user.fullName}!`}
