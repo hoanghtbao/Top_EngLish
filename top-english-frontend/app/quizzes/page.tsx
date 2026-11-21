@@ -32,6 +32,7 @@ import {
   Wand2,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import { useAuth } from "../../context/auth-context";
 import { fetchApi } from "../../lib/api-client";
 
@@ -606,24 +607,44 @@ export default function QuizzesCatalogPage() {
     );
   };
 
+  const totalSystemQuestionBank = useMemo(() => {
+    const vocabTotal =
+      sources.vocabClasses.reduce((s, c) => s + (c.totalWords || 0), 0) +
+      sources.ungroupedTopics.reduce((s, t) => s + (t.wordCount || 0), 0);
+    const grammarTotal = sources.grammarLessons.reduce(
+      (s, g) => s + (g.exerciseCount || 0),
+      0
+    );
+    return vocabTotal + grammarTotal;
+  }, [sources]);
+
   return (
     <AppLayout>
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12 flex flex-col gap-10">
-        {/* Page Header */}
-        <div className="flex flex-col gap-3 text-center sm:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 self-center sm:self-start">
-            <Sparkles className="size-3.5" />
-            Phòng Luyện Thi Tổng Hợp • Tự Chọn & Random Câu Hỏi
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-            Luyện thi & Kiểm tra kiến thức
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-            Chọn một hoặc nhiều bài học <strong>Từ vựng Flashcard</strong> và{" "}
-            <strong>Ngữ pháp</strong> bạn muốn ôn tập, đặt số câu muốn thi — hệ thống sẽ{" "}
-            <strong>random ngẫu nhiên</strong> từ tổng ngân hàng các bài đã chọn thành một đề thi bấm giờ chuẩn xác.
-          </p>
-        </div>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-7">
+        {/* Balanced Page Header Banner */}
+        <PageHeaderBanner
+          badgeIcon={<Sparkles className="size-3.5" />}
+          badgeText="Phòng Luyện Thi Tổng Hợp • Tự Chọn & Random Câu Hỏi"
+          title="Luyện thi & Kiểm tra kiến thức"
+          description="Chọn một hoặc nhiều bài học Từ vựng Flashcard và Ngữ pháp bạn muốn ôn tập, đặt số câu muốn thi — hệ thống sẽ random ngẫu nhiên từ tổng ngân hàng các bài đã chọn thành đề thi bấm giờ chuẩn xác."
+          stats={[
+            {
+              icon: <Layers className="size-4" />,
+              label: "Kho câu hỏi",
+              value: loadingSources ? "..." : totalSystemQuestionBank,
+            },
+            {
+              icon: <Lock className="size-4" />,
+              label: "Đề của tôi",
+              value: myCustomQuizzes.length,
+            },
+            {
+              icon: <Globe2 className="size-4" />,
+              label: "Đề hệ thống",
+              value: quizzes.length,
+            },
+          ]}
+        />
 
         {/* SECTION 1: RANDOM PRACTICE QUIZ BUILDER */}
         <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 sm:p-7">

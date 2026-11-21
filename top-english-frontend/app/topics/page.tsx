@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import { fetchApi } from "../../lib/api-client";
 import { useAuth } from "../../context/auth-context";
 import { useSound } from "../../context/sound-context";
@@ -207,35 +208,48 @@ export default function TopicsClassesPage() {
     }
   };
 
+  const totalLessons = classes.reduce((sum, c) => sum + (c.lessonCount || 0), 0);
+  const totalWords = classes.reduce((sum, c) => sum + (c.totalWords || 0), 0);
+
   return (
     <AppLayout>
-      <main className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 flex flex-col gap-7">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-6 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex flex-col gap-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 w-fit">
-              <Sparkles className="size-3.5" />
-              Từ vựng Flashcard theo Lớp học
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Danh Sách Lớp Học
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-              Chọn lớp học bên dưới để xem danh sách bài học và luyện tập theo 3 chế độ: Học Từ (Flashcard), Quiz ABCD và Gõ Từ.
-            </p>
-          </div>
-
-          {isTeacherOrAdmin && (
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="h-11 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition cursor-pointer shrink-0 w-fit"
-            >
-              <Plus className="size-4 stroke-[3]" />
-              Tạo lớp học mới
-            </button>
-          )}
-        </div>
+      <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+        {/* Balanced Page Header Banner */}
+        <PageHeaderBanner
+          badgeIcon={<Sparkles className="size-3.5" />}
+          badgeText="Từ vựng Flashcard theo Lớp học"
+          title="Danh Sách Lớp Học"
+          description="Chọn lớp học bên dưới để xem danh sách bài học và luyện tập theo 3 chế độ: Học Từ (Flashcard), Quiz ABCD và Gõ Từ."
+          stats={[
+            {
+              icon: <Layers className="size-4" />,
+              label: "Lớp học",
+              value: loading ? "..." : classes.length,
+            },
+            {
+              icon: <BookOpen className="size-4" />,
+              label: "Bài học",
+              value: loading ? "..." : totalLessons,
+            },
+            {
+              icon: <GraduationCap className="size-4" />,
+              label: "Từ vựng",
+              value: loading ? "..." : totalWords,
+            },
+          ]}
+          actions={
+            isTeacherOrAdmin ? (
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="h-11 px-4 sm:px-5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md active:scale-95 transition cursor-pointer shrink-0"
+              >
+                <Plus className="size-4 stroke-[3]" />
+                <span>Tạo lớp học mới</span>
+              </button>
+            ) : undefined
+          }
+        />
 
         {/* Success Banner */}
         {successMessage && (
@@ -287,8 +301,8 @@ export default function TopicsClassesPage() {
 
         {/* Classes Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {[1, 2, 3, 4].map((n) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3].map((n) => (
               <div
                 key={n}
                 className="h-56 rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700"
@@ -329,7 +343,7 @@ export default function TopicsClassesPage() {
             ) : null}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {classes.map((cls) => (
               <Link
                 key={cls._id}

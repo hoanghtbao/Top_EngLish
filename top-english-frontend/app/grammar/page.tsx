@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
+import PageHeaderBanner from "../../components/PageHeaderBanner";
 import {
   GrammarEditorModal,
   GrammarLessonData,
@@ -294,36 +295,42 @@ export default function GrammarCatalogPage() {
 
   return (
     <AppLayout>
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-        {/* Page Header + Prominent Teacher CTA */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div className="flex flex-col gap-2.5 text-center sm:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 self-center sm:self-start">
-              <Sparkles className="size-3.5" />
-              Ngữ pháp tiếng Anh thông minh &amp; Tương tác lớp học
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Chuyên mục Ngữ pháp tiếng Anh
-            </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-              Học ngữ pháp qua công thức 3 cấu trúc (+, -, ?), ví dụ song ngữ phát âm, lỗi sai thường gặp, trình chiếu giảng bài và bài tập thực hành.
-            </p>
-          </div>
-
-          {isTeacherOrAdmin && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingLesson(null);
-                setEditorOpen(true);
-              }}
-              className="h-12 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-extrabold inline-flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-95 transition cursor-pointer shrink-0"
-            >
-              <Plus className="size-4 stroke-[3]" />
-              <span>Thêm bài ngữ pháp</span>
-            </button>
-          )}
-        </div>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Balanced Page Header Banner */}
+        <PageHeaderBanner
+          className="mb-6"
+          badgeIcon={<Sparkles className="size-3.5" />}
+          badgeText="Ngữ pháp tiếng Anh thông minh & Tương tác lớp học"
+          title="Chuyên mục Ngữ pháp tiếng Anh"
+          description="Học ngữ pháp qua công thức linh hoạt, ví dụ song ngữ phát âm, lỗi sai thường gặp, trình chiếu giảng bài và bài tập thực hành."
+          stats={[
+            {
+              icon: <BookOpen className="size-4" />,
+              label: "Bài học",
+              value: loading ? "..." : lessons.length,
+            },
+            {
+              icon: <Compass className="size-4" />,
+              label: "Chuyên đề",
+              value: loading ? "..." : categories.length,
+            },
+          ]}
+          actions={
+            isTeacherOrAdmin ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingLesson(null);
+                  setEditorOpen(true);
+                }}
+                className="h-11 px-4 sm:px-5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-extrabold inline-flex items-center justify-center gap-2 shadow-md active:scale-95 transition cursor-pointer shrink-0"
+              >
+                <Plus className="size-4 stroke-[3]" />
+                <span>Thêm bài ngữ pháp</span>
+              </button>
+            ) : undefined
+          }
+        />
 
         {/* Notifications */}
         {bannerMsg && (
