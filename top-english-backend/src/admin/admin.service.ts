@@ -348,7 +348,28 @@ export class AdminService {
         }
       } else if (val && typeof val === 'object') {
         const url = typeof val.url === 'string' ? val.url.trim() : '';
-        if (!url) continue;
+        const customBadge =
+          typeof val.customBadge === 'string' ? val.customBadge.trim() : '';
+        const customTitle =
+          typeof val.customTitle === 'string' ? val.customTitle.trim() : '';
+        const customDescription =
+          typeof val.customDescription === 'string'
+            ? val.customDescription.trim()
+            : '';
+        const hideText = Boolean(val.hideText);
+        const hideStats = Boolean(val.hideStats);
+
+        if (
+          !url &&
+          !customBadge &&
+          !customTitle &&
+          !customDescription &&
+          !hideText &&
+          !hideStats
+        ) {
+          continue;
+        }
+
         const legacyPos = ['center', 'top', 'bottom'].includes(val.position)
           ? val.position
           : 'center';
@@ -383,6 +404,11 @@ export class AdminService {
             typeof val.posY === 'number'
               ? Math.min(100, Math.max(0, val.posY))
               : fallbackY,
+          customBadge,
+          customTitle,
+          customDescription,
+          hideText,
+          hideStats,
         };
       }
     }

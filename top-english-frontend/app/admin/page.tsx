@@ -2331,41 +2331,162 @@ export default function AdminDashboardPage() {
                                 />
                               </label>
 
-                              {currentUrl && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setExpandedBannerKey(isExpanded ? null : sec.key)
-                                    }
-                                    className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
-                                      isExpanded
-                                        ? "bg-emerald-600 text-white border-emerald-600"
-                                        : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-emerald-500"
-                                    }`}
-                                  >
-                                    <Sliders className="size-3" />
-                                    <span>Tinh chỉnh</span>
-                                  </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedBannerKey(isExpanded ? null : sec.key)
+                                }
+                                className={`h-8 px-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                                  isExpanded
+                                    ? "bg-emerald-600 text-white border-emerald-600"
+                                    : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-emerald-500"
+                                }`}
+                              >
+                                <Sliders className="size-3" />
+                                <span>Tinh chỉnh</span>
+                              </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      updateSectionBannerConfig(sec.key, { url: "" })
-                                    }
-                                    title="Xóa ảnh để quay về nền Jade mặc định"
-                                    className="h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-[11px] font-bold transition cursor-pointer"
-                                  >
-                                    Mặc định
-                                  </button>
-                                </>
+                              {currentUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateSectionBannerConfig(sec.key, { url: "" })
+                                  }
+                                  title="Xóa ảnh để quay về nền Jade mặc định"
+                                  className="h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 text-[11px] font-bold transition cursor-pointer"
+                                >
+                                  Mặc định
+                                </button>
                               )}
                             </div>
                           </div>
 
-                          {/* Expandable Tuning Controls when URL is set (Live Preview stays sticky on the right!) */}
-                          {currentUrl && isExpanded && (
+                          {/* Expandable Text + Visual Tuning Controls */}
+                          {isExpanded && (
                             <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-col gap-3">
+                              {/* Text Customization & Hide Controls */}
+                              <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 flex flex-col gap-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                    <Type className="size-3.5 text-emerald-600" />
+                                    Tùy chỉnh chữ &amp; Ẩn chữ trên Banner
+                                  </span>
+
+                                  {(cfg.customBadge ||
+                                    cfg.customTitle ||
+                                    cfg.customDescription ||
+                                    cfg.hideText ||
+                                    cfg.hideStats) && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateSectionBannerConfig(sec.key, {
+                                          customBadge: "",
+                                          customTitle: "",
+                                          customDescription: "",
+                                          hideText: false,
+                                          hideStats: false,
+                                        })
+                                      }
+                                      className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
+                                    >
+                                      Khôi phục chữ mặc định
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 cursor-pointer">
+                                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                      Ẩn chữ tiêu đề &amp; mô tả
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(cfg.hideText)}
+                                      onChange={(e) =>
+                                        updateSectionBannerConfig(sec.key, {
+                                          hideText: e.target.checked,
+                                        })
+                                      }
+                                      className="size-4 accent-emerald-600 cursor-pointer"
+                                    />
+                                  </label>
+
+                                  <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 cursor-pointer">
+                                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                      Ẩn các thẻ số liệu
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(cfg.hideStats)}
+                                      onChange={(e) =>
+                                        updateSectionBannerConfig(sec.key, {
+                                          hideStats: e.target.checked,
+                                        })
+                                      }
+                                      className="size-4 accent-emerald-600 cursor-pointer"
+                                    />
+                                  </label>
+                                </div>
+
+                                {!cfg.hideText && (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <div className="flex flex-col gap-1">
+                                      <label className="text-[10px] font-bold text-slate-500">
+                                        Huy hiệu nhỏ trên cùng (Badge)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={cfg.customBadge || ""}
+                                        onChange={(e) =>
+                                          updateSectionBannerConfig(sec.key, {
+                                            customBadge: e.target.value,
+                                          })
+                                        }
+                                        placeholder={sec.badgeText}
+                                        className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                      />
+                                    </div>
+
+                                    <div className="flex flex-col gap-1">
+                                      <label className="text-[10px] font-bold text-slate-500">
+                                        Tiêu đề chính (H1)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={cfg.customTitle || ""}
+                                        onChange={(e) =>
+                                          updateSectionBannerConfig(sec.key, {
+                                            customTitle: e.target.value,
+                                          })
+                                        }
+                                        placeholder={sec.title}
+                                        className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-[11px] font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                      />
+                                    </div>
+
+                                    <div className="sm:col-span-2 flex flex-col gap-1">
+                                      <label className="text-[10px] font-bold text-slate-500">
+                                        Mô tả ngắn bên dưới
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={cfg.customDescription || ""}
+                                        onChange={(e) =>
+                                          updateSectionBannerConfig(sec.key, {
+                                            customDescription: e.target.value,
+                                          })
+                                        }
+                                        placeholder={sec.description}
+                                        className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {currentUrl && (
+                                <>
                               {/* 1-Click Presets for Bright Illustration vs Dark Photo */}
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[11px] font-bold text-slate-500">
@@ -2581,6 +2702,8 @@ export default function AdminDashboardPage() {
                                   </div>
                                 </div>
                               </div>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2757,6 +2880,10 @@ export default function AdminDashboardPage() {
                                 transformOrigin: "top left",
                               }}
                               className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-[33px] shadow-md ${
+                                activeCfg.hideText
+                                  ? "min-h-[225px] flex flex-col justify-end"
+                                  : ""
+                              } ${
                                 hasImg
                                   ? "touch-none select-none cursor-grab active:cursor-grabbing"
                                   : ""
@@ -2778,62 +2905,69 @@ export default function AdminDashboardPage() {
                               )}
 
                               <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5 pointer-events-none">
-                                <span
-                                  className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
-                                    isDarkTxt
-                                      ? "bg-white/90 border-emerald-200 text-emerald-800 shadow-xs"
-                                      : "bg-white/15 border-white/25 text-white"
-                                  }`}
-                                >
-                                  <Sparkles className="size-3.5" />
-                                  {activeSec.badgeText}
-                                </span>
-
-                                <h4
-                                  className={`text-4xl font-black tracking-tight leading-tight ${
-                                    isDarkTxt
-                                      ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
-                                      : "text-white"
-                                  }`}
-                                >
-                                  {activeSec.title}
-                                </h4>
-
-                                <p
-                                  className={`text-sm leading-relaxed max-w-[430px] ${
-                                    isDarkTxt
-                                      ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
-                                      : "text-emerald-50/95"
-                                  }`}
-                                >
-                                  {activeSec.description}
-                                </p>
-
-                                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
-                                  {activeSec.pills.map((pill, i) => (
-                                    <div
-                                      key={i}
-                                      className={`px-3.5 py-2 rounded-full border text-xs font-bold ${
-                                        isDarkTxt
-                                          ? "bg-white/90 border-emerald-200 text-emerald-900 shadow-xs"
-                                          : "bg-black/25 border-white/20 text-white"
-                                      }`}
-                                    >
-                                      {pill}
-                                    </div>
-                                  ))}
-                                  {activeSec.cta && (
+                                {!activeCfg.hideText && (
+                                  <>
                                     <span
-                                      className={`px-5 py-2 rounded-full text-sm font-extrabold shadow-md ${
+                                      className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
                                         isDarkTxt
-                                          ? "bg-emerald-600 text-white"
-                                          : "bg-white text-emerald-800"
+                                          ? "bg-white/90 border-emerald-200 text-emerald-800 shadow-xs"
+                                          : "bg-white/15 border-white/25 text-white"
                                       }`}
                                     >
-                                      {activeSec.cta}
+                                      <Sparkles className="size-3.5" />
+                                      {activeCfg.customBadge?.trim() || activeSec.badgeText}
                                     </span>
-                                  )}
-                                </div>
+
+                                    <h4
+                                      className={`text-4xl font-black tracking-tight leading-tight ${
+                                        isDarkTxt
+                                          ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+                                          : "text-white"
+                                      }`}
+                                    >
+                                      {activeCfg.customTitle?.trim() || activeSec.title}
+                                    </h4>
+
+                                    <p
+                                      className={`text-sm leading-relaxed max-w-[430px] ${
+                                        isDarkTxt
+                                          ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+                                          : "text-emerald-50/95"
+                                      }`}
+                                    >
+                                      {activeCfg.customDescription?.trim() || activeSec.description}
+                                    </p>
+                                  </>
+                                )}
+
+                                {(!activeCfg.hideStats || activeSec.cta) && (
+                                  <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
+                                    {!activeCfg.hideStats &&
+                                      activeSec.pills.map((pill, i) => (
+                                        <div
+                                          key={i}
+                                          className={`px-3.5 py-2 rounded-full border text-xs font-bold ${
+                                            isDarkTxt
+                                              ? "bg-white/90 border-emerald-200 text-emerald-900 shadow-xs"
+                                              : "bg-black/25 border-white/20 text-white"
+                                          }`}
+                                        >
+                                          {pill}
+                                        </div>
+                                      ))}
+                                    {activeSec.cta && (
+                                      <span
+                                        className={`px-5 py-2 rounded-full text-sm font-extrabold shadow-md ${
+                                          isDarkTxt
+                                            ? "bg-emerald-600 text-white"
+                                            : "bg-white text-emerald-800"
+                                        }`}
+                                      >
+                                        {activeSec.cta}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -2932,6 +3066,10 @@ export default function AdminDashboardPage() {
                                 onPointerUp={() => setBannerDragState(null)}
                                 onPointerCancel={() => setBannerDragState(null)}
                                 className={`relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-44 py-[33px] shadow-lg ${
+                                  activeCfg.hideText
+                                    ? "min-h-[225px] flex flex-col justify-end"
+                                    : ""
+                                } ${
                                   hasImg
                                     ? "touch-none select-none cursor-grab active:cursor-grabbing"
                                     : ""
@@ -2953,59 +3091,66 @@ export default function AdminDashboardPage() {
                                 )}
 
                                 <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5 pointer-events-none">
-                                  <span
-                                    className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
-                                      isDarkTxt
-                                        ? "bg-white/90 border-emerald-200 text-emerald-800 shadow-xs"
-                                        : "bg-white/15 border-white/25 text-white"
-                                    }`}
-                                  >
-                                    <Sparkles className="size-3.5" />
-                                    {activeSec.badgeText}
-                                  </span>
-                                  <h4
-                                    className={`text-4xl font-black tracking-tight leading-tight ${
-                                      isDarkTxt
-                                        ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
-                                        : "text-white"
-                                    }`}
-                                  >
-                                    {activeSec.title}
-                                  </h4>
-                                  <p
-                                    className={`text-sm leading-relaxed max-w-[430px] ${
-                                      isDarkTxt
-                                        ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
-                                        : "text-emerald-50/95"
-                                    }`}
-                                  >
-                                    {activeSec.description}
-                                  </p>
-                                  <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
-                                    {activeSec.pills.map((pill, i) => (
-                                      <div
-                                        key={i}
-                                        className={`px-3.5 py-2 rounded-full border text-xs font-bold ${
-                                          isDarkTxt
-                                            ? "bg-white/90 border-emerald-200 text-emerald-900 shadow-xs"
-                                            : "bg-black/25 border-white/20 text-white"
-                                        }`}
-                                      >
-                                        {pill}
-                                      </div>
-                                    ))}
-                                    {activeSec.cta && (
+                                  {!activeCfg.hideText && (
+                                    <>
                                       <span
-                                        className={`px-5 py-2 rounded-full text-sm font-extrabold shadow-md ${
+                                        className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold w-fit backdrop-blur-md border ${
                                           isDarkTxt
-                                            ? "bg-emerald-600 text-white"
-                                            : "bg-white text-emerald-800"
+                                            ? "bg-white/90 border-emerald-200 text-emerald-800 shadow-xs"
+                                            : "bg-white/15 border-white/25 text-white"
                                         }`}
                                       >
-                                        {activeSec.cta}
+                                        <Sparkles className="size-3.5" />
+                                        {activeCfg.customBadge?.trim() || activeSec.badgeText}
                                       </span>
-                                    )}
-                                  </div>
+                                      <h4
+                                        className={`text-4xl font-black tracking-tight leading-tight ${
+                                          isDarkTxt
+                                            ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+                                            : "text-white"
+                                        }`}
+                                      >
+                                        {activeCfg.customTitle?.trim() || activeSec.title}
+                                      </h4>
+                                      <p
+                                        className={`text-sm leading-relaxed max-w-[430px] ${
+                                          isDarkTxt
+                                            ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+                                            : "text-emerald-50/95"
+                                        }`}
+                                      >
+                                        {activeCfg.customDescription?.trim() || activeSec.description}
+                                      </p>
+                                    </>
+                                  )}
+                                  {(!activeCfg.hideStats || activeSec.cta) && (
+                                    <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
+                                      {!activeCfg.hideStats &&
+                                        activeSec.pills.map((pill, i) => (
+                                          <div
+                                            key={i}
+                                            className={`px-3.5 py-2 rounded-full border text-xs font-bold ${
+                                              isDarkTxt
+                                                ? "bg-white/90 border-emerald-200 text-emerald-900 shadow-xs"
+                                                : "bg-black/25 border-white/20 text-white"
+                                            }`}
+                                          >
+                                            {pill}
+                                          </div>
+                                        ))}
+                                      {activeSec.cta && (
+                                        <span
+                                          className={`px-5 py-2 rounded-full text-sm font-extrabold shadow-md ${
+                                            isDarkTxt
+                                              ? "bg-emerald-600 text-white"
+                                              : "bg-white text-emerald-800"
+                                          }`}
+                                        >
+                                          {activeSec.cta}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 

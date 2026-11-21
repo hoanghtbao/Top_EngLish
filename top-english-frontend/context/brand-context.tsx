@@ -25,6 +25,11 @@ export interface PageBannerConfig {
   position: "center" | "top" | "bottom";
   posX?: number;
   posY?: number;
+  customBadge?: string;
+  customTitle?: string;
+  customDescription?: string;
+  hideText?: boolean;
+  hideStats?: boolean;
 }
 
 export type PageBannerValue = string | PageBannerConfig;

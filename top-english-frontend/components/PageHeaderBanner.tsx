@@ -41,6 +41,11 @@ export const DEFAULT_BANNER_CONFIG: PageBannerConfig = {
   position: "center",
   posX: 50,
   posY: 50,
+  customBadge: "",
+  customTitle: "",
+  customDescription: "",
+  hideText: false,
+  hideStats: false,
 };
 
 export function normalizeBannerConfig(
@@ -87,6 +92,12 @@ export function normalizeBannerConfig(
       typeof raw.posY === "number"
         ? Math.min(100, Math.max(0, raw.posY))
         : fallbackY,
+    customBadge: typeof raw.customBadge === "string" ? raw.customBadge : "",
+    customTitle: typeof raw.customTitle === "string" ? raw.customTitle : "",
+    customDescription:
+      typeof raw.customDescription === "string" ? raw.customDescription : "",
+    hideText: Boolean(raw.hideText),
+    hideStats: Boolean(raw.hideStats),
   };
 }
 
@@ -194,11 +205,21 @@ export default function PageHeaderBanner({
 
   const hasCustomImage = Boolean(resolveBannerImageUrl(config.url));
   const isDarkText = hasCustomImage && config.textColor === "dark";
+  const hideText = Boolean(config.hideText);
+  const hideStats = Boolean(config.hideStats);
+
+  const effectiveBadge = config.customBadge?.trim() || badgeText;
+  const effectiveTitle = config.customTitle?.trim() || title;
+  const effectiveDescription = config.customDescription?.trim() || description;
+  const visibleStats = hideStats ? [] : stats;
+  const hasBottomRow = visibleStats.length > 0 || Boolean(actions);
 
   return (
     <section
       data-banner-tone={isDarkText ? "light" : "dark"}
       className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-5 sm:px-16 lg:px-36 xl:px-44 py-6 sm:py-[33px] shadow-lg shadow-emerald-900/10 ${
+        hideText ? "min-h-[190px] sm:min-h-[225px] flex flex-col justify-end" : ""
+      } ${
         isDarkText ? "text-slate-900 border border-emerald-200/70" : "text-white"
       } ${className}`}
     >
@@ -208,85 +229,91 @@ export default function PageHeaderBanner({
       />
 
       {/* Centered Content Block — thu gọn đoạn mô tả để nằm trọn vùng thoáng giữa ảnh */}
-      <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5">
-        {/* Badge */}
-        <div
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full backdrop-blur-md border text-[11px] sm:text-xs font-bold w-fit ${
-            isDarkText
-              ? "bg-white/90 border-emerald-200/90 text-emerald-800 shadow-xs"
-              : "bg-white/15 border-white/25 text-white"
-          }`}
-        >
-          {badgeIcon}
-          <span>{badgeText}</span>
-        </div>
-
-        {/* Title */}
-        <h1
-          className={`text-2xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight ${
-            isDarkText
-              ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
-              : "text-white"
-          }`}
-        >
-          {title}
-        </h1>
-
-        {/* Description */}
-        <p
-          className={`text-xs sm:text-sm leading-relaxed max-w-[430px] ${
-            isDarkText
-              ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
-              : "text-emerald-50/95"
-          }`}
-        >
-          {description}
-        </p>
-
-        {/* Centered Stats Pills + Action Buttons Row */}
-        {(stats.length > 0 || actions) && (
-          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
-            {stats.map((item, idx) => (
+      {(!hideText || hasBottomRow) && (
+        <div className="relative z-10 max-w-[620px] mx-auto flex flex-col items-center text-center gap-2.5">
+          {!hideText && (
+            <>
+              {/* Badge */}
               <div
-                key={idx}
-                className={`inline-flex items-center gap-2 backdrop-blur-md px-3.5 py-2 rounded-full border transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full backdrop-blur-md border text-[11px] sm:text-xs font-bold w-fit ${
                   isDarkText
-                    ? "bg-white/90 border-emerald-200/90 text-slate-900 shadow-xs"
-                    : "bg-black/25 border-white/20 text-white"
+                    ? "bg-white/90 border-emerald-200/90 text-emerald-800 shadow-xs"
+                    : "bg-white/15 border-white/25 text-white"
                 }`}
               >
-                {item.icon && (
+                {badgeIcon}
+                <span>{effectiveBadge}</span>
+              </div>
+
+              {/* Title */}
+              <h1
+                className={`text-2xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight ${
+                  isDarkText
+                    ? "text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)]"
+                    : "text-white"
+                }`}
+              >
+                {effectiveTitle}
+              </h1>
+
+              {/* Description */}
+              <p
+                className={`text-xs sm:text-sm leading-relaxed max-w-[430px] ${
+                  isDarkText
+                    ? "text-slate-800 font-semibold drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
+                    : "text-emerald-50/95"
+                }`}
+              >
+                {effectiveDescription}
+              </p>
+            </>
+          )}
+
+          {/* Centered Stats Pills + Action Buttons Row */}
+          {hasBottomRow && (
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1.5">
+              {visibleStats.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`inline-flex items-center gap-2 backdrop-blur-md px-3.5 py-2 rounded-full border transition ${
+                    isDarkText
+                      ? "bg-white/90 border-emerald-200/90 text-slate-900 shadow-xs"
+                      : "bg-black/25 border-white/20 text-white"
+                  }`}
+                >
+                  {item.icon && (
+                    <span
+                      className={`size-6 rounded-full flex items-center justify-center shrink-0 ${
+                        isDarkText
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-white/15 text-white"
+                      }`}
+                    >
+                      {item.icon}
+                    </span>
+                  )}
                   <span
-                    className={`size-6 rounded-full flex items-center justify-center shrink-0 ${
-                      isDarkText
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-white/15 text-white"
+                    className={`text-[11px] font-semibold ${
+                      isDarkText ? "text-slate-600" : "text-emerald-100/90"
                     }`}
                   >
-                    {item.icon}
+                    {item.label}:
                   </span>
-                )}
-                <span
-                  className={`text-[11px] font-semibold ${
-                    isDarkText ? "text-slate-600" : "text-emerald-100/90"
-                  }`}
-                >
-                  {item.label}:
-                </span>
-                <span
-                  className={`text-xs sm:text-sm font-black ${
-                    isDarkText ? "text-emerald-900" : "text-white"
-                  }`}
-                >
-                  {item.value}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className={`text-xs sm:text-sm font-black ${
+                      isDarkText ? "text-emerald-900" : "text-white"
+                    }`}
+                  >
+                    {item.value}
+                  </span>
+                </div>
+              ))}
 
-            {actions}
-          </div>
-        )}
-      </div>
+              {actions}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
