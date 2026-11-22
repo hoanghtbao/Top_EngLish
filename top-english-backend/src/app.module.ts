@@ -28,10 +28,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
-    // 1. Quản lý biến môi trường toàn cục (.env)
+    // 1. Quản lý biến môi trường toàn cục (.env) - ưu tiên top-english-backend/.env khi chạy từ root
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', 'top-english-backend/.env'],
+      envFilePath: ['top-english-backend/.env', '.env'],
     }),
 
     // 2. Kết nối cơ sở dữ liệu MongoDB qua Mongoose
