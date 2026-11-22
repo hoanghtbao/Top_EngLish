@@ -52,3 +52,7 @@ Top-English_Project_Plan.md
 # Uploads
 uploads/*
 !uploads/.gitkeep
+
+# Local database export backups
+top-english-backup.ejson
+db-backup/
