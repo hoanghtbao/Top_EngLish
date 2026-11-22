@@ -13,10 +13,14 @@ import {
   HttpStatus,
   Post,
   Put,
+  Query,
+  Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -28,6 +32,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { GoogleExchangeDto } from './dto/google-exchange.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
@@ -65,6 +70,84 @@ export class AuthController {
     const result = await this.authService.login(loginDto);
     return {
       message: 'Đăng nhập thành công',
+      data: result,
+    };
+  }
+
+  /**
+   * Kiểm tra xem hệ thống đã cấu hình Google OAuth hay chưa
+   */
+  @Get('google/status')
+  @ApiOperation({ summary: 'Kiểm tra trạng thái tích hợp đăng nhập Google OAuth 2.0' })
+  getGoogleStatus() {
+    return {
+      message: 'Lấy trạng thái Google OAuth thành công',
+      data: this.authService.getGoogleStatus(),
+    };
+  }
+
+  /**
+   * Chuyển hướng người dùng sang trang xác thực chính thức của Google (OAuth 2.0 + PKCE + State)
+   */
+  @Get('google')
+  @ApiOperation({ summary: 'Bắt đầu luồng đăng nhập / đăng ký qua Google OAuth 2.0' })
+  startGoogleAuth(@Query('mode') mode: string | undefined, @Res() res: Response) {
+    const { url, state, fallbackRedirect } = this.authService.initiateGoogleAuth(mode);
+    if (!url || !state) {
+      return res.redirect(fallbackRedirect || '/');
+    }
+
+    res.cookie('te_oauth_state', state, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/api/v1/auth/google',
+      maxAge: 5 * 60 * 1000,
+    });
+
+    return res.redirect(url);
+  }
+
+  /**
+   * Callback nhận Authorization Code từ Google, xác minh chữ ký ID Token và chuyển về Frontend
+   */
+  @Get('google/callback')
+  @ApiOperation({ summary: 'Xử lý callback từ Google OAuth 2.0' })
+  async googleCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') error: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const cookieHeader = req.headers.cookie || '';
+    const cookieStateMatch = cookieHeader.match(/(?:^|;\s*)te_oauth_state=([^;]+)/);
+    const cookieState = cookieStateMatch
+      ? decodeURIComponent(cookieStateMatch[1])
+      : undefined;
+
+    res.clearCookie('te_oauth_state', { path: '/api/v1/auth/google' });
+
+    const redirectUrl = await this.authService.handleGoogleCallback({
+      code,
+      state,
+      error,
+      cookieState,
+    });
+
+    return res.redirect(redirectUrl);
+  }
+
+  /**
+   * Đổi one-time exchange code lấy JWT Access/Refresh Token qua POST body an toàn
+   */
+  @Post('google/exchange')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đổi mã xác thực Google một lần lấy cặp JWT tokens' })
+  async exchangeGoogleCode(@Body() dto: GoogleExchangeDto) {
+    const result = await this.authService.exchangeGoogleCode(dto.code);
+    return {
+      message: 'Xác thực Google thành công',
       data: result,
     };
   }

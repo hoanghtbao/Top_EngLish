@@ -6,9 +6,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Globe2,
@@ -19,9 +19,13 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
+import GoogleAuthButton, {
+  getGoogleAuthErrorMessage,
+} from "../../components/GoogleAuthButton";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register } = useAuth();
 
   const [fullName, setFullName] = useState("");
@@ -30,6 +34,13 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const googleErr = getGoogleAuthErrorMessage(searchParams.get("googleError"));
+    if (googleErr) {
+      setErrorMessage(googleErr);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +206,14 @@ export default function RegisterPage() {
           </button>
         </form>
 
+        <div className="mt-4">
+          <GoogleAuthButton
+            mode="register"
+            disabled={loading}
+            onError={(msg) => setErrorMessage(msg)}
+          />
+        </div>
+
         {/* Footer Link */}
         <div className="mt-6 text-center text-xs text-slate-500">
           Đã có tài khoản?{" "}
@@ -207,5 +226,19 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <Loader2 className="size-7 animate-spin text-emerald-600" />
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }

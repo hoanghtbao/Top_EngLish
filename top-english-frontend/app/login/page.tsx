@@ -6,9 +6,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Globe2,
@@ -21,15 +21,26 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
+import GoogleAuthButton, {
+  getGoogleAuthErrorMessage,
+} from "../../components/GoogleAuthButton";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const googleErr = getGoogleAuthErrorMessage(searchParams.get("googleError"));
+    if (googleErr) {
+      setErrorMessage(googleErr);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +159,14 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className="mt-4">
+          <GoogleAuthButton
+            mode="login"
+            disabled={loading}
+            onError={(msg) => setErrorMessage(msg)}
+          />
+        </div>
+
         {/* Quick Demo Fill Buttons: Sử dụng SVG Lucide icons */}
         <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
           <span className="block text-[11px] font-medium text-slate-400 text-center mb-2.5">
@@ -198,5 +217,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <Loader2 className="size-7 animate-spin text-emerald-600" />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -15,9 +15,18 @@ export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;
 
-  // Mật khẩu đã băm bằng bcrypt, không bao giờ lưu dạng plain text
-  @Prop({ required: true })
-  password: string;
+  // Mật khẩu đã băm bằng bcrypt (tùy chọn đối với tài khoản đăng nhập Google OAuth)
+  @Prop({ required: false, default: null })
+  password?: string;
+
+  @Prop({ default: null })
+  googleId?: string;
+
+  @Prop({ type: String, enum: ['local', 'google'], default: 'local' })
+  authProvider: 'local' | 'google';
+
+  @Prop({ default: false })
+  emailVerified: boolean;
 
   @Prop({ required: true, trim: true })
   fullName: string;
@@ -54,5 +63,6 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// Đánh index tối ưu cho bảng xếp hạng XP
+// Đánh index tối ưu cho bảng xếp hạng XP & Google OAuth lookup
 UserSchema.index({ totalXP: -1 });
+UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });

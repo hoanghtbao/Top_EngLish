@@ -20,6 +20,8 @@ export interface User {
   streak: number;
   totalXP: number;
   lastActiveDate?: string | null;
+  authProvider?: "local" | "google";
+  emailVerified?: boolean;
 }
 
 export interface StreakPayload {
@@ -44,6 +46,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
+  exchangeGoogleCode: (code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   isAuthenticated: boolean;
@@ -116,6 +119,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToast(toastData);
   };
 
+  const applyAuthSession = (
+    data: { user: User; tokens: { accessToken: string; refreshToken: string } },
+    title: string,
+    message: string,
+  ) => {
+    localStorage.setItem("access_token", data.tokens.accessToken);
+    localStorage.setItem("refresh_token", data.tokens.refreshToken);
+    setUser(data.user);
+
+    const welcomeToast: ToastNotification = {
+      type: "success",
+      title,
+      message,
+      duration: 4000,
+    };
+    sessionStorage.setItem("pending_welcome_toast", JSON.stringify(welcomeToast));
+    setToast(welcomeToast);
+  };
+
   const login = async (email: string, password: string) => {
     const res = await fetchApi<{ user: User; tokens: { accessToken: string; refreshToken: string } }>(
       "/auth/login",
@@ -126,19 +148,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     if (res.success && res.data) {
-      localStorage.setItem("access_token", res.data.tokens.accessToken);
-      localStorage.setItem("refresh_token", res.data.tokens.refreshToken);
-      setUser(res.data.user);
-
-      // Kích hoạt Toast chào mừng góc bên phải trên cùng kéo dài 3-5s
-      const welcomeToast: ToastNotification = {
-        type: "success",
-        title: "Chào mừng trở lại!",
-        message: `Chào mừng trở lại, ${res.data.user.fullName}!`,
-        duration: 4000,
-      };
-      sessionStorage.setItem("pending_welcome_toast", JSON.stringify(welcomeToast));
-      setToast(welcomeToast);
+      applyAuthSession(
+        res.data,
+        "Chào mừng trở lại!",
+        `Chào mừng trở lại, ${res.data.user.fullName}!`,
+      );
     }
   };
 
@@ -152,18 +166,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     if (res.success && res.data) {
-      localStorage.setItem("access_token", res.data.tokens.accessToken);
-      localStorage.setItem("refresh_token", res.data.tokens.refreshToken);
-      setUser(res.data.user);
+      applyAuthSession(
+        res.data,
+        "Chào mừng thành viên mới!",
+        `Chào mừng bạn ${res.data.user.fullName} đến với TopEnglish!`,
+      );
+    }
+  };
 
-      const welcomeToast: ToastNotification = {
-        type: "success",
-        title: "Chào mừng thành viên mới!",
-        message: `Chào mừng bạn ${res.data.user.fullName} đến với TopEnglish!`,
-        duration: 4000,
-      };
-      sessionStorage.setItem("pending_welcome_toast", JSON.stringify(welcomeToast));
-      setToast(welcomeToast);
+  const exchangeGoogleCode = async (code: string) => {
+    const res = await fetchApi<{
+      user: User;
+      isNewUser?: boolean;
+      tokens: { accessToken: string; refreshToken: string };
+    }>("/auth/google/exchange", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+
+    if (res.success && res.data) {
+      const isNew = Boolean(res.data.isNewUser);
+      applyAuthSession(
+        res.data,
+        isNew ? "Đăng ký bằng Google thành công!" : "Xác thực Google thành công!",
+        isNew
+          ? `Chào mừng bạn ${res.data.user.fullName} đến với TopEnglish!`
+          : `Chào mừng trở lại, ${res.data.user.fullName}!`,
+      );
     }
   };
 
@@ -259,6 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         register,
+        exchangeGoogleCode,
         logout,
         refreshProfile,
         isAuthenticated: !!user,

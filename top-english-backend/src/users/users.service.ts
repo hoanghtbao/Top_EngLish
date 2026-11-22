@@ -99,6 +99,32 @@ export class UsersService implements OnModuleInit {
   }
 
   /**
+   * Tìm người dùng theo Google Subject ID
+   */
+  async findByGoogleId(googleId: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ googleId }).exec();
+  }
+
+  /**
+   * Liên kết thông tin Google OAuth đã xác thực vào tài khoản hiện có
+   */
+  async linkGoogleAccount(
+    userId: string | Types.ObjectId,
+    data: { googleId: string; avatar?: string | null },
+  ): Promise<UserDocument | null> {
+    const update: Record<string, any> = {
+      googleId: data.googleId,
+      emailVerified: true,
+    };
+    if (data.avatar) {
+      update.avatar = data.avatar;
+    }
+    return this.userModel
+      .findByIdAndUpdate(userId, { $set: update }, { new: true })
+      .exec();
+  }
+
+  /**
    * Tìm người dùng theo ID
    * @param id MongoDB ObjectId
    */
