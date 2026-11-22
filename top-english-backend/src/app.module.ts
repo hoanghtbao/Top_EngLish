@@ -23,6 +23,7 @@ import { ClassroomsModule } from './classrooms/classrooms.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { LiveGameModule } from './live-game/live-game.module';
 import { AdminModule } from './admin/admin.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -89,6 +90,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
     // 16. Module Bảng Quản Trị Hệ Thống & Báo Cáo Số Liệu (Admin)
     AdminModule,
+
+    // 17. Module lưu & phục vụ tệp ảnh bền vững qua MongoDB GridFS
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

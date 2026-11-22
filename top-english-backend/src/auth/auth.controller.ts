@@ -23,9 +23,6 @@ import {
 import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, resolve } from 'path';
-import * as fs from 'fs';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -36,6 +33,8 @@ import { GoogleExchangeDto } from './dto/google-exchange.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
+import { UploadsService } from '../uploads/uploads.service';
+import { createImageMemoryMulterOptions } from '../uploads/upload-multer.helper';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -43,6 +42,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly uploadsService: UploadsService,
   ) {}
 
   /**
@@ -227,37 +227,7 @@ export class AuthController {
   })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const dir = resolve(process.cwd(), 'uploads');
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-          cb(null, dir);
-        },
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname).toLowerCase() || '.png';
-          cb(null, `avatar-${uniqueSuffix}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)$/i)) {
-          return cb(
-            new BadRequestException(
-              'Chỉ chấp nhận các định dạng ảnh hợp lệ (JPG, JPEG, PNG, WEBP, SVG, AVIF)',
-            ),
-            false,
-          );
-        }
-        cb(null, true);
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-    }),
+    FileInterceptor('file', createImageMemoryMulterOptions(5 * 1024 * 1024)),
   )
   async uploadAvatar(
     @CurrentUser('_id') userId: string,
@@ -266,8 +236,9 @@ export class AuthController {
     if (!file) {
       throw new BadRequestException('Vui lòng chọn file ảnh để tải lên');
     }
+    const saved = await this.uploadsService.saveMulterFile(file, 'avatar');
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
-    const avatarUrl = `${backendUrl}/uploads/${file.filename}`;
+    const avatarUrl = `${backendUrl}/uploads/${saved.filename}`;
 
     const updatedUser = await this.usersService.updateProfile(userId, {
       avatar: avatarUrl,

@@ -27,9 +27,6 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, resolve } from 'path';
-import * as fs from 'fs';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,6 +36,8 @@ import { AdminService } from './admin.service';
 import { UpdateRoleDto } from '../users/dto/update-role.dto';
 import { UpdateStatusDto } from '../users/dto/update-status.dto';
 import { UpdateHomepageHeroDto } from './dto/homepage-settings.dto';
+import { UploadsService } from '../uploads/uploads.service';
+import { createImageMemoryMulterOptions } from '../uploads/upload-multer.helper';
 
 @ApiTags('Admin Dashboard & Management')
 @ApiBearerAuth('JWT-auth')
@@ -46,7 +45,10 @@ import { UpdateHomepageHeroDto } from './dto/homepage-settings.dto';
 @Roles(Role.ADMIN)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   /**
    * Lấy số liệu thống kê toàn hệ thống (Users, Content, Engagement, Server health)
@@ -185,37 +187,7 @@ export class AdminController {
   })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const dir = resolve(process.cwd(), 'uploads');
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-          cb(null, dir);
-        },
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname).toLowerCase() || '.png';
-          cb(null, `avatar-${uniqueSuffix}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)$/i)) {
-          return cb(
-            new BadRequestException(
-              'Chỉ chấp nhận các định dạng ảnh hợp lệ (JPG, JPEG, PNG, WEBP, SVG, AVIF)',
-            ),
-            false,
-          );
-        }
-        cb(null, true);
-      },
-      limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB
-      },
-    }),
+    FileInterceptor('file', createImageMemoryMulterOptions(20 * 1024 * 1024)),
   )
   async uploadUserAvatar(
     @Param('id') userId: string,
@@ -224,8 +196,9 @@ export class AdminController {
     if (!file) {
       throw new BadRequestException('Vui lòng chọn file ảnh để tải lên');
     }
+    const saved = await this.uploadsService.saveMulterFile(file, 'avatar');
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
-    const avatarUrl = `${backendUrl}/uploads/${file.filename}`;
+    const avatarUrl = `${backendUrl}/uploads/${saved.filename}`;
 
     const updatedUser = await this.adminService.updateUserAvatar(
       userId,
@@ -292,37 +265,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Tải lên ảnh nền Hero trang chủ từ thiết bị (Admin)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const dir = resolve(process.cwd(), 'uploads');
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-          cb(null, dir);
-        },
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname).toLowerCase() || '.png';
-          cb(null, `hero-bg-${uniqueSuffix}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)$/i)) {
-          return cb(
-            new BadRequestException(
-              'Chỉ chấp nhận các định dạng ảnh hợp lệ (JPG, JPEG, PNG, WEBP, SVG, AVIF)',
-            ),
-            false,
-          );
-        }
-        cb(null, true);
-      },
-      limits: {
-        fileSize: 20 * 1024 * 1024, // 20MB
-      },
-    }),
+    FileInterceptor('file', createImageMemoryMulterOptions(20 * 1024 * 1024)),
   )
   async uploadHeroBackground(
     @UploadedFile() file: Express.Multer.File,
@@ -330,18 +273,19 @@ export class AdminController {
     if (!file) {
       throw new BadRequestException('Vui lòng chọn file ảnh để tải lên');
     }
+    const saved = await this.uploadsService.saveMulterFile(file, 'hero-bg');
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
-    const relativeUrl = `/uploads/${file.filename}`;
+    const relativeUrl = `/uploads/${saved.filename}`;
     const fullUrl = `${backendUrl}${relativeUrl}`;
 
     return {
       message: 'Tải lên ảnh nền thành công',
       data: {
-        filename: file.filename,
+        filename: saved.filename,
         url: fullUrl,
         relativeUrl,
-        size: file.size,
-        mimetype: file.mimetype,
+        size: saved.size,
+        mimetype: saved.mimetype,
       },
     };
   }

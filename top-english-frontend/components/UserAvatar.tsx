@@ -8,7 +8,7 @@
 
 import React, { useState } from "react";
 import { Camera, GraduationCap, Shield, Sparkles } from "lucide-react";
-import { getBackendBaseUrl } from "../lib/api-client";
+import { resolveAssetUrl } from "../lib/api-client";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 export type UserRole = "student" | "teacher" | "admin" | string;
@@ -26,16 +26,7 @@ interface UserAvatarProps {
 }
 
 export function getFullImageUrl(url?: string | null): string {
-  if (!url) return "";
-  if (url.includes("/uploads/")) {
-    const filename = url.split("/uploads/").pop();
-    return `/uploads/${filename}`;
-  }
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
-    return url;
-  }
-  const backendBase = getBackendBaseUrl();
-  return `${backendBase}${url.startsWith("/") ? url : `/${url}`}`;
+  return resolveAssetUrl(url);
 }
 
 export default function UserAvatar({

@@ -4,7 +4,7 @@
  * @description Điểm khởi chạy ứng dụng NestJS Backend, thiết lập CORS, ValidationPipe, Filter, Interceptor và Swagger
  */
 
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -30,8 +30,10 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  // 1. Tiền tố toàn cục cho API
-  app.setGlobalPrefix('api/v1');
+  // 1. Tiền tố toàn cục cho API (loại trừ route /uploads/:filename để phục vụ ảnh trực tiếp)
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'uploads/:filename', method: RequestMethod.GET }],
+  });
 
   // Lấy ConfigService từ Nest container
   const configService = app.get(ConfigService);

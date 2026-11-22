@@ -30,7 +30,7 @@ import {
 import { useAuth } from "../context/auth-context";
 import { useBrand } from "../context/brand-context";
 import AppLayout from "../components/AppLayout";
-import { fetchApi } from "../lib/api-client";
+import { fetchApi, resolveAssetUrl } from "../lib/api-client";
 
 interface HealthData {
   status: string;
@@ -41,18 +41,7 @@ interface HealthData {
 }
 
 // Hàm chuẩn hóa đường dẫn ảnh (hỗ trợ cả đường dẫn cục bộ backend và CDN)
-const getFullImageUrl = (url?: string) => {
-  if (!url) return "";
-  if (url.includes("/uploads/")) {
-    const filename = url.split("/uploads/").pop();
-    return `/uploads/${filename}`;
-  }
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const backendBase =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
-    "http://localhost:5001";
-  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
-};
+const getFullImageUrl = (url?: string) => resolveAssetUrl(url);
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();

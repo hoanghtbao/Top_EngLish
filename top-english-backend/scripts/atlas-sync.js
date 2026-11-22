@@ -185,6 +185,94 @@ async function writeToAtlas(atlasUri, payload) {
   }
 }
 
+const MIME_BY_EXT = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.avif': 'image/avif',
+};
+
+function collectReferencedUploadFilenames(value, outSet) {
+  if (!value) return;
+  if (typeof value === 'string') {
+    const match = value.match(/\/uploads\/([^/?#\s]+)/);
+    if (match && match[1]) outSet.add(match[1]);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectReferencedUploadFilenames(item, outSet);
+    return;
+  }
+  if (typeof value === 'object') {
+    for (const v of Object.values(value)) collectReferencedUploadFilenames(v, outSet);
+  }
+}
+
+async function pushMediaToAtlas(atlasUri, uploadsDir, includeAll = false) {
+  if (!fs.existsSync(uploadsDir)) {
+    throw new Error(`Không tìm thấy thư mục uploads: ${uploadsDir}`);
+  }
+
+  const conn = await mongoose.createConnection(atlasUri).asPromise();
+  try {
+    const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+      bucketName: 'uploads',
+    });
+
+    let targetFiles;
+    if (includeAll) {
+      targetFiles = fs
+        .readdirSync(uploadsDir)
+        .filter((f) => f !== '.gitkeep' && fs.statSync(path.join(uploadsDir, f)).size > 0);
+    } else {
+      const referenced = new Set();
+      const settings = await conn.db.collection('system_settings').find({}).toArray();
+      const users = await conn.db.collection('users').find({}).project({ avatar: 1 }).toArray();
+      collectReferencedUploadFilenames(settings, referenced);
+      collectReferencedUploadFilenames(users, referenced);
+      targetFiles = [...referenced].filter((f) => {
+        const full = path.join(uploadsDir, f);
+        return fs.existsSync(full) && fs.statSync(full).size > 0;
+      });
+    }
+
+    console.log(`\n🖼️  Tìm thấy ${targetFiles.length} ảnh cần đồng bộ lên MongoDB Atlas GridFS...`);
+    let uploaded = 0;
+
+    for (const filename of targetFiles) {
+      const existing = await bucket.find({ filename }).limit(1).toArray();
+      if (existing.length > 0) {
+        console.log(`  ⏭️  ${filename} (đã có trên Atlas)`);
+        continue;
+      }
+
+      const fullPath = path.join(uploadsDir, filename);
+      const ext = path.extname(filename).toLowerCase();
+      const contentType = MIME_BY_EXT[ext] || 'application/octet-stream';
+
+      await new Promise((resolvePromise, rejectPromise) => {
+        const upStream = bucket.openUploadStream(filename, {
+          metadata: { contentType, originalName: filename },
+        });
+        fs.createReadStream(fullPath)
+          .pipe(upStream)
+          .on('error', rejectPromise)
+          .on('finish', resolvePromise);
+      });
+
+      uploaded += 1;
+      console.log(`  ✅ Đã tải lên GridFS: ${filename}`);
+    }
+
+    console.log(`\n🎉 Đã đồng bộ xong ${uploaded} ảnh mới lên Atlas GridFS!`);
+  } finally {
+    await conn.close();
+  }
+}
+
 async function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
   const localUri = options.local || DEFAULT_LOCAL_URI;
@@ -238,6 +326,13 @@ async function main() {
     const { payload, totalDocs } = await readLocalDatabase(localUri);
     await writeToAtlas(atlasUri, payload);
     console.log(`\n🎉 Hoàn tất đồng bộ trực tiếp ${totalDocs} documents từ Local lên MongoDB Atlas!`);
+    return;
+  }
+
+  if (command === 'push-media') {
+    const atlasUri = resolveTargetUri(options);
+    const uploadsDir = path.resolve(__dirname, '..', '..', 'uploads');
+    await pushMediaToAtlas(atlasUri, uploadsDir, Boolean(options.all));
     return;
   }
 

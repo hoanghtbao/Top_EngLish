@@ -32,6 +32,27 @@ export function getBackendBaseUrl(): string {
   return API_BASE_URL.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
 }
 
+/**
+ * Chuẩn hóa URL ảnh/tài nguyên upload (/uploads/...) sang đúng Backend hiện tại
+ * (xử lý tự động cả URL cũ http://localhost:5001/uploads/... khi chạy trên Vercel)
+ */
+export function resolveAssetUrl(url?: string | null): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+  if (trimmed.includes('/uploads/')) {
+    const filename = trimmed.split('/uploads/').pop();
+    if (filename) return `${getBackendBaseUrl()}/uploads/${filename}`;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  return `${getBackendBaseUrl()}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`;
+}
+
 // Singleton Promise để xếp hàng các request đồng thời khi làm mới Access Token
 let isRefreshingPromise: Promise<string | null> | null = null;
 

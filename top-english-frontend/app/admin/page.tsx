@@ -61,7 +61,7 @@ import {
   BannerBackgroundLayer,
   normalizeBannerConfig,
 } from "../../components/PageHeaderBanner";
-import { fetchApi } from "../../lib/api-client";
+import { fetchApi, resolveAssetUrl } from "../../lib/api-client";
 import UserAvatar from "../../components/UserAvatar";
 import AvatarUploadModal from "../../components/AvatarUploadModal";
 
@@ -153,18 +153,7 @@ interface ContentSummary {
 }
 
 // Hàm chuẩn hóa đường dẫn ảnh (hỗ trợ cả đường dẫn cục bộ backend và CDN)
-const getFullImageUrl = (url?: string) => {
-  if (!url) return "";
-  if (url.includes("/uploads/")) {
-    const filename = url.split("/uploads/").pop();
-    return `/uploads/${filename}`;
-  }
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const backendBase =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
-    "http://localhost:5001";
-  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
-};
+const getFullImageUrl = (url?: string) => resolveAssetUrl(url);
 
 export default function AdminDashboardPage() {
   const { user, isAuthenticated, showToast } = useAuth();

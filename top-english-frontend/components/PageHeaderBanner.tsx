@@ -12,6 +12,7 @@ import {
   PageBannerValue,
   useBrand,
 } from "../context/brand-context";
+import { resolveAssetUrl } from "../lib/api-client";
 
 export interface BannerStatItem {
   icon?: React.ReactNode;
@@ -104,16 +105,7 @@ export function normalizeBannerConfig(
 }
 
 export function resolveBannerImageUrl(url?: string): string {
-  if (!url) return "";
-  const trimmed = url.trim();
-  if (!trimmed) return "";
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
-  }
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
-  const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
-  return `${baseUrl}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
+  return resolveAssetUrl(url);
 }
 
 export function BannerBackgroundLayer({
