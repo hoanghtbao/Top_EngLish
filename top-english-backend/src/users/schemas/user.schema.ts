@@ -19,7 +19,7 @@ export class User {
   @Prop({ required: false, default: null })
   password?: string;
 
-  @Prop({ default: null })
+  @Prop({ required: false })
   googleId?: string;
 
   @Prop({ type: String, enum: ['local', 'google'], default: 'local' })
@@ -63,6 +63,12 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// Đánh index tối ưu cho bảng xếp hạng XP & Google OAuth lookup
+// Đánh index tối ưu cho bảng xếp hạng XP & Google OAuth lookup (chỉ ràng buộc unique khi googleId là chuỗi hợp lệ)
 UserSchema.index({ totalXP: -1 });
-UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
+UserSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { googleId: { $type: 'string' } },
+  },
+);

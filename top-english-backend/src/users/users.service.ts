@@ -29,6 +29,9 @@ export class UsersService implements OnModuleInit {
    * Tự động khởi tạo tài khoản Quản trị viên (Admin), Giáo viên (Teacher) và Học viên (Student) mặc định nếu hệ thống chưa có
    */
   async onModuleInit() {
+    // 0. Chuẩn hóa dữ liệu & index googleId cũ (tránh lỗi E11000 duplicate key: { googleId: null })
+    await this.ensureGoogleIdPartialIndex();
+
     // 1. Khởi tạo tài khoản Quản trị viên (Admin)
     const adminExists = await this.userModel.findOne({ role: Role.ADMIN });
     if (!adminExists) {
@@ -73,6 +76,29 @@ export class UsersService implements OnModuleInit {
         totalXP: 180,
       });
       this.logger.log('🌱 Đã khởi tạo tài khoản Học viên mặc định: student@topenglish.com / Student@123');
+    }
+  }
+
+  /**
+   * Gỡ các giá trị googleId = null cũ và nâng cấp index googleId_1 sang partialFilterExpression
+   * để cho phép nhiều tài khoản local không có googleId cùng tồn tại
+   */
+  private async ensureGoogleIdPartialIndex() {
+    try {
+      await this.userModel
+        .updateMany({ googleId: null }, { $unset: { googleId: '' } })
+        .exec();
+
+      const indexes = await this.userModel.collection.indexes();
+      const googleIdx = indexes.find((idx) => idx.name === 'googleId_1');
+      if (googleIdx && !googleIdx.partialFilterExpression) {
+        await this.userModel.collection.dropIndex('googleId_1');
+        this.logger.log('🔧 Đã nâng cấp index googleId_1 sang partialFilterExpression');
+      }
+      await this.userModel.syncIndexes();
+    } catch (err) {
+      // Bỏ qua nếu collection chưa tồn tại ở lần khởi tạo đầu tiên
+      this.logger.debug(`ensureGoogleIdPartialIndex note: ${(err as Error).message}`);
     }
   }
 
