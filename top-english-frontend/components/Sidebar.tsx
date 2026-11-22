@@ -31,6 +31,7 @@ import { useAuth } from "../context/auth-context";
 import { useSidebar } from "../context/sidebar-context";
 import { useBrand } from "../context/brand-context";
 import { useSound } from "../context/sound-context";
+import { getBackendBaseUrl } from "../lib/api-client";
 
 interface NavItem {
   label: string;
@@ -146,7 +147,7 @@ export default function Sidebar() {
   const developerNavItems: NavItem[] = [
     {
       label: "Swagger API Docs",
-      href: "http://localhost:5001/api/docs",
+      href: `${getBackendBaseUrl()}/api/docs`,
       icon: Code2,
       isExternal: true,
       badge: "Docs",

@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import AppLayout from "../../../components/AppLayout";
 import { useAuth } from "../../../context/auth-context";
+import { getBackendBaseUrl } from "../../../lib/api-client";
 import { io, Socket } from "socket.io-client";
 
 interface CharacterInfo {
@@ -144,7 +145,7 @@ function LiveGameRoomInner() {
     if (!pin) return;
 
     const socketUrl =
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5001";
+      process.env.NEXT_PUBLIC_SOCKET_URL || getBackendBaseUrl();
     const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,

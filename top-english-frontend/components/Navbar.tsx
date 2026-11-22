@@ -21,6 +21,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "../context/auth-context";
+import { getBackendBaseUrl } from "../lib/api-client";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -125,7 +126,7 @@ export default function Navbar() {
         {/* User Controls & Actions */}
         <div className="flex items-center gap-3">
           <a
-            href="http://localhost:5001/api/docs"
+            href={`${getBackendBaseUrl()}/api/docs`}
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex items-center h-10 px-3.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"

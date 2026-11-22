@@ -22,6 +22,16 @@ export interface ApiResponse<T = any> {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
 
+/**
+ * Lấy URL gốc của Backend (không có /api/v1) để dùng cho Socket.IO, Swagger Docs và file tĩnh
+ */
+export function getBackendBaseUrl(): string {
+  const explicit =
+    process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (explicit) return explicit.replace(/\/$/, '');
+  return API_BASE_URL.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+}
+
 // Singleton Promise để xếp hàng các request đồng thời khi làm mới Access Token
 let isRefreshingPromise: Promise<string | null> | null = null;
 

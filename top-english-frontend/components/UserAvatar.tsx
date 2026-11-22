@@ -8,6 +8,7 @@
 
 import React, { useState } from "react";
 import { Camera, GraduationCap, Shield, Sparkles } from "lucide-react";
+import { getBackendBaseUrl } from "../lib/api-client";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 export type UserRole = "student" | "teacher" | "admin" | string;
@@ -33,8 +34,7 @@ export function getFullImageUrl(url?: string | null): string {
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
     return url;
   }
-  const backendBase =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+  const backendBase = getBackendBaseUrl();
   return `${backendBase}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
