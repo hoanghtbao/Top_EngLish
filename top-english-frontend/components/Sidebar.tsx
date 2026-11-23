@@ -45,7 +45,7 @@ interface NavItem {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, loading: authLoading, showToast } = useAuth();
   const { isCollapsed, isMobileOpen, isInitialized, toggleCollapse, closeMobile } =
     useSidebar();
   const { brandSettings } = useBrand();
@@ -269,8 +269,18 @@ export default function Sidebar() {
           <Link
             key={item.label}
             href={item.href}
-            onClick={() => {
+            onClick={(e) => {
               playClickSound();
+              if (item.href === "/ai-assistant" && !authLoading && !isAuthenticated) {
+                e.preventDefault();
+                closeMobile();
+                showToast({
+                  type: "info",
+                  title: "Yêu cầu đăng nhập",
+                  message: "Vui lòng đăng nhập để sử dụng tính năng AI",
+                });
+                return;
+              }
               closeMobile();
             }}
             title={isCollapsed ? item.label : undefined}

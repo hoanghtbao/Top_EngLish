@@ -7,6 +7,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
@@ -18,6 +19,7 @@ import {
   Layers,
   Lightbulb,
   Loader2,
+  Lock,
   MessageSquare,
   PenTool,
   RotateCcw,
@@ -76,7 +78,7 @@ interface ChatMessage {
 }
 
 export default function AiAssistantPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<"grammar" | "word" | "chat">("grammar");
 
   // State: Tab 1 - Grammar
@@ -256,6 +258,41 @@ export default function AiAssistantPage() {
 
   // Mẫu từ vựng test nhanh cho Tab 2
   const wordSamples = ["Resilient", "Perseverance", "Eloquent", "Meticulous"];
+
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <AppLayout>
+        <main className="max-w-4xl mx-auto px-4 py-20 flex flex-col items-center justify-center text-center">
+          <div className="size-20 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/10 relative">
+            <Bot className="size-10" />
+            <span className="absolute -bottom-1.5 -right-1.5 size-7 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-xs">
+              <Lock className="size-3.5 text-amber-500" />
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-3 text-slate-900 dark:text-slate-100">
+            Vui lòng đăng nhập để sử dụng tính năng AI
+          </h1>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-md mb-8">
+            Đăng nhập tài khoản TopEnglish để sử dụng Trợ lý AI sửa lỗi ngữ pháp, mổ xẻ từ vựng chuyên sâu và hỏi đáp gia sư AI 24/7.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+            <Link
+              href="/login"
+              className="w-full sm:w-auto h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2"
+            >
+              Đăng nhập ngay <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/register"
+              className="w-full sm:w-auto h-11 px-6 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-sm transition flex items-center justify-center"
+            >
+              Tạo tài khoản mới
+            </Link>
+          </div>
+        </main>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

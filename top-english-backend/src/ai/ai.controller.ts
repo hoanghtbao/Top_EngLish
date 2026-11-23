@@ -40,6 +40,8 @@ export class AiController {
   }
 
   @Post('check-grammar')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Kiểm tra và sửa lỗi ngữ pháp tiếng Anh (Grammar Polishing)',
@@ -57,6 +59,8 @@ export class AiController {
   }
 
   @Post('explain-word')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Tra cứu và giải thích chi tiết từ vựng (Word Deep Dive)',
@@ -74,6 +78,8 @@ export class AiController {
   }
 
   @Post('chat')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Hỏi đáp tương tác với Gia sư AI (AI English Tutor Chat)',
@@ -91,6 +97,8 @@ export class AiController {
   }
 
   @Post('analyze-quiz-mistake')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Phân tích lỗi sai câu hỏi trắc nghiệm Quiz',

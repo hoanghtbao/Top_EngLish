@@ -44,7 +44,7 @@ interface HealthData {
 const getFullImageUrl = (url?: string) => resolveAssetUrl(url);
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, showToast } = useAuth();
   const { brandSettings } = useBrand();
   const [health, setHealth] = useState<HealthData | null>(null);
   const [loadingHealth, setLoadingHealth] = useState<boolean>(true);
@@ -330,6 +330,16 @@ export default function Home() {
               </div>
               <Link
                 href="/ai-assistant"
+                onClick={(e) => {
+                  if (!authLoading && !isAuthenticated) {
+                    e.preventDefault();
+                    showToast({
+                      type: "info",
+                      title: "Yêu cầu đăng nhập",
+                      message: "Vui lòng đăng nhập để sử dụng tính năng AI",
+                    });
+                  }
+                }}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 pt-2"
               >
                 Hỏi đáp cùng AI <ChevronRight className="size-4 group-hover:translate-x-1 transition-transform" />

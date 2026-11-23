@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { fetchApi } from "../lib/api-client";
+import { useAuth } from "../context/auth-context";
 
 interface ChatMessage {
   id: string;
@@ -51,6 +52,7 @@ const SUGGESTED_QUESTIONS = [
 
 export default function FloatingAiTutor() {
   const pathname = usePathname();
+  const { isAuthenticated, loading: authLoading, showToast } = useAuth();
 
   // Đảm bảo widget chỉ render ở Client để triệt tiêu hoàn toàn lỗi Hydration Mismatch
   const [mounted, setMounted] = useState(false);
@@ -198,6 +200,16 @@ export default function FloatingAiTutor() {
         } catch {}
       }
     } else {
+      if (!authLoading && !isAuthenticated) {
+        setShowTooltip(false);
+        setIsOpen(false);
+        showToast({
+          type: "info",
+          title: "Yêu cầu đăng nhập",
+          message: "Vui lòng đăng nhập để sử dụng tính năng AI",
+        });
+        return;
+      }
       setIsOpen((prev) => !prev);
       setShowTooltip(false);
     }
@@ -285,6 +297,13 @@ export default function FloatingAiTutor() {
     return () => clearTimeout(timer);
   }, [isOpen, isAiPage]);
 
+  // Đóng khung chat nếu người dùng đăng xuất
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && isOpen) {
+      setIsOpen(false);
+    }
+  }, [authLoading, isAuthenticated, isOpen]);
+
   // Không render trên Server hoặc khi ở trang chuyên sâu /ai-assistant để ngăn ngừa Hydration Mismatch
   if (!mounted || isAiPage) {
     return null;
@@ -292,6 +311,14 @@ export default function FloatingAiTutor() {
 
   // Gửi câu hỏi đến Backend AI
   const handleSendMessage = async (textToSend?: string) => {
+    if (!isAuthenticated) {
+      showToast({
+        type: "info",
+        title: "Yêu cầu đăng nhập",
+        message: "Vui lòng đăng nhập để sử dụng tính năng AI",
+      });
+      return;
+    }
     const message = (textToSend || inputText).trim();
     if (!message || loading) return;
 
