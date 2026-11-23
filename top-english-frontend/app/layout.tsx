@@ -32,6 +32,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "TopEnglish - Nền tảng học tiếng Anh trực tuyến thông minh",
   description: "Học từ vựng Flashcard, Spaced Repetition, ngữ pháp và trợ lý AI thông minh. Phát triển bởi HoangBao.",
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
