@@ -21,6 +21,7 @@ import {
   Clock,
   Compass,
   Flame,
+  FolderOpen,
   GraduationCap,
   HelpCircle,
   History,
@@ -30,6 +31,7 @@ import {
   Sparkles,
   Trophy,
   Volume2,
+  X,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -83,12 +85,38 @@ interface DashboardData {
   }>;
 }
 
+interface TopicClassRef {
+  _id: string;
+  name: string;
+  code?: string;
+}
+
+interface TopicRef {
+  _id: string;
+  title: string;
+  slug: string;
+  level: string;
+  lessonNumber?: number;
+  vocabClassId?: TopicClassRef | string | null;
+}
+
 interface SrsStats {
   learning: number;
   reviewing: number;
   mastered: number;
   dueToday: number;
+  safeCount?: number;
   totalReviewed: number;
+  totalVocabularies?: number;
+  unlearnedCount?: number;
+  retentionRate?: number;
+  levelBreakdown?: {
+    level0: number;
+    level1: number;
+    level2: number;
+    level3: number;
+    level4: number;
+  };
 }
 
 interface DueWordItem {
@@ -107,13 +135,36 @@ interface DueWordItem {
     meaning: string;
     exampleSentence?: string;
     exampleMeaning?: string;
-    topicId?: {
-      _id: string;
-      title: string;
-      slug: string;
-      level: string;
-    };
+    topicId?: TopicRef;
   };
+}
+
+type MemoryBucketType = "all" | "learning" | "reviewing" | "mastered" | "due";
+
+interface MemoryWordItem {
+  reviewId: string;
+  repetitionLevel: number;
+  reviewCount: number;
+  nextReviewDate: string;
+  lastReviewedAt?: string;
+  isMastered: boolean;
+  isDueToday: boolean;
+  vocabulary: {
+    _id: string;
+    word: string;
+    phonetic: string;
+    partOfSpeech: string;
+    meaning: string;
+    topicId?: TopicRef;
+  };
+}
+
+function getTopicClassLabel(topic?: TopicRef): string | null {
+  if (!topic?.vocabClassId) return null;
+  if (typeof topic.vocabClassId === "object") {
+    return topic.vocabClassId.name || topic.vocabClassId.code || null;
+  }
+  return null;
 }
 
 function getNextIntervalDays(
@@ -173,6 +224,31 @@ function DashboardContent() {
   const [sessionTotalXpEarned, setSessionTotalXpEarned] = useState(0);
   const reviewLockRef = useRef(false);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- MEMORY CURVE BUCKET INSPECTOR STATE ---
+  const [activeBucket, setActiveBucket] = useState<MemoryBucketType | null>(null);
+  const [bucketWords, setBucketWords] = useState<MemoryWordItem[]>([]);
+  const [isLoadingBucket, setIsLoadingBucket] = useState(false);
+
+  const openMemoryBucket = useCallback(
+    async (bucket: MemoryBucketType) => {
+      playClickSound();
+      setActiveBucket(bucket);
+      setIsLoadingBucket(true);
+      try {
+        const res = await fetchApi<MemoryWordItem[]>(
+          `/srs/memory-words?bucket=${bucket}`
+        );
+        setBucketWords(res.data || []);
+      } catch (err) {
+        console.error("Lỗi tải danh sách từ vựng bộ nhớ SRS:", err);
+        setBucketWords([]);
+      } finally {
+        setIsLoadingBucket(false);
+      }
+    },
+    [playClickSound]
+  );
 
   useEffect(() => {
     return () => {
@@ -745,29 +821,46 @@ function DashboardContent() {
                         setIsFlipped(!isFlipped);
                       }
                     }}
-                    className="min-h-[280px] p-6 sm:p-8 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600/60 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col items-center justify-center text-center gap-4 cursor-pointer select-none transition-all group relative active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="min-h-[280px] p-5 sm:p-7 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600/60 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col items-center justify-between text-center gap-4 cursor-pointer select-none transition-all group relative active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    <span className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
-                      {currentWordItem.isNew ? (
-                        <span className="text-teal-600 dark:text-teal-400 flex items-center gap-1">
-                          <Sparkles className="size-3" /> Từ mới gợi ý
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <Layers className="size-3 text-emerald-500" /> Cấp độ SRS: {currentWordItem.repetitionLevel}/4
-                        </span>
-                      )}
-                    </span>
-
-                    {currentWordItem.vocabulary?.topicId && (
-                      <span className="absolute top-4 right-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
-                        {currentWordItem.vocabulary.topicId.title} ({currentWordItem.vocabulary.topicId.level})
+                    <div className="w-full flex flex-wrap items-start justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 shrink-0">
+                        {currentWordItem.isNew ? (
+                          <span className="text-teal-600 dark:text-teal-400 flex items-center gap-1">
+                            <Sparkles className="size-3" /> Từ mới gợi ý
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Layers className="size-3 text-emerald-500" /> Hộp SRS: {currentWordItem.repetitionLevel}/4
+                          </span>
+                        )}
                       </span>
-                    )}
+
+                      {currentWordItem.vocabulary?.topicId && (() => {
+                        const topic = currentWordItem.vocabulary.topicId;
+                        const classNameLabel = getTopicClassLabel(topic);
+                        return (
+                          <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-full">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/70">
+                              <FolderOpen className="size-3 shrink-0" />
+                              {classNameLabel ? `Lớp: ${classNameLabel}` : "Chủ đề tự do"}
+                            </span>
+                            <Link
+                              href={`/topics/${topic._id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              title="Mở bài học từ vựng này"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
+                            >
+                              {topic.title} ({topic.level})
+                            </Link>
+                          </div>
+                        );
+                      })()}
+                    </div>
 
                     {!isFlipped ? (
                       /* FRONT SIDE: WORD + IPA + AUDIO */
-                      <div className="flex flex-col items-center gap-3 pt-6">
+                      <div className="flex flex-col items-center gap-3 py-2">
                         <h3 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                           {currentWordItem.vocabulary?.word}
                         </h3>
@@ -914,11 +1007,12 @@ function DashboardContent() {
           <section className="lg:col-span-5 flex flex-col gap-6">
             {/* MEMORY CURVE DISTRIBUTION */}
             <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-7 flex flex-col gap-5">
-              <div className="flex items-center gap-2">
-                <div className="size-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                  <Layers className="size-5" />
-                </div>
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="size-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                    <Layers className="size-5" />
+                  </div>
+                  <div>
                   <h3 className="text-base font-bold tracking-tight">
                     Phân Bổ Đường Cong Trí Nhớ
                   </h3>
@@ -926,7 +1020,63 @@ function DashboardContent() {
                     Mức độ lưu giữ từ vựng trong não bộ (Ebbinghaus Model)
                   </p>
                 </div>
+                </div>
+
+                {srsStats && (
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-semibold text-slate-500 block">
+                      Độ bền ghi nhớ
+                    </span>
+                    <span className="text-sm font-extrabold text-purple-600 dark:text-purple-400">
+                      {srsStats.retentionRate ?? 0}%
+                    </span>
+                  </div>
+                )}
               </div>
+
+              {/* STACKED MEMORY DISTRIBUTION BAR */}
+              {(() => {
+                const totalSrs = srsStats?.totalReviewed || 0;
+                const lCount = srsStats?.learning || 0;
+                const rCount = srsStats?.reviewing || 0;
+                const mCount = srsStats?.mastered || 0;
+                const lPct = totalSrs > 0 ? Math.round((lCount / totalSrs) * 100) : 0;
+                const rPct = totalSrs > 0 ? Math.round((rCount / totalSrs) * 100) : 0;
+                const mPct = totalSrs > 0 ? Math.max(0, 100 - lPct - rPct) : 0;
+
+                return (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                      {lCount > 0 && (
+                        <div
+                          className="bg-amber-400 h-full transition-all duration-500"
+                          style={{ width: `${(lCount / totalSrs) * 100}%` }}
+                          title={`Đang học ban đầu: ${lCount} từ (${lPct}%)`}
+                        />
+                      )}
+                      {rCount > 0 && (
+                        <div
+                          className="bg-sky-500 h-full transition-all duration-500"
+                          style={{ width: `${(rCount / totalSrs) * 100}%` }}
+                          title={`Đang ôn củng cố: ${rCount} từ (${rPct}%)`}
+                        />
+                      )}
+                      {mCount > 0 && (
+                        <div
+                          className="bg-emerald-500 h-full transition-all duration-500"
+                          style={{ width: `${(mCount / totalSrs) * 100}%` }}
+                          title={`Đã thành thạo: ${mCount} từ (${mPct}%)`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500">
+                      <span>Hộp 0–1: {lPct}%</span>
+                      <span>Hộp 2–3: {rPct}%</span>
+                      <span>Hộp 4: {mPct}%</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* STATS BREAKDOWN */}
               <div className="flex flex-col gap-3">
@@ -934,99 +1084,141 @@ function DashboardContent() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => playClickSound()}
+                  onClick={() => openMemoryBucket("learning")}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      playClickSound();
+                      openMemoryBucket("learning");
                     }
                   }}
                   className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-amber-400 dark:hover:border-amber-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  title="Hộp Leitner 0 - 1 (Bấm để nghe âm thanh tương tác)"
+                  title="Bấm để xem danh sách từ đang học ban đầu (Hộp 0 và Hộp 1)"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="size-2 rounded-full bg-amber-500" />
+                    <div className="size-2 rounded-full bg-amber-500 shrink-0" />
                     <div>
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Đang học ban đầu
                       </span>
                       <p className="text-[10px] text-slate-500">
-                        Hộp Leitner 0 - 1 (Cần nhắc lại hàng ngày)
+                        Hộp 0 (Chưa nhớ): {srsStats?.levelBreakdown?.level0 ?? 0} · Hộp 1 (1 ngày): {srsStats?.levelBreakdown?.level1 ?? 0}
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400">
-                    {srsStats?.learning || 0} từ
-                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400 block">
+                      {srsStats?.learning || 0} từ
+                    </span>
+                    <span className="text-[10px] text-slate-400">Xem chi tiết →</span>
+                  </div>
                 </div>
 
                 {/* Level 2-3: Reviewing */}
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => playClickSound()}
+                  onClick={() => openMemoryBucket("reviewing")}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      playClickSound();
+                      openMemoryBucket("reviewing");
                     }
                   }}
                   className="p-3 rounded-xl bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/60 dark:border-sky-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-sky-400 dark:hover:border-sky-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                  title="Hộp Leitner 2 - 3 (Bấm để nghe âm thanh tương tác)"
+                  title="Bấm để xem danh sách từ đang ôn củng cố (Hộp 2 và Hộp 3)"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="size-2 rounded-full bg-sky-500" />
+                    <div className="size-2 rounded-full bg-sky-500 shrink-0" />
                     <div>
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Đang ôn củng cố
                       </span>
                       <p className="text-[10px] text-slate-500">
-                        Hộp Leitner 2 - 3 (Chu kỳ 3 đến 7 ngày)
+                        Hộp 2 (3 ngày): {srsStats?.levelBreakdown?.level2 ?? 0} · Hộp 3 (7 ngày): {srsStats?.levelBreakdown?.level3 ?? 0}
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400">
-                    {srsStats?.reviewing || 0} từ
-                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-extrabold text-sky-600 dark:text-sky-400 block">
+                      {srsStats?.reviewing || 0} từ
+                    </span>
+                    <span className="text-[10px] text-slate-400">Xem chi tiết →</span>
+                  </div>
                 </div>
 
                 {/* Level 4: Mastered */}
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => playClickSound()}
+                  onClick={() => openMemoryBucket("mastered")}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      playClickSound();
+                      openMemoryBucket("mastered");
                     }
                   }}
                   className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:border-emerald-400 dark:hover:border-emerald-700 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  title="Hộp Leitner 4 (Bấm để nghe âm thanh tương tác)"
+                  title="Bấm để xem danh sách từ đã thành thạo (Hộp 4)"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="size-2 rounded-full bg-emerald-500" />
+                    <div className="size-2 rounded-full bg-emerald-500 shrink-0" />
                     <div>
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Đã thành thạo
                       </span>
                       <p className="text-[10px] text-slate-500">
-                        Hộp Leitner 4 (Lưu vào trí nhớ dài hạn)
+                        Hộp 4 (14–30 ngày · Trí nhớ dài hạn): {srsStats?.levelBreakdown?.level4 ?? 0} từ
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
-                    {srsStats?.mastered || 0} từ
-                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                      {srsStats?.mastered || 0} từ
+                    </span>
+                    <span className="text-[10px] text-slate-400">Xem chi tiết →</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Total Reviewed Summary */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                <span>Tổng số từ trong bộ nhớ SRS:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {srsStats?.totalReviewed || 0} từ vựng
-                </span>
+              {/* Total Reviewed & Coverage Summary */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2 text-xs text-slate-500">
+                <div className="flex items-center justify-between">
+                  <span>Đến hạn ôn hôm nay / Đang an toàn:</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openMemoryBucket("due")}
+                      className="font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                      title="Xem danh sách từ đến hạn hôm nay"
+                    >
+                      {srsStats?.dueToday || 0} đến hạn
+                    </button>
+                    <span>·</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {srsStats?.safeCount ?? Math.max(0, (srsStats?.totalReviewed || 0) - (srsStats?.dueToday || 0))} an toàn
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span>Tổng bộ nhớ SRS / Toàn kho từ vựng:</span>
+                  <button
+                    type="button"
+                    onClick={() => openMemoryBucket("all")}
+                    className="font-bold text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+                    title="Xem toàn bộ từ đang theo dõi trong SRS"
+                  >
+                    {srsStats?.totalReviewed || 0}
+                    {srsStats?.totalVocabularies ? ` / ${srsStats.totalVocabularies}` : ""} từ vựng
+                  </button>
+                </div>
+
+                {typeof srsStats?.unlearnedCount === "number" && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Từ mới chưa học trong hệ thống:</span>
+                    <span className="font-semibold">{srsStats.unlearnedCount} từ chưa mở</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1223,6 +1415,117 @@ function DashboardContent() {
           )}
         </section>
       </main>
+
+      {/* MEMORY BUCKET INSPECTOR MODAL */}
+      {activeBucket && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setActiveBucket(null)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[82vh] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {activeBucket === "learning" && "Đang học ban đầu (Hộp Leitner 0 – 1)"}
+                  {activeBucket === "reviewing" && "Đang ôn củng cố (Hộp Leitner 2 – 3)"}
+                  {activeBucket === "mastered" && "Đã thành thạo (Hộp Leitner 4)"}
+                  {activeBucket === "due" && "Từ vựng đến hạn ôn hôm nay"}
+                  {activeBucket === "all" && "Toàn bộ từ vựng trong bộ nhớ SRS"}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Chi tiết lớp học, bài học, cấp độ hộp và lịch ôn kế tiếp
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveBucket(null)}
+                className="size-9 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-3">
+              {isLoadingBucket ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-500 text-xs">
+                  <div className="size-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                  Đang tải danh sách từ vựng...
+                </div>
+              ) : bucketWords.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  Chưa có từ vựng nào trong nhóm này.
+                </div>
+              ) : (
+                bucketWords.map((item) => {
+                  const topic = item.vocabulary?.topicId;
+                  const classNameLabel = getTopicClassLabel(topic);
+                  const nextDateText = item.nextReviewDate
+                    ? new Date(item.nextReviewDate).toLocaleDateString("vi-VN")
+                    : "--";
+                  return (
+                    <div
+                      key={item.reviewId}
+                      className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {item.vocabulary?.word}
+                          </span>
+                          {item.vocabulary?.phonetic && (
+                            <span className="text-xs font-serif text-slate-500">
+                              {item.vocabulary.phonetic}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                            Hộp {item.repetitionLevel}/4
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 dark:text-slate-300">
+                          {item.vocabulary?.meaning}
+                        </p>
+                        {topic && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300">
+                              {classNameLabel ? `Lớp: ${classNameLabel}` : "Chủ đề tự do"}
+                            </span>
+                            <Link
+                              href={`/topics/${topic._id}`}
+                              onClick={() => setActiveBucket(null)}
+                              className="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:underline"
+                            >
+                              {topic.title} ({topic.level})
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1 text-[11px] shrink-0">
+                        <span
+                          className={`font-bold px-2 py-0.5 rounded-full ${
+                            item.isDueToday
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          }`}
+                        >
+                          {item.isDueToday ? "Đến hạn hôm nay" : `Ôn lại: ${nextDateText}`}
+                        </span>
+                        <span className="text-slate-400">
+                          Đã ôn {item.reviewCount} lần
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

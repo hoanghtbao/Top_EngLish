@@ -36,6 +36,25 @@ import {
   QuizSubmissionDocument,
 } from '../quizzes/schemas/quiz-submission.schema';
 
+export interface SrsStatsResult {
+  learning: number; // Level 0 - 1
+  reviewing: number; // Level 2 - 3
+  mastered: number; // Level 4
+  dueToday: number;
+  safeCount: number;
+  totalReviewed: number;
+  totalVocabularies: number;
+  unlearnedCount: number;
+  retentionRate: number;
+  levelBreakdown: {
+    level0: number;
+    level1: number;
+    level2: number;
+    level3: number;
+    level4: number;
+  };
+}
+
 @Injectable()
 export class SrsService {
   private readonly logger = new Logger(SrsService.name);
@@ -85,13 +104,7 @@ export class SrsService {
     streakIncreased: boolean;
     isNewStreakDay: boolean;
     streakMessage: string;
-    stats: {
-      learning: number;
-      reviewing: number;
-      mastered: number;
-      dueToday: number;
-      totalReviewed: number;
-    };
+    stats: SrsStatsResult;
   }> {
     if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(dto.vocabularyId)) {
       throw new BadRequestException('ID người dùng hoặc từ vựng không hợp lệ');
@@ -233,6 +246,12 @@ export class SrsService {
 
     const { endOfToday } = this.getVietnamDayBoundaries();
 
+    const topicPopulate = {
+      path: 'topicId',
+      select: 'title slug level lessonNumber vocabClassId',
+      populate: { path: 'vocabClassId', select: 'name code' },
+    };
+
     // 1. Lấy các từ đã đến hạn ôn tập
     const dueReviews = await this.reviewModel
       .find({
@@ -241,7 +260,7 @@ export class SrsService {
       })
       .populate({
         path: 'vocabularyId',
-        populate: { path: 'topicId', select: 'title slug level' },
+        populate: topicPopulate,
       })
       .sort({ nextReviewDate: 1 })
       .exec();
@@ -274,7 +293,7 @@ export class SrsService {
       const neededCount = 6 - dueList.length;
       const newWords = await this.vocabModel
         .find({ _id: { $nin: reviewedIds } })
-        .populate('topicId', 'title slug level')
+        .populate(topicPopulate)
         .sort({ createdAt: 1 })
         .limit(neededCount)
         .exec();
@@ -298,13 +317,7 @@ export class SrsService {
   /**
    * Lấy thống kê phân bổ mức độ ghi nhớ từ vựng theo đường cong quên lãng (lọc bỏ bản ghi mồ côi)
    */
-  async getSrsStats(userId: string): Promise<{
-    learning: number; // Level 0 - 1
-    reviewing: number; // Level 2 - 3
-    mastered: number; // Level 4
-    dueToday: number;
-    totalReviewed: number;
-  }> {
+  async getSrsStats(userId: string): Promise<SrsStatsResult> {
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('ID người dùng không hợp lệ');
     }
@@ -312,14 +325,36 @@ export class SrsService {
     const { endOfToday } = this.getVietnamDayBoundaries();
     const userObjId = new Types.ObjectId(userId);
 
-    const reviews = await this.reviewModel
-      .find({ userId: userObjId })
-      .select('_id vocabularyId repetitionLevel nextReviewDate')
-      .lean()
-      .exec();
+    const [reviews, totalVocabularies] = await Promise.all([
+      this.reviewModel
+        .find({ userId: userObjId })
+        .select('_id vocabularyId repetitionLevel nextReviewDate')
+        .lean()
+        .exec(),
+      this.vocabModel.countDocuments().exec(),
+    ]);
+
+    const levelBreakdown = {
+      level0: 0,
+      level1: 0,
+      level2: 0,
+      level3: 0,
+      level4: 0,
+    };
 
     if (reviews.length === 0) {
-      return { learning: 0, reviewing: 0, mastered: 0, dueToday: 0, totalReviewed: 0 };
+      return {
+        learning: 0,
+        reviewing: 0,
+        mastered: 0,
+        dueToday: 0,
+        safeCount: 0,
+        totalReviewed: 0,
+        totalVocabularies,
+        unlearnedCount: totalVocabularies,
+        retentionRate: 0,
+        levelBreakdown,
+      };
     }
 
     const vocabIds = reviews.map((r) => r.vocabularyId);
@@ -343,8 +378,15 @@ export class SrsService {
         continue;
       }
       totalReviewed += 1;
-      if (r.repetitionLevel <= 1) learning += 1;
-      else if (r.repetitionLevel <= 3) reviewing += 1;
+      const lvl = Math.max(0, Math.min(4, Number(r.repetitionLevel) || 0));
+      if (lvl === 0) levelBreakdown.level0 += 1;
+      else if (lvl === 1) levelBreakdown.level1 += 1;
+      else if (lvl === 2) levelBreakdown.level2 += 1;
+      else if (lvl === 3) levelBreakdown.level3 += 1;
+      else levelBreakdown.level4 += 1;
+
+      if (lvl <= 1) learning += 1;
+      else if (lvl <= 3) reviewing += 1;
       else mastered += 1;
 
       if (r.nextReviewDate && new Date(r.nextReviewDate) <= endOfToday) {
@@ -358,13 +400,81 @@ export class SrsService {
         .exec();
     }
 
+    const safeCount = Math.max(0, totalReviewed - dueToday);
+    const unlearnedCount = Math.max(0, totalVocabularies - totalReviewed);
+    const weightedSum =
+      levelBreakdown.level1 * 25 +
+      levelBreakdown.level2 * 50 +
+      levelBreakdown.level3 * 75 +
+      levelBreakdown.level4 * 100;
+    const retentionRate =
+      totalReviewed > 0 ? Math.round(weightedSum / totalReviewed) : 0;
+
     return {
       learning,
       reviewing,
       mastered,
       dueToday,
+      safeCount,
       totalReviewed,
+      totalVocabularies,
+      unlearnedCount,
+      retentionRate,
+      levelBreakdown,
     };
+  }
+
+  /**
+   * Lấy danh sách chi tiết các từ trong bộ nhớ SRS theo nhóm hộp Leitner
+   */
+  async getMemoryWords(
+    userId: string,
+    bucket: 'all' | 'learning' | 'reviewing' | 'mastered' | 'due' = 'all',
+  ) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('ID người dùng không hợp lệ');
+    }
+
+    const { endOfToday } = this.getVietnamDayBoundaries();
+    const filter: Record<string, any> = { userId: new Types.ObjectId(userId) };
+
+    if (bucket === 'learning') {
+      filter.repetitionLevel = { $lte: 1 };
+    } else if (bucket === 'reviewing') {
+      filter.repetitionLevel = { $gte: 2, $lte: 3 };
+    } else if (bucket === 'mastered') {
+      filter.repetitionLevel = { $gte: 4 };
+    } else if (bucket === 'due') {
+      filter.nextReviewDate = { $lte: endOfToday };
+    }
+
+    const reviews = await this.reviewModel
+      .find(filter)
+      .populate({
+        path: 'vocabularyId',
+        populate: {
+          path: 'topicId',
+          select: 'title slug level lessonNumber vocabClassId',
+          populate: { path: 'vocabClassId', select: 'name code' },
+        },
+      })
+      .sort({ repetitionLevel: 1, nextReviewDate: 1 })
+      .exec();
+
+    return reviews
+      .filter((r) => r.vocabularyId)
+      .map((r) => ({
+        reviewId: r._id,
+        repetitionLevel: r.repetitionLevel,
+        reviewCount: r.reviewCount,
+        nextReviewDate: r.nextReviewDate,
+        lastReviewedAt: r.lastReviewedAt,
+        isMastered: r.isMastered,
+        isDueToday: Boolean(
+          r.nextReviewDate && new Date(r.nextReviewDate) <= endOfToday,
+        ),
+        vocabulary: r.vocabularyId,
+      }));
   }
 
   /**

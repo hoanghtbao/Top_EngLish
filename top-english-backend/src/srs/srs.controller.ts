@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -50,6 +51,16 @@ export class SrsController {
   @ApiResponse({ status: 200, description: 'Số liệu phân bổ trí nhớ' })
   async getSrsStats(@CurrentUser('userId') userId: string) {
     return this.srsService.getSrsStats(userId);
+  }
+
+  @Get('memory-words')
+  @ApiOperation({ summary: 'Lấy danh sách từ vựng chi tiết theo từng nhóm hộp Leitner trong bộ nhớ SRS' })
+  @ApiResponse({ status: 200, description: 'Danh sách từ vựng kèm lớp học, bài học và ngày ôn tiếp theo' })
+  async getMemoryWords(
+    @CurrentUser('userId') userId: string,
+    @Query('bucket') bucket?: 'all' | 'learning' | 'reviewing' | 'mastered' | 'due',
+  ) {
+    return this.srsService.getMemoryWords(userId, bucket || 'all');
   }
 
   @Get('dashboard')
