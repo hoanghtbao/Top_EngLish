@@ -161,6 +161,7 @@ function DashboardContent() {
   const [srsStats, setSrsStats] = useState<SrsStats | null>(null);
   const [dueWords, setDueWords] = useState<DueWordItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // --- SRS REVIEW ROOM STATE ---
@@ -179,8 +180,8 @@ function DashboardContent() {
     };
   }, []);
 
-  // Tải dữ liệu tổng quan
-  const loadDashboardData = useCallback(async () => {
+  // Tải dữ liệu tổng quan (chỉ hiện skeleton ở lần nạp đầu tiên)
+  const loadDashboardData = useCallback(async (isManualRefresh = false) => {
     if (advanceTimerRef.current) {
       clearTimeout(advanceTimerRef.current);
       advanceTimerRef.current = null;
@@ -194,7 +195,13 @@ function DashboardContent() {
     }
 
     try {
-      setIsLoading(true);
+      if (isManualRefresh) {
+        setIsRefreshing(true);
+        setSessionReviewedCount(0);
+        setSessionTotalXpEarned(0);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
 
       const [dashRes, statsRes, dueRes] = await Promise.all([
@@ -230,18 +237,20 @@ function DashboardContent() {
       }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
+  const userId = user?._id;
   useEffect(() => {
     if (!authLoading) {
-      if (isAuthenticated && user) {
-        loadDashboardData();
+      if (isAuthenticated && userId) {
+        loadDashboardData(false);
       } else {
         setIsLoading(false);
       }
     }
-  }, [authLoading, isAuthenticated, user, loadDashboardData]);
+  }, [authLoading, isAuthenticated, userId, loadDashboardData]);
 
   // Xử lý gửi đánh giá SRS (chống double-click và cập nhật số liệu real-time)
   const handleRatingSubmit = async (rating: "again" | "hard" | "good" | "easy") => {
@@ -626,12 +635,13 @@ function DashboardContent() {
                 <button
                   onClick={() => {
                     playClickSound();
-                    loadDashboardData();
+                    loadDashboardData(true);
                   }}
-                  title="Làm mới số liệu"
-                  className="h-8 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+                  disabled={isRefreshing}
+                  title="Làm mới số liệu & nạp phiên mới"
+                  className="h-8 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 disabled:opacity-60"
                 >
-                  <RefreshCw className="size-3.5" />
+                  <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
                   <span className="hidden sm:inline">Làm mới</span>
                 </button>
               </div>
@@ -682,9 +692,20 @@ function DashboardContent() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        loadDashboardData(true);
+                      }}
+                      disabled={isRefreshing}
+                      className="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition cursor-pointer disabled:opacity-60"
+                    >
+                      <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} /> Ôn tiếp phiên mới
+                    </button>
                     <Link
                       href="/topics"
-                      className="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition cursor-pointer"
+                      className="h-11 px-5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-xs flex items-center gap-2 transition cursor-pointer"
                     >
                       <BookOpen className="size-4" /> Học thêm từ mới ở Chủ đề
                     </Link>
