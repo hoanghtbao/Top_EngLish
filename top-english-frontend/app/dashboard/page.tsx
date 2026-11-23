@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -98,6 +98,7 @@ interface DueWordItem {
   nextReviewDate: string;
   isMastered: boolean;
   isNew: boolean;
+  isRequeued?: boolean;
   vocabulary: {
     _id: string;
     word: string;
@@ -113,6 +114,25 @@ interface DueWordItem {
       level: string;
     };
   };
+}
+
+function getNextIntervalDays(
+  currentLevel: number,
+  rating: "again" | "hard" | "good" | "easy",
+): number {
+  switch (rating) {
+    case "again":
+    case "hard":
+      return 1;
+    case "good": {
+      const next = Math.min(4, currentLevel + 1);
+      return next === 1 ? 1 : next === 2 ? 3 : next === 3 ? 7 : 14;
+    }
+    case "easy": {
+      const next = Math.min(4, currentLevel + 2);
+      return next <= 1 ? 2 : next === 2 ? 5 : next === 3 ? 10 : 30;
+    }
+  }
 }
 
 function DashboardSkeleton() {
@@ -150,9 +170,23 @@ function DashboardContent() {
   const [reviewEarnedXp, setReviewEarnedXp] = useState<number | null>(null);
   const [sessionReviewedCount, setSessionReviewedCount] = useState(0);
   const [sessionTotalXpEarned, setSessionTotalXpEarned] = useState(0);
+  const reviewLockRef = useRef(false);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    };
+  }, []);
 
   // Tải dữ liệu tổng quan
   const loadDashboardData = useCallback(async () => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+    reviewLockRef.current = false;
+    setIsSubmittingReview(false);
     // Nếu chưa có token trong localStorage thì không gọi API bảo mật
     if (typeof window !== "undefined" && !localStorage.getItem("access_token")) {
       setIsLoading(false);
@@ -209,16 +243,25 @@ function DashboardContent() {
     }
   }, [authLoading, isAuthenticated, user, loadDashboardData]);
 
-  // Xử lý gửi đánh giá SRS
+  // Xử lý gửi đánh giá SRS (chống double-click và cập nhật số liệu real-time)
   const handleRatingSubmit = async (rating: "again" | "hard" | "good" | "easy") => {
     playClickSound();
-    if (dueWords.length === 0 || currentWordIndex >= dueWords.length) return;
+    if (
+      reviewLockRef.current ||
+      isSubmittingReview ||
+      dueWords.length === 0 ||
+      currentWordIndex >= dueWords.length
+    ) {
+      return;
+    }
 
     const currentItem = dueWords[currentWordIndex];
     if (!currentItem?.vocabulary?._id) return;
 
+    reviewLockRef.current = true;
+    setIsSubmittingReview(true);
+
     try {
-      setIsSubmittingReview(true);
       const res = await fetchApi<{
         repetitionLevel: number;
         intervalDays: number;
@@ -230,6 +273,7 @@ function DashboardContent() {
         streakIncreased?: boolean;
         isNewStreakDay?: boolean;
         streakMessage?: string;
+        stats?: SrsStats;
       }>("/srs/review", {
         method: "POST",
         body: JSON.stringify({
@@ -261,7 +305,12 @@ function DashboardContent() {
         });
       }
 
-      // Cập nhật XP trên dashboard UI cục bộ
+      // Cập nhật ngay Đường cong trí nhớ & KPI từ vựng mà không cần F5
+      if (res.data?.stats) {
+        setSrsStats(res.data.stats);
+      }
+
+      // Cập nhật XP, Streak & Vocabulary stats trên dashboard UI cục bộ
       if (dashboardData) {
         const nextTotal = res.data?.totalXP !== undefined
           ? res.data.totalXP
@@ -273,19 +322,42 @@ function DashboardContent() {
             totalXP: nextTotal,
             streak: res.data?.streak !== undefined ? res.data.streak : dashboardData.user.streak,
           },
+          vocabulary: res.data?.stats
+            ? {
+                totalReviewed: res.data.stats.totalReviewed,
+                masteredCount: res.data.stats.mastered,
+                dueTodayCount: res.data.stats.dueToday,
+              }
+            : dashboardData.vocabulary,
         });
       }
 
-      // Ẩn hiệu ứng XP popup sau 1.2s và chuyển sang thẻ tiếp theo
-      setTimeout(() => {
+      // Nếu chọn "Quên hoàn toàn", đẩy thẻ về cuối phiên để nhắc lại ngay trong buổi
+      if (rating === "again" && !currentItem.isRequeued) {
+        setDueWords((prev) => [
+          ...prev,
+          {
+            ...currentItem,
+            repetitionLevel: 0,
+            isNew: false,
+            isRequeued: true,
+          },
+        ]);
+      }
+
+      // Giữ khóa nút cho tới khi chuyển xong sang thẻ tiếp theo để tránh gửi trùng 2 lần
+      advanceTimerRef.current = setTimeout(() => {
         setReviewEarnedXp(null);
         setIsFlipped(false);
         setCurrentWordIndex((prev) => prev + 1);
+        reviewLockRef.current = false;
+        setIsSubmittingReview(false);
+        advanceTimerRef.current = null;
       }, 700);
     } catch (err: any) {
       console.error("Lỗi khi ghi nhận đánh giá SRS:", err);
       alert(err.message || "Ghi nhận đánh giá thất bại. Vui lòng thử lại!");
-    } finally {
+      reviewLockRef.current = false;
       setIsSubmittingReview(false);
     }
   };
@@ -356,8 +428,13 @@ function DashboardContent() {
             },
             {
               icon: <BookOpen className="size-4" />,
-              label: "Từ cần ôn",
-              value: `${dueWords.length} từ`,
+              label: "Đến hạn ôn",
+              value: `${dashboardData?.vocabulary.dueTodayCount ?? 0} từ`,
+            },
+            {
+              icon: <Layers className="size-4" />,
+              label: "Phiên ôn hôm nay",
+              value: `${Math.max(0, dueWords.length - currentWordIndex)} thẻ`,
             },
           ]}
         />
@@ -755,7 +832,9 @@ function DashboardContent() {
                           🔴 Quên hoàn toàn
                         </span>
                         <span className="text-[10px] text-rose-600/80 dark:text-rose-400/80 mt-0.5">
-                          Ôn lại: 1 ngày (+5 XP)
+                          {currentWordItem.isRequeued
+                            ? "Ôn lại: 1 ngày (+5 XP)"
+                            : "Nhắc lại cuối phiên (+5 XP)"}
                         </span>
                       </button>
 
@@ -770,7 +849,7 @@ function DashboardContent() {
                           🟠 Khó nhớ
                         </span>
                         <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-                          Ôn lại: 1 ngày (+5 XP)
+                          Ôn lại: {getNextIntervalDays(currentWordItem.repetitionLevel, "hard")} ngày (+5 XP)
                         </span>
                       </button>
 
@@ -785,7 +864,7 @@ function DashboardContent() {
                           🟢 Nhớ được
                         </span>
                         <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
-                          Ôn lại: 3-7 ngày (+10 XP)
+                          Ôn lại: {getNextIntervalDays(currentWordItem.repetitionLevel, "good")} ngày (+10 XP)
                         </span>
                       </button>
 
@@ -800,7 +879,7 @@ function DashboardContent() {
                           🔵 Rất dễ
                         </span>
                         <span className="text-[10px] text-sky-600/80 dark:text-sky-400/80 mt-0.5">
-                          Ôn lại: 14-30 ngày (+15 XP)
+                          Ôn lại: {getNextIntervalDays(currentWordItem.repetitionLevel, "easy")} ngày (+15 XP)
                         </span>
                       </button>
                     </div>

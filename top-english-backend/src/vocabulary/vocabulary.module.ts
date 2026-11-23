@@ -11,6 +11,10 @@ import { VocabularyService } from './vocabulary.service';
 import { VocabularyController } from './vocabulary.controller';
 import { Topic, TopicSchema } from '../topics/schemas/topic.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import {
+  VocabularyReview,
+  VocabularyReviewSchema,
+} from '../srs/schemas/vocabulary-review.schema';
 
 @Module({
   imports: [
@@ -18,6 +22,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
       { name: Vocabulary.name, schema: VocabularySchema },
       { name: Topic.name, schema: TopicSchema },
       { name: User.name, schema: UserSchema },
+      { name: VocabularyReview.name, schema: VocabularyReviewSchema },
     ]),
   ],
   controllers: [VocabularyController],

@@ -19,6 +19,10 @@ import { UpdateVocabularyDto } from './dto/update-vocabulary.dto';
 import { BulkCreateVocabularyDto } from './dto/bulk-create-vocabulary.dto';
 import { Topic, TopicDocument } from '../topics/schemas/topic.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import {
+  VocabularyReview,
+  VocabularyReviewDocument,
+} from '../srs/schemas/vocabulary-review.schema';
 import { Role } from '../users/enums/role.enum';
 import { PartOfSpeech } from './enums/part-of-speech.enum';
 
@@ -33,6 +37,8 @@ export class VocabularyService implements OnModuleInit {
     private readonly topicModel: Model<TopicDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(VocabularyReview.name)
+    private readonly reviewModel: Model<VocabularyReviewDocument>,
   ) {}
 
   /**
@@ -549,8 +555,11 @@ export class VocabularyService implements OnModuleInit {
       throw new NotFoundException(`Không tìm thấy từ vựng có ID ${id}`);
     }
 
-    // Giảm số lượng từ của chủ đề tương ứng
-    await this.topicModel.findByIdAndUpdate(vocab.topicId, { $inc: { wordCount: -1 } });
+    // Giảm số lượng từ của chủ đề và dọn bản ghi ôn tập SRS liên quan
+    await Promise.all([
+      this.topicModel.findByIdAndUpdate(vocab.topicId, { $inc: { wordCount: -1 } }),
+      this.reviewModel.deleteMany({ vocabularyId: vocab._id }).exec(),
+    ]);
 
     return { deleted: true, message: `Đã xóa thành công từ vựng "${vocab.word}"` };
   }

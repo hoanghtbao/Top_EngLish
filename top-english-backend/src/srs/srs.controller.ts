@@ -10,6 +10,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -56,5 +57,15 @@ export class SrsController {
   @ApiResponse({ status: 200, description: 'Thông tin tiến độ toàn diện (Từ vựng, Ngữ pháp, Bài thi, XP, Streak)' })
   async getUserDashboard(@CurrentUser('userId') userId: string) {
     return this.srsService.getUserDashboard(userId);
+  }
+
+  @Get('topic-progress/:topicId')
+  @ApiOperation({ summary: 'Lấy danh sách từ vựng đã ghi nhớ trong một chủ đề để đồng bộ 2 chiều với SRS' })
+  @ApiResponse({ status: 200, description: 'Danh sách ID từ vựng đã học và trạng thái SRS theo chủ đề' })
+  async getTopicProgress(
+    @CurrentUser('userId') userId: string,
+    @Param('topicId') topicId: string,
+  ) {
+    return this.srsService.getTopicProgress(userId, topicId);
   }
 }

@@ -453,6 +453,41 @@ function TopicDetailInner() {
     loadData();
   }, [loadData]);
 
+  // Đồng bộ 2 chiều các từ đã học trong Phòng SRS (/dashboard) về trạng thái Đã thuộc của chủ đề
+  useEffect(() => {
+    if (!isAuthenticated || !topic?._id) return;
+    let cancelled = false;
+
+    fetchApi<{ knownWordIds?: string[] }>(`/srs/topic-progress/${topic._id}`)
+      .then((res) => {
+        if (cancelled || !res.success || !Array.isArray(res.data?.knownWordIds)) return;
+        const srsKnown = res.data.knownWordIds;
+        if (srsKnown.length === 0) return;
+
+        setKnownWords((prev) => {
+          const merged = Array.from(new Set([...prev, ...srsKnown]));
+          try {
+            localStorage.setItem(
+              `topenglish_known_words_${topic._id}`,
+              JSON.stringify(merged),
+            );
+            if (topic.slug) {
+              localStorage.setItem(
+                `topenglish_known_words_${topic.slug}`,
+                JSON.stringify(merged),
+              );
+            }
+          } catch {}
+          return merged;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, topic?._id, topic?.slug]);
+
   // Thưởng điểm XP và cập nhật Streak tức thì khi học viên hoàn thành toàn bộ chủ đề
   useEffect(() => {
     if (isCompleted && !rewardClaimed && isAuthenticated && vocabularies.length > 0) {
@@ -632,6 +667,59 @@ function TopicDetailInner() {
     }
   }, [viewMode, quizFinished, studySettings.autoAudio, quizIndex, currentQuiz?.vocab?.word]);
 
+  const syncWordWithSrs = useCallback(
+    async (vocabularyId: string, rating: "again" | "good") => {
+      if (rating === "good") {
+        setKnownWords((prev) => {
+          if (prev.includes(vocabularyId)) return prev;
+          const nextKnown = [...prev, vocabularyId];
+          try {
+            if (topic?._id) {
+              localStorage.setItem(
+                `topenglish_known_words_${topic._id}`,
+                JSON.stringify(nextKnown),
+              );
+              if (topic.slug) {
+                localStorage.setItem(
+                  `topenglish_known_words_${topic.slug}`,
+                  JSON.stringify(nextKnown),
+                );
+              }
+            }
+          } catch {}
+          return nextKnown;
+        });
+      }
+
+      if (!isAuthenticated) return;
+      try {
+        const res = await fetchApi<{
+          streak: number;
+          totalXP: number;
+          xpEarned?: number;
+          streakIncreased: boolean;
+          isNewStreakDay: boolean;
+          streakMessage: string;
+        }>("/srs/review", {
+          method: "POST",
+          body: JSON.stringify({
+            vocabularyId,
+            rating,
+          }),
+        });
+        if (res.success && res.data && updateStreakInfo) {
+          updateStreakInfo({
+            ...res.data,
+            xpEarned: res.data.xpEarned || (rating === "good" ? 10 : 5),
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi cập nhật tiến độ ôn tập SRS:", err);
+      }
+    },
+    [isAuthenticated, topic?._id, topic?.slug, updateStreakInfo],
+  );
+
   const handleSelectQuizOption = (option: string) => {
     if (!currentQuiz || quizSelectedOption !== null) return;
     clearQuizTimer();
@@ -641,6 +729,10 @@ function TopicDetailInner() {
       playSuccessSound();
     } else {
       playClickSound();
+    }
+
+    if (currentQuiz.vocab?._id) {
+      void syncWordWithSrs(currentQuiz.vocab._id, isRight ? "good" : "again");
     }
 
     const shouldAutoAdvance =
@@ -726,6 +818,8 @@ function TopicDetailInner() {
       setTypingStatus("wrong");
     }
 
+    void syncWordWithSrs(currentTypingWord._id, isRight ? "good" : "again");
+
     const shouldAutoAdvance =
       !studySettings.instantAnswer || (studySettings.autoAdvance && isRight);
     if (shouldAutoAdvance) {
@@ -770,50 +864,10 @@ function TopicDetailInner() {
   const handleMarkKnown = useCallback(
     async (id: string) => {
       playClickSound();
-      if (!knownWords.includes(id)) {
-        const nextKnown = [...knownWords, id];
-        setKnownWords(nextKnown);
-        try {
-          if (topic?._id) {
-            localStorage.setItem(`topenglish_known_words_${topic._id}`, JSON.stringify(nextKnown));
-            if (topic.slug) {
-              localStorage.setItem(`topenglish_known_words_${topic.slug}`, JSON.stringify(nextKnown));
-            }
-          }
-        } catch {}
-      }
-
-      // Ghi nhận ôn tập SRS và cập nhật Streak Realtime kiểu Duolingo
-      if (isAuthenticated) {
-        try {
-          const res = await fetchApi<{
-            streak: number;
-            totalXP: number;
-            xpEarned?: number;
-            streakIncreased: boolean;
-            isNewStreakDay: boolean;
-            streakMessage: string;
-          }>("/srs/review", {
-            method: "POST",
-            body: JSON.stringify({
-              vocabularyId: id,
-              rating: "good",
-            }),
-          });
-          if (res.success && res.data && updateStreakInfo) {
-            updateStreakInfo({
-              ...res.data,
-              xpEarned: res.data.xpEarned || 10,
-            });
-          }
-        } catch (err) {
-          console.error("Lỗi cập nhật tiến độ ôn tập:", err);
-        }
-      }
-
+      await syncWordWithSrs(id, "good");
       handleNextCard();
     },
-    [knownWords, handleNextCard, isAuthenticated, updateStreakInfo, playClickSound]
+    [syncWordWithSrs, handleNextCard, playClickSound]
   );
 
   // Keyboard navigation shortcuts

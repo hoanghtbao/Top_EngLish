@@ -54,6 +54,20 @@ export class SrsService {
     private readonly submissionModel: Model<QuizSubmissionDocument>,
   ) {}
 
+  private getVietnamDayBoundaries() {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const vnTime = new Date(utc + 7 * 3600000);
+    const todayStr = vnTime.toISOString().split('T')[0];
+
+    const d = new Date(`${todayStr}T00:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    const yesterdayStr = d.toISOString().split('T')[0];
+
+    const endOfToday = new Date(`${todayStr}T23:59:59.999+07:00`);
+    return { now, todayStr, yesterdayStr, endOfToday };
+  }
+
   /**
    * Ghi nhận kết quả ôn tập từ vựng và tính toán chu kỳ lặp lại ngắt quãng kế tiếp (SRS Interval)
    */
@@ -71,6 +85,13 @@ export class SrsService {
     streakIncreased: boolean;
     isNewStreakDay: boolean;
     streakMessage: string;
+    stats: {
+      learning: number;
+      reviewing: number;
+      mastered: number;
+      dueToday: number;
+      totalReviewed: number;
+    };
   }> {
     if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(dto.vocabularyId)) {
       throw new BadRequestException('ID người dùng hoặc từ vựng không hợp lệ');
@@ -141,15 +162,8 @@ export class SrsService {
       { upsert: true, new: true },
     );
 
-    // 4. Cộng điểm XP và cập nhật chuỗi Streak chuẩn Duolingo cho học viên
-    const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const vnTime = new Date(utc + 7 * 3600000);
-    const todayStr = vnTime.toISOString().split('T')[0];
-
-    const d = new Date(todayStr + 'T00:00:00.000Z');
-    d.setUTCDate(d.getUTCDate() - 1);
-    const yesterdayStr = d.toISOString().split('T')[0];
+    // 4. Cộng điểm XP và cập nhật chuỗi Streak chuẩn Duolingo theo giờ Việt Nam (UTC+7)
+    const { todayStr, yesterdayStr } = this.getVietnamDayBoundaries();
 
     const user = await this.userModel.findById(userId);
     let newStreak = 1;
@@ -189,6 +203,8 @@ export class SrsService {
       newTotalXP = updatedUser?.totalXP || (user.totalXP || 0) + xpEarned;
     }
 
+    const stats = await this.getSrsStats(userId);
+
     return {
       repetitionLevel: newLevel,
       intervalDays,
@@ -202,20 +218,20 @@ export class SrsService {
       streakMessage: streakIncreased
         ? `Tuyệt vời! Bạn đã nâng chuỗi streak lên ${newStreak} ngày liên tiếp!`
         : `Bạn đã duy trì ngọn lửa học tập hôm nay (${newStreak} ngày).`,
+      stats,
     };
   }
 
   /**
-   * Lấy danh sách từ vựng đến hạn cần ôn tập hôm nay (nextReviewDate <= endOfToday)
-   * Kèm từ mới gợi ý nếu hàng đợi ôn tập ít hơn 5 từ
+   * Lấy danh sách từ vựng đến hạn cần ôn tập hôm nay (nextReviewDate <= endOfToday UTC+7)
+   * Kèm từ mới gợi ý nếu hàng đợi ôn tập ít hơn 6 từ
    */
   async getDueWords(userId: string): Promise<any[]> {
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('ID người dùng không hợp lệ');
     }
 
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+    const { endOfToday } = this.getVietnamDayBoundaries();
 
     // 1. Lấy các từ đã đến hạn ôn tập
     const dueReviews = await this.reviewModel
@@ -229,6 +245,13 @@ export class SrsService {
       })
       .sort({ nextReviewDate: 1 })
       .exec();
+
+    const orphanedIds = dueReviews
+      .filter((r) => !r.vocabularyId)
+      .map((r) => r._id);
+    if (orphanedIds.length > 0) {
+      await this.reviewModel.deleteMany({ _id: { $in: orphanedIds } }).exec();
+    }
 
     const dueList: any[] = dueReviews
       .filter((r) => r.vocabularyId)
@@ -252,6 +275,7 @@ export class SrsService {
       const newWords = await this.vocabModel
         .find({ _id: { $nin: reviewedIds } })
         .populate('topicId', 'title slug level')
+        .sort({ createdAt: 1 })
         .limit(neededCount)
         .exec();
 
@@ -272,7 +296,7 @@ export class SrsService {
   }
 
   /**
-   * Lấy thống kê phân bổ mức độ ghi nhớ từ vựng theo đường cong quên lãng
+   * Lấy thống kê phân bổ mức độ ghi nhớ từ vựng theo đường cong quên lãng (lọc bỏ bản ghi mồ côi)
    */
   async getSrsStats(userId: string): Promise<{
     learning: number; // Level 0 - 1
@@ -285,31 +309,54 @@ export class SrsService {
       throw new BadRequestException('ID người dùng không hợp lệ');
     }
 
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-
+    const { endOfToday } = this.getVietnamDayBoundaries();
     const userObjId = new Types.ObjectId(userId);
 
-    const [learning, reviewing, mastered, dueToday, totalReviewed] =
-      await Promise.all([
-        this.reviewModel.countDocuments({
-          userId: userObjId,
-          repetitionLevel: { $in: [0, 1] },
-        }),
-        this.reviewModel.countDocuments({
-          userId: userObjId,
-          repetitionLevel: { $in: [2, 3] },
-        }),
-        this.reviewModel.countDocuments({
-          userId: userObjId,
-          repetitionLevel: 4,
-        }),
-        this.reviewModel.countDocuments({
-          userId: userObjId,
-          nextReviewDate: { $lte: endOfToday },
-        }),
-        this.reviewModel.countDocuments({ userId: userObjId }),
-      ]);
+    const reviews = await this.reviewModel
+      .find({ userId: userObjId })
+      .select('_id vocabularyId repetitionLevel nextReviewDate')
+      .lean()
+      .exec();
+
+    if (reviews.length === 0) {
+      return { learning: 0, reviewing: 0, mastered: 0, dueToday: 0, totalReviewed: 0 };
+    }
+
+    const vocabIds = reviews.map((r) => r.vocabularyId);
+    const existingVocabs = await this.vocabModel
+      .find({ _id: { $in: vocabIds } })
+      .select('_id')
+      .lean()
+      .exec();
+    const existingSet = new Set(existingVocabs.map((v) => v._id.toString()));
+
+    const orphanedReviewIds: Types.ObjectId[] = [];
+    let learning = 0;
+    let reviewing = 0;
+    let mastered = 0;
+    let dueToday = 0;
+    let totalReviewed = 0;
+
+    for (const r of reviews) {
+      if (!existingSet.has(r.vocabularyId.toString())) {
+        orphanedReviewIds.push(r._id as Types.ObjectId);
+        continue;
+      }
+      totalReviewed += 1;
+      if (r.repetitionLevel <= 1) learning += 1;
+      else if (r.repetitionLevel <= 3) reviewing += 1;
+      else mastered += 1;
+
+      if (r.nextReviewDate && new Date(r.nextReviewDate) <= endOfToday) {
+        dueToday += 1;
+      }
+    }
+
+    if (orphanedReviewIds.length > 0) {
+      await this.reviewModel
+        .deleteMany({ _id: { $in: orphanedReviewIds } })
+        .exec();
+    }
 
     return {
       learning,
@@ -318,6 +365,51 @@ export class SrsService {
       dueToday,
       totalReviewed,
     };
+  }
+
+  /**
+   * Lấy tiến độ SRS của học viên cho từng chủ đề từ vựng để đồng bộ 2 chiều với trang /topics/[id]
+   */
+  async getTopicProgress(userId: string, topicId: string) {
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(topicId)) {
+      throw new BadRequestException('ID người dùng hoặc chủ đề không hợp lệ');
+    }
+
+    const vocabs = await this.vocabModel
+      .find({ topicId: new Types.ObjectId(topicId) })
+      .select('_id')
+      .lean()
+      .exec();
+
+    if (vocabs.length === 0) {
+      return { knownWordIds: [] as string[], reviews: {} as Record<string, { repetitionLevel: number; isMastered: boolean }> };
+    }
+
+    const vocabIds = vocabs.map((v) => v._id);
+    const reviewDocs = await this.reviewModel
+      .find({
+        userId: new Types.ObjectId(userId),
+        vocabularyId: { $in: vocabIds },
+      })
+      .select('vocabularyId repetitionLevel isMastered')
+      .lean()
+      .exec();
+
+    const knownWordIds: string[] = [];
+    const reviews: Record<string, { repetitionLevel: number; isMastered: boolean }> = {};
+
+    for (const doc of reviewDocs) {
+      const vid = doc.vocabularyId.toString();
+      reviews[vid] = {
+        repetitionLevel: doc.repetitionLevel,
+        isMastered: Boolean(doc.isMastered),
+      };
+      if (doc.repetitionLevel >= 1) {
+        knownWordIds.push(vid);
+      }
+    }
+
+    return { knownWordIds, reviews };
   }
 
   /**
@@ -360,34 +452,46 @@ export class SrsService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
-    // 2. Thống kê từ vựng SRS
-    const [vocabStats, totalLessons, grammarCompleted, quizSubmissions] =
-      await Promise.all([
-        this.getSrsStats(userId),
-        this.lessonModel.countDocuments(),
-        this.grammarProgModel.countDocuments({
-          userId: userObjId,
-          isCompleted: true,
-        }),
-        this.submissionModel
-          .find({ userId: userObjId })
-          .populate('quizId', 'title type level durationMinutes passingScore')
-          .sort({ createdAt: -1 })
-          .limit(5)
-          .exec(),
-      ]);
+    // 2. Thống kê từ vựng SRS, ngữ pháp (chỉ tính bài đã xuất bản) và toàn bộ bài kiểm tra
+    const [
+      vocabStats,
+      totalLessons,
+      grammarCompleted,
+      allQuizScores,
+      recentQuizSubmissions,
+    ] = await Promise.all([
+      this.getSrsStats(userId),
+      this.lessonModel.countDocuments({ status: 'published' }),
+      this.grammarProgModel.countDocuments({
+        userId: userObjId,
+        isCompleted: true,
+      }),
+      this.submissionModel
+        .find({ userId: userObjId })
+        .select('score passed')
+        .lean()
+        .exec(),
+      this.submissionModel
+        .find({ userId: userObjId })
+        .populate('quizId', 'title type level durationMinutes passingScore')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .exec(),
+    ]);
 
     // 3. Tính toán tiến độ ngữ pháp
     const grammarPercentage =
-      totalLessons > 0 ? Math.round((grammarCompleted / totalLessons) * 100) : 0;
+      totalLessons > 0
+        ? Math.min(100, Math.round((grammarCompleted / totalLessons) * 100))
+        : 0;
 
-    // 4. Thống kê bài kiểm tra
-    const totalQuizAttempts = quizSubmissions.length;
-    const passedQuizAttempts = quizSubmissions.filter((s) => s.passed).length;
+    // 4. Thống kê bài kiểm tra trên TOÀN BỘ lịch sử thi
+    const totalQuizAttempts = allQuizScores.length;
+    const passedQuizAttempts = allQuizScores.filter((s) => s.passed).length;
     const averageScore =
       totalQuizAttempts > 0
         ? Math.round(
-            quizSubmissions.reduce((acc, s) => acc + s.score, 0) /
+            allQuizScores.reduce((acc, s) => acc + s.score, 0) /
               totalQuizAttempts,
           )
         : 0;
@@ -415,7 +519,7 @@ export class SrsService {
         passedAttempts: passedQuizAttempts,
         averageScore,
       },
-      recentSubmissions: quizSubmissions,
+      recentSubmissions: recentQuizSubmissions,
     };
   }
 }
