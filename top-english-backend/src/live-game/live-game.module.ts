@@ -12,9 +12,11 @@ import { LiveGameController } from './live-game.controller';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Quiz, QuizSchema } from '../quizzes/schemas/quiz.schema';
 import { Question, QuestionSchema } from '../quizzes/schemas/question.schema';
+import { QuizzesModule } from '../quizzes/quizzes.module';
 
 @Module({
   imports: [
+    QuizzesModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Quiz.name, schema: QuizSchema },

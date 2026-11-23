@@ -21,7 +21,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CLIMBING_CHARACTERS, LiveGameService } from './live-game.service';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/enums/role.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Live Game - Đấu Trường Leo Núi')
@@ -40,26 +43,56 @@ export class LiveGameController {
     };
   }
 
+  @Get('sources')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Lấy danh sách bộ đề Quiz, Lớp/Bài Từ vựng và Bài Ngữ pháp (chỉ Giáo viên & Admin)' })
+  @ApiResponse({ status: 200, description: 'Nguồn dữ liệu tạo phòng Đấu trường' })
+  async getCreatorSources() {
+    const sources = await this.liveGameService.getCreatorSources();
+    return {
+      success: true,
+      statusCode: HttpStatus.OK,
+      message: 'Lấy danh sách nguồn câu hỏi Đấu trường thành công',
+      data: sources,
+    };
+  }
+
   @Post('rooms')
-  @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({ summary: 'Khởi tạo phòng Đấu trường Leo Núi mới và nhận mã PIN 6 số' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Khởi tạo phòng Đấu trường Leo Núi mới (chỉ Giáo viên & Admin)' })
   @ApiResponse({ status: 201, description: 'Tạo phòng thành công' })
   async createRoom(
-    @CurrentUser('userId') hostUserId?: string,
+    @CurrentUser('userId') hostUserId: string,
     @Body()
     body?: {
       title?: string;
+      sourceMode?: 'quiz' | 'custom';
       quizId?: string;
+      topicIds?: string[];
+      grammarLessonIds?: string[];
+      vocabQuestionMode?: 'en_to_vi' | 'vi_to_en' | 'mixed_abcd';
+      questionCount?: number;
       timePerQuestion?: number;
+      shuffleQuestions?: boolean;
+      shuffleOptions?: boolean;
     },
   ) {
-    const hostId = hostUserId || `host_${Date.now()}`;
-    const room = await this.liveGameService.createRoom(
-      hostId,
-      body?.title,
-      body?.quizId,
-      body?.timePerQuestion || 15,
-    );
+    const room = await this.liveGameService.createRoom(hostUserId, {
+      title: body?.title,
+      sourceMode: body?.sourceMode || 'quiz',
+      quizId: body?.quizId,
+      topicIds: body?.topicIds,
+      grammarLessonIds: body?.grammarLessonIds,
+      vocabQuestionMode: body?.vocabQuestionMode,
+      questionCount: body?.questionCount,
+      timePerQuestion: body?.timePerQuestion || 15,
+      shuffleQuestions: body?.shuffleQuestions ?? true,
+      shuffleOptions: body?.shuffleOptions ?? true,
+    });
 
     return {
       success: true,
@@ -68,6 +101,7 @@ export class LiveGameController {
       data: {
         pin: room.pin,
         title: room.title,
+        quizId: room.quizId,
         status: room.status,
         totalQuestions: room.questions.length,
         timePerQuestion: room.timePerQuestion,

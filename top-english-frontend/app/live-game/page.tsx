@@ -12,15 +12,22 @@ import Link from "next/link";
 import {
   ArrowRight,
   Award,
+  BookOpen,
   Check,
   CheckCircle2,
   Clock,
   Compass,
   Flame,
+  FolderOpen,
+  GraduationCap,
   HelpCircle,
+  Layers,
+  Lock,
   Mountain,
   PlusCircle,
   Radio,
+  Search,
+  Shuffle,
   Sparkles,
   Swords,
   Trophy,
@@ -38,6 +45,50 @@ interface Character {
   icon: string;
   color: string;
   avatarBg: string;
+}
+
+interface QuizSourceItem {
+  _id: string;
+  title: string;
+  level: string;
+  type: string;
+  totalQuestions: number;
+  mcqCount: number;
+  durationMinutes: number;
+}
+
+interface TopicSourceItem {
+  _id: string;
+  title: string;
+  slug: string;
+  lessonNumber: number;
+  level: string;
+  wordCount: number;
+}
+
+interface VocabClassSourceItem {
+  _id: string;
+  name: string;
+  code: string;
+  totalWords: number;
+  topics: TopicSourceItem[];
+}
+
+interface GrammarSourceItem {
+  _id: string;
+  title: string;
+  slug: string;
+  level: string;
+  category: string;
+  exerciseCount: number;
+  mcqCount: number;
+}
+
+interface CreatorSourcesResponse {
+  quizzes: QuizSourceItem[];
+  vocabClasses: VocabClassSourceItem[];
+  ungroupedTopics: TopicSourceItem[];
+  grammarLessons: GrammarSourceItem[];
 }
 
 const DEFAULT_CHARACTERS: Character[] = [
@@ -101,7 +152,10 @@ const DEFAULT_CHARACTERS: Character[] = [
 
 export default function LiveGameLobbyPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const isHostAuthorized = Boolean(
+    isAuthenticated && (user?.role === "teacher" || user?.role === "admin")
+  );
 
   const [activeTab, setActiveTab] = useState<"join" | "create">("join");
   const [characters, setCharacters] = useState<Character[]>(DEFAULT_CHARACTERS);
@@ -112,11 +166,37 @@ export default function LiveGameLobbyPage() {
   const [nickname, setNickname] = useState("");
   const [joinError, setJoinError] = useState("");
 
-  // Host Create State
+  // Host Create State (Teacher / Admin only)
   const [roomTitle, setRoomTitle] = useState("");
+  const [sourceMode, setSourceMode] = useState<"quiz" | "custom">("quiz");
+  const [sources, setSources] = useState<CreatorSourcesResponse>({
+    quizzes: [],
+    vocabClasses: [],
+    ungroupedTopics: [],
+    grammarLessons: [],
+  });
+  const [isLoadingSources, setIsLoadingSources] = useState(false);
+  const [selectedQuizId, setSelectedQuizId] = useState<string>("");
+  const [activeClassId, setActiveClassId] = useState<string>("all");
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
+  const [selectedGrammarIds, setSelectedGrammarIds] = useState<string[]>([]);
+  const [grammarSearch, setGrammarSearch] = useState("");
+  const [vocabQuestionMode, setVocabQuestionMode] = useState<
+    "mixed_abcd" | "en_to_vi" | "vi_to_en"
+  >("mixed_abcd");
+  const [questionCount, setQuestionCount] = useState<number>(10);
   const [timePerQuestion, setTimePerQuestion] = useState<number>(15);
+  const [shuffleQuestions, setShuffleQuestions] = useState<boolean>(true);
+  const [shuffleOptions, setShuffleOptions] = useState<boolean>(true);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+
+  // Đảm bảo học viên/khách không ở lại tab Tạo phòng
+  useEffect(() => {
+    if (!isHostAuthorized && activeTab === "create") {
+      setActiveTab("join");
+    }
+  }, [isHostAuthorized, activeTab]);
 
   // Nạp danh sách nhân vật từ backend
   useEffect(() => {
@@ -132,6 +212,28 @@ export default function LiveGameLobbyPage() {
     }
     loadCharacters();
   }, []);
+
+  // Nạp nguồn bộ câu hỏi Đấu trường cho Giáo viên / Admin
+  useEffect(() => {
+    if (!isHostAuthorized) return;
+    async function loadCreatorSources() {
+      setIsLoadingSources(true);
+      try {
+        const res = await fetchApi<CreatorSourcesResponse>("/live-game/sources");
+        if (res.success && res.data) {
+          setSources(res.data);
+          if (res.data.vocabClasses.length > 0) {
+            setActiveClassId(res.data.vocabClasses[0]._id);
+          }
+        }
+      } catch {
+        // Bỏ qua lỗi im lặng nếu chưa đủ quyền
+      } finally {
+        setIsLoadingSources(false);
+      }
+    }
+    loadCreatorSources();
+  }, [isHostAuthorized]);
 
   // Tự động điền biệt danh nếu đã đăng nhập
   useEffect(() => {
@@ -164,18 +266,69 @@ export default function LiveGameLobbyPage() {
     );
   };
 
+  const toggleTopicId = (id: string) => {
+    setSelectedTopicIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleGrammarId = (id: string) => {
+    setSelectedGrammarIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAllTopicsInClass = (topics: TopicSourceItem[]) => {
+    const validIds = topics.filter((t) => t.wordCount > 0).map((t) => t._id);
+    if (validIds.length === 0) return;
+    const allSelected = validIds.every((id) => selectedTopicIds.includes(id));
+    if (allSelected) {
+      setSelectedTopicIds((prev) => prev.filter((id) => !validIds.includes(id)));
+    } else {
+      setSelectedTopicIds((prev) => Array.from(new Set([...prev, ...validIds])));
+    }
+  };
+
   // Xử lý Host tạo phòng đấu mới
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isHostAuthorized) return;
     setCreateError("");
+
+    if (
+      sourceMode === "custom" &&
+      selectedTopicIds.length === 0 &&
+      selectedGrammarIds.length === 0
+    ) {
+      setCreateError(
+        "Vui lòng tích chọn ít nhất 1 bài Ngữ pháp hoặc 1 Lesson Từ vựng để tạo bộ câu hỏi."
+      );
+      return;
+    }
+
     setIsCreating(true);
+    const chosenQuiz = sources.quizzes.find((q) => q._id === selectedQuizId);
+    const autoTitle =
+      sourceMode === "quiz"
+        ? chosenQuiz
+          ? `Đấu Trường: ${chosenQuiz.title}`
+          : "Trận Đua Leo Núi Tiếng Anh"
+        : `Đấu Trường Tổng Hợp (${questionCount} câu)`;
 
     try {
       const res = await fetchApi<{ pin: string; title: string }>("/live-game/rooms", {
         method: "POST",
         body: JSON.stringify({
-          title: roomTitle.trim() || "Trận Đua Leo Núi Tiếng Anh",
+          title: roomTitle.trim() || autoTitle,
+          sourceMode,
+          quizId: sourceMode === "quiz" ? selectedQuizId || undefined : undefined,
+          topicIds: sourceMode === "custom" ? selectedTopicIds : undefined,
+          grammarLessonIds: sourceMode === "custom" ? selectedGrammarIds : undefined,
+          vocabQuestionMode: sourceMode === "custom" ? vocabQuestionMode : undefined,
+          questionCount: sourceMode === "custom" ? questionCount : undefined,
           timePerQuestion,
+          shuffleQuestions,
+          shuffleOptions,
         }),
       });
 
@@ -236,18 +389,25 @@ export default function LiveGameLobbyPage() {
               <span className="hidden sm:inline">1. Tham Gia Trận Đấu (Học Viên)</span>
               <span className="sm:hidden">1. Vào Phòng Đấu</span>
             </button>
-            <button
-              onClick={() => setActiveTab("create")}
-              className={`flex-1 py-3.5 sm:py-4 px-3 sm:px-6 text-xs sm:text-base font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
-                activeTab === "create"
-                  ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
-                  : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
-              }`}
-            >
-              <PlusCircle className="size-4 sm:size-5 shrink-0" />
-              <span className="hidden sm:inline">2. Tạo Phòng Đấu Mới (Host / Giáo Viên)</span>
-              <span className="sm:hidden">2. Tạo Phòng Mới</span>
-            </button>
+            {isHostAuthorized ? (
+              <button
+                onClick={() => setActiveTab("create")}
+                className={`flex-1 py-3.5 sm:py-4 px-3 sm:px-6 text-xs sm:text-base font-bold flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer min-h-[44px] ${
+                  activeTab === "create"
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900"
+                    : "border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                }`}
+              >
+                <PlusCircle className="size-4 sm:size-5 shrink-0" />
+                <span className="hidden sm:inline">2. Tạo Phòng Đấu Mới (Giáo Viên / Admin)</span>
+                <span className="sm:hidden">2. Tạo Phòng Mới</span>
+              </button>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1.5 px-5 text-xs text-slate-400 font-medium">
+                <Lock className="size-3.5" />
+                Chỉ Giáo viên &amp; Admin có quyền tạo phòng đấu
+              </div>
+            )}
           </div>
 
           <div className="p-6 sm:p-8">
@@ -389,8 +549,8 @@ export default function LiveGameLobbyPage() {
               </form>
             )}
 
-            {/* TAB 2: CREATE ROOM (HOST) */}
-            {activeTab === "create" && (
+            {/* TAB 2: CREATE ROOM (TEACHER / ADMIN ONLY) */}
+            {activeTab === "create" && isHostAuthorized && (
               <form onSubmit={handleCreateRoom} className="flex flex-col gap-6">
                 {createError && (
                   <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm font-medium">
@@ -398,7 +558,372 @@ export default function LiveGameLobbyPage() {
                   </div>
                 )}
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5">
+                  {/* SOURCE MODE SWITCHER */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                      Nguồn Bộ Câu Hỏi Đấu Trường
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSourceMode("quiz")}
+                        className={`p-3.5 rounded-2xl border-2 text-left transition cursor-pointer flex items-start gap-3 ${
+                          sourceMode === "quiz"
+                            ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm"
+                            : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                          <BookOpen className="size-4" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900 dark:text-white">
+                            Chế độ A: Bộ đề Quiz có sẵn
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Chọn đề chính thức trong kho /quizzes (tự lọc câu MCQ)
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSourceMode("custom")}
+                        className={`p-3.5 rounded-2xl border-2 text-left transition cursor-pointer flex items-start gap-3 ${
+                          sourceMode === "custom"
+                            ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-sm"
+                            : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="size-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                          <Layers className="size-4" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900 dark:text-white">
+                            Chế độ B: Trộn Ngữ pháp &amp; Từ vựng
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Tích bài Ngữ pháp (MCQ) + Lớp/Lesson Từ vựng (không rác DB)
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* MODE A: OFFICIAL QUIZ DROPDOWN */}
+                  {sourceMode === "quiz" && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                          <BookOpen className="size-3.5 text-emerald-500" />
+                          Chọn Bộ Đề Quiz Chính Thức
+                        </label>
+                        <span className="text-[11px] text-slate-400">
+                          {isLoadingSources
+                            ? "Đang tải..."
+                            : `${sources.quizzes.filter((q) => q.mcqCount > 0).length} bộ đề khả dụng`}
+                        </span>
+                      </div>
+
+                      <select
+                        value={selectedQuizId}
+                        onChange={(e) => setSelectedQuizId(e.target.value)}
+                        className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-medium outline-none cursor-pointer"
+                      >
+                        <option value="">
+                          Bộ câu hỏi mẫu TopEnglish — 6 câu trắc nghiệm mặc định
+                        </option>
+                        {sources.quizzes.map((quiz) => (
+                          <option
+                            key={quiz._id}
+                            value={quiz._id}
+                            disabled={quiz.mcqCount === 0}
+                          >
+                            [{quiz.level}] {quiz.title} —{" "}
+                            {quiz.mcqCount > 0
+                              ? `${quiz.mcqCount} câu trắc nghiệm`
+                              : "Chưa có câu trắc nghiệm (0 câu)"}
+                          </option>
+                        ))}
+                      </select>
+
+                      {(() => {
+                        const chosenQuiz = sources.quizzes.find(
+                          (q) => q._id === selectedQuizId
+                        );
+                        return (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                            <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
+                            {chosenQuiz ? (
+                              <span>
+                                Sẽ thi <strong>{chosenQuiz.mcqCount} câu trắc nghiệm</strong>{" "}
+                                từ đề &ldquo;{chosenQuiz.title}&rdquo;
+                                {chosenQuiz.totalQuestions > chosenQuiz.mcqCount
+                                  ? ` (đã tự bỏ ${
+                                      chosenQuiz.totalQuestions - chosenQuiz.mcqCount
+                                    } câu điền từ)`
+                                  : ""}
+                                .
+                              </span>
+                            ) : (
+                              <span>
+                                Đang dùng 6 câu mẫu TopEnglish. Hãy chọn đề ở trên để thi theo
+                                kho /quizzes.
+                              </span>
+                            )}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* MODE B: CUSTOM GRAMMAR (PUBLISHED MCQ) + VOCAB BY CLASS/LESSON */}
+                  {sourceMode === "custom" && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 flex flex-col gap-5">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        {/* LEFT: GRAMMAR PUBLISHED LESSONS */}
+                        <div className="flex flex-col gap-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                              <GraduationCap className="size-4 text-emerald-600" />
+                              Bài Ngữ Pháp (Đã xuất bản)
+                            </label>
+                            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              Đã chọn: {selectedGrammarIds.length} bài
+                            </span>
+                          </div>
+
+                          <div className="relative">
+                            <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={grammarSearch}
+                              onChange={(e) => setGrammarSearch(e.target.value)}
+                              placeholder="Tìm bài ngữ pháp..."
+                              className="w-full h-9 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                            {sources.grammarLessons
+                              .filter((g) =>
+                                g.title
+                                  .toLowerCase()
+                                  .includes(grammarSearch.trim().toLowerCase())
+                              )
+                              .map((lesson) => {
+                                const checked = selectedGrammarIds.includes(lesson._id);
+                                const hasMcq = lesson.mcqCount > 0;
+                                return (
+                                  <label
+                                    key={lesson._id}
+                                    className={`p-2.5 flex items-center justify-between gap-2 text-xs transition ${
+                                      hasMcq
+                                        ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                                        : "opacity-50 cursor-not-allowed"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        disabled={!hasMcq}
+                                        onChange={() => toggleGrammarId(lesson._id)}
+                                        className="size-4 rounded accent-emerald-600 shrink-0"
+                                      />
+                                      <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                                        [{lesson.level}] {lesson.title}
+                                      </span>
+                                    </div>
+                                    <span
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                        hasMcq
+                                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                          : "bg-slate-100 text-slate-400 dark:bg-slate-800"
+                                      }`}
+                                    >
+                                      {lesson.mcqCount} MCQ
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            {sources.grammarLessons.length === 0 && (
+                              <div className="p-4 text-center text-xs text-slate-400">
+                                {isLoadingSources
+                                  ? "Đang tải bài ngữ pháp..."
+                                  : "Chưa có bài ngữ pháp đã xuất bản."}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* RIGHT: VOCABULARY BY CLASS & LESSON */}
+                        <div className="flex flex-col gap-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                              <FolderOpen className="size-4 text-indigo-600" />
+                              Từ Vựng Theo Lớp / Lesson
+                            </label>
+                            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                              Đã chọn: {selectedTopicIds.length} bài
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={activeClassId}
+                              onChange={(e) => setActiveClassId(e.target.value)}
+                              className="flex-1 h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                            >
+                              {sources.vocabClasses.map((cls) => (
+                                <option key={cls._id} value={cls._id}>
+                                  {cls.name} ({cls.topics.length} bài · {cls.totalWords} từ)
+                                </option>
+                              ))}
+                              {sources.ungroupedTopics.length > 0 && (
+                                <option value="ungrouped">
+                                  Chủ đề tự do ({sources.ungroupedTopics.length} bài)
+                                </option>
+                              )}
+                              <option value="all">Tất cả các Lớp &amp; Bài</option>
+                            </select>
+
+                            {(() => {
+                              const currentClassTopics =
+                                activeClassId === "all"
+                                  ? [
+                                      ...sources.vocabClasses.flatMap((c) => c.topics),
+                                      ...sources.ungroupedTopics,
+                                    ]
+                                  : activeClassId === "ungrouped"
+                                  ? sources.ungroupedTopics
+                                  : sources.vocabClasses.find((c) => c._id === activeClassId)
+                                      ?.topics || [];
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleAllTopicsInClass(currentClassTopics)}
+                                  className="h-9 px-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold hover:bg-indigo-100 transition cursor-pointer shrink-0"
+                                >
+                                  Chọn/Bỏ lớp
+                                </button>
+                              );
+                            })()}
+                          </div>
+
+                          <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                            {(() => {
+                              const displayTopics =
+                                activeClassId === "all"
+                                  ? [
+                                      ...sources.vocabClasses.flatMap((c) => c.topics),
+                                      ...sources.ungroupedTopics,
+                                    ]
+                                  : activeClassId === "ungrouped"
+                                  ? sources.ungroupedTopics
+                                  : sources.vocabClasses.find((c) => c._id === activeClassId)
+                                      ?.topics || [];
+
+                              if (displayTopics.length === 0) {
+                                return (
+                                  <div className="p-4 text-center text-xs text-slate-400">
+                                    {isLoadingSources
+                                      ? "Đang tải bài học từ vựng..."
+                                      : "Lớp này chưa có bài học từ vựng nào."}
+                                  </div>
+                                );
+                              }
+
+                              return displayTopics.map((topic) => {
+                                const checked = selectedTopicIds.includes(topic._id);
+                                const hasWords = topic.wordCount > 0;
+                                return (
+                                  <label
+                                    key={topic._id}
+                                    className={`p-2.5 flex items-center justify-between gap-2 text-xs transition ${
+                                      hasWords
+                                        ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                                        : "opacity-50 cursor-not-allowed"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        disabled={!hasWords}
+                                        onChange={() => toggleTopicId(topic._id)}
+                                        className="size-4 rounded accent-indigo-600 shrink-0"
+                                      />
+                                      <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                                        {topic.title} ({topic.level})
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 shrink-0">
+                                      {topic.wordCount} từ
+                                    </span>
+                                  </label>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* QUESTION COUNT & VOCAB QUESTION DIRECTION */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                            Số Câu Hỏi Trận Đấu
+                          </label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {[5, 10, 15, 20].map((cnt) => (
+                              <button
+                                key={cnt}
+                                type="button"
+                                onClick={() => setQuestionCount(cnt)}
+                                className={`h-10 rounded-xl border-2 text-xs font-bold transition cursor-pointer ${
+                                  questionCount === cnt
+                                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900"
+                                }`}
+                              >
+                                {cnt} câu
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                            Kiểu Câu Hỏi Từ Vựng
+                          </label>
+                          <select
+                            value={vocabQuestionMode}
+                            onChange={(e) =>
+                              setVocabQuestionMode(
+                                e.target.value as "mixed_abcd" | "en_to_vi" | "vi_to_en"
+                              )
+                            }
+                            className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold outline-none focus:border-emerald-500 cursor-pointer"
+                          >
+                            <option value="mixed_abcd">
+                              Trộn cả 2 chiều (Anh → Việt &amp; Việt → Anh)
+                            </option>
+                            <option value="en_to_vi">Chỉ Anh → Nghĩa Tiếng Việt</option>
+                            <option value="vi_to_en">Chỉ Tiếng Việt → Từ Tiếng Anh</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                        <Sparkles className="size-3.5 text-emerald-500 shrink-0" />
+                        Bộ câu hỏi sinh trực tiếp vào phòng chơi trong RAM (không lưu đề rác
+                        vào kho /quizzes).
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                       Tiêu Đề Trận Đấu (Tên Phòng)
@@ -416,17 +941,18 @@ export default function LiveGameLobbyPage() {
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                       Thời Gian Cho Mỗi Câu Hỏi
                     </label>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[
                         { time: 10, label: "10 Giây", desc: "Tốc độ chớp nhoáng" },
                         { time: 15, label: "15 Giây", desc: "Tiêu chuẩn cân bằng" },
                         { time: 20, label: "20 Giây", desc: "Thong thả suy nghĩ" },
+                        { time: 30, label: "30 Giây", desc: "Câu hỏi nâng cao" },
                       ].map((item) => (
                         <button
                           key={item.time}
                           type="button"
                           onClick={() => setTimePerQuestion(item.time)}
-                          className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col items-center text-center cursor-pointer ${
+                          className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center text-center cursor-pointer ${
                             timePerQuestion === item.time
                               ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 font-bold shadow-sm"
                               : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
@@ -438,6 +964,29 @@ export default function LiveGameLobbyPage() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Shuffle Options */}
+                  <div className="flex flex-wrap items-center gap-5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none font-semibold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={shuffleQuestions}
+                        onChange={(e) => setShuffleQuestions(e.target.checked)}
+                        className="size-4 rounded accent-emerald-600 cursor-pointer"
+                      />
+                      <Shuffle className="size-3.5 text-emerald-600" />
+                      Tự động xáo thứ tự câu hỏi
+                    </label>
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none font-semibold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={shuffleOptions}
+                        onChange={(e) => setShuffleOptions(e.target.checked)}
+                        className="size-4 rounded accent-emerald-600 cursor-pointer"
+                      />
+                      Tự động xáo vị trí đáp án A/B/C/D
+                    </label>
                   </div>
 
                   {/* Host Character Choice */}

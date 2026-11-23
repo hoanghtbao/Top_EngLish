@@ -216,9 +216,13 @@ export class QuizzesService implements OnModuleInit {
   }
 
   /**
-   * Lấy danh sách nguồn bài học (Flashcard theo Lớp & Ngữ pháp) để học viên chọn tạo đề tự luyện
+   * Lấy danh sách nguồn bài học (Flashcard theo Lớp & Ngữ pháp) để chọn tạo đề tự luyện hoặc Đấu trường
    */
-  async getPracticeSources() {
+  async getPracticeSources(options?: { publishedGrammarOnly?: boolean }) {
+    const grammarFilter = options?.publishedGrammarOnly
+      ? { status: 'published' as const }
+      : { status: { $ne: 'draft' as const } };
+
     const [vocabClasses, topics, vocabCounts, grammarLessons] = await Promise.all([
       this.vocabClassModel.find().sort({ createdAt: 1 }).lean(),
       this.topicModel
@@ -230,7 +234,7 @@ export class QuizzesService implements OnModuleInit {
         { $group: { _id: '$topicId', count: { $sum: 1 } } },
       ]),
       this.lessonModel
-        .find({ status: { $ne: 'draft' } })
+        .find(grammarFilter)
         .select('_id title slug level category exercises order')
         .sort({ order: 1, createdAt: 1 })
         .lean(),
@@ -278,14 +282,27 @@ export class QuizzesService implements OnModuleInit {
       };
     });
 
-    const formattedGrammar = grammarLessons.map((lesson: any) => ({
-      _id: lesson._id,
-      title: lesson.title,
-      slug: lesson.slug,
-      level: lesson.level || EnglishLevel.A1,
-      category: lesson.category || 'Grammar',
-      exerciseCount: Array.isArray(lesson.exercises) ? lesson.exercises.length : 0,
-    }));
+    const formattedGrammar = grammarLessons.map((lesson: any) => {
+      const exercises = Array.isArray(lesson.exercises) ? lesson.exercises : [];
+      const mcqCount = exercises.filter(
+        (ex: any) =>
+          ex?.question &&
+          ex?.correctAnswer &&
+          ex.type !== 'fill_blank' &&
+          Array.isArray(ex.options) &&
+          ex.options.length >= 2,
+      ).length;
+
+      return {
+        _id: lesson._id,
+        title: lesson.title,
+        slug: lesson.slug,
+        level: lesson.level || EnglishLevel.A1,
+        category: lesson.category || 'Grammar',
+        exerciseCount: exercises.length,
+        mcqCount,
+      };
+    });
 
     return {
       vocabClasses: formattedClasses,
@@ -431,25 +448,33 @@ export class QuizzesService implements OnModuleInit {
   }
 
   /**
-   * Tạo đề luyện thi ngẫu nhiên từ các bài Flashcard và/hoặc Ngữ pháp học sinh chọn
+   * Sinh bộ câu hỏi trắc nghiệm / điền từ từ các bài Từ vựng & Ngữ pháp (không tự ghi vào DB).
+   * Dùng chung cho cả tính năng Luyện Quiz và Đấu Trường Leo Núi.
    */
-  async generateCustomQuiz(userId: string, dto: GenerateCustomQuizDto): Promise<QuizDocument> {
-    if (!Types.ObjectId.isValid(userId)) {
-      throw new BadRequestException('ID học viên không hợp lệ');
-    }
-
-    const topicObjectIds = (dto.topicIds || [])
+  async buildPracticeQuestionPool(params: {
+    topicIds?: string[];
+    grammarLessonIds?: string[];
+    vocabQuestionMode?: 'en_to_vi' | 'vi_to_en' | 'mixed_abcd' | 'mixed_all';
+    questionCount: number;
+    onlyMcq?: boolean;
+    publishedGrammarOnly?: boolean;
+  }) {
+    const topicObjectIds = (params.topicIds || [])
       .filter((id) => Types.ObjectId.isValid(id))
       .map((id) => new Types.ObjectId(id));
-    const grammarObjectIds = (dto.grammarLessonIds || [])
+    const grammarObjectIds = (params.grammarLessonIds || [])
       .filter((id) => Types.ObjectId.isValid(id))
       .map((id) => new Types.ObjectId(id));
 
     if (topicObjectIds.length === 0 && grammarObjectIds.length === 0) {
       throw new BadRequestException(
-        'Vui lòng chọn ít nhất 1 bài học Từ vựng Flashcard hoặc 1 bài Ngữ pháp.',
+        'Vui lòng chọn ít nhất 1 bài học Từ vựng hoặc 1 bài Ngữ pháp.',
       );
     }
+
+    const grammarStatusFilter = params.publishedGrammarOnly
+      ? ('published' as const)
+      : { $ne: 'draft' as const };
 
     const [selectedTopics, selectedVocabs, selectedGrammars] = await Promise.all([
       topicObjectIds.length > 0
@@ -460,12 +485,12 @@ export class QuizzesService implements OnModuleInit {
         : Promise.resolve([]),
       grammarObjectIds.length > 0
         ? this.lessonModel
-            .find({ _id: { $in: grammarObjectIds }, status: { $ne: 'draft' } })
+            .find({ _id: { $in: grammarObjectIds }, status: grammarStatusFilter })
             .lean()
         : Promise.resolve([]),
     ]);
 
-    // Lấy pool dự phòng từ DB nếu các bài đã chọn có ít hơn 4 từ để vẫn tạo đủ 4 đáp án A/B/C/D
+    // Lấy pool dự phòng từ DB nếu các bài đã chọn có ít hơn 8 từ để vẫn tạo đủ 4 đáp án A/B/C/D
     let extraVocabs: any[] = [];
     if (selectedVocabs.length > 0 && selectedVocabs.length < 8) {
       extraVocabs = await this.vocabularyModel
@@ -484,8 +509,8 @@ export class QuizzesService implements OnModuleInit {
       ...extraVocabs.map((v: any) => v.word),
     ].filter(Boolean);
 
-    const vocabMode = dto.vocabQuestionMode || 'mixed_abcd';
-    const vocabQuestions = selectedVocabs.map((v: any) => {
+    const vocabMode = params.vocabQuestionMode || 'mixed_abcd';
+    const rawVocabQuestions = selectedVocabs.map((v: any) => {
       let chosenMode: 'en_to_vi' | 'vi_to_en' | 'fill_blank' = 'en_to_vi';
       if (vocabMode === 'vi_to_en') {
         chosenMode = 'vi_to_en';
@@ -497,6 +522,16 @@ export class QuizzesService implements OnModuleInit {
       }
       return this.buildVocabQuestion(v, chosenMode, allMeanings, allWords);
     });
+
+    const vocabQuestions = params.onlyMcq
+      ? rawVocabQuestions.filter(
+          (q) =>
+            q.type === QuestionType.MULTIPLE_CHOICE &&
+            Array.isArray(q.options) &&
+            q.options.length >= 2 &&
+            q.options.length <= 4,
+        )
+      : rawVocabQuestions;
 
     const grammarQuestions: Array<{
       sourceType: 'grammar';
@@ -511,7 +546,12 @@ export class QuizzesService implements OnModuleInit {
       const exercises = Array.isArray(lesson.exercises) ? lesson.exercises : [];
       exercises.forEach((ex: any) => {
         if (!ex?.question || !ex?.correctAnswer) return;
-        const isFill = ex.type === 'fill_blank' || !Array.isArray(ex.options) || ex.options.length < 2;
+        const isFill =
+          ex.type === 'fill_blank' ||
+          !Array.isArray(ex.options) ||
+          ex.options.length < 2;
+        if (params.onlyMcq && isFill) return;
+
         const uniqueOptions = isFill
           ? []
           : this.shuffleArray(
@@ -523,10 +563,16 @@ export class QuizzesService implements OnModuleInit {
                 ),
               ),
             );
+        if (params.onlyMcq && (uniqueOptions.length < 2 || uniqueOptions.length > 4)) {
+          return;
+        }
+
         grammarQuestions.push({
           sourceType: 'grammar',
           questionText: String(ex.question).trim(),
-          type: isFill ? QuestionType.FILL_IN_THE_BLANK : QuestionType.MULTIPLE_CHOICE,
+          type: isFill
+            ? QuestionType.FILL_IN_THE_BLANK
+            : QuestionType.MULTIPLE_CHOICE,
           options: uniqueOptions,
           correctAnswer: String(ex.correctAnswer).trim(),
           explanation:
@@ -536,32 +582,75 @@ export class QuizzesService implements OnModuleInit {
       });
     });
 
-    const combinedPool = this.shuffleArray([...vocabQuestions, ...grammarQuestions]);
+    const combinedPool = this.shuffleArray([
+      ...vocabQuestions,
+      ...grammarQuestions,
+    ]);
     if (combinedPool.length === 0) {
       throw new BadRequestException(
-        'Các bài học bạn chọn hiện chưa có từ vựng hoặc câu hỏi bài tập nào.',
+        params.onlyMcq
+          ? 'Các bài học đã chọn chưa có câu hỏi trắc nghiệm 2–4 đáp án hợp lệ (các câu điền từ đã được lọc bỏ).'
+          : 'Các bài học bạn chọn hiện chưa có từ vựng hoặc câu hỏi bài tập nào.',
       );
     }
 
-    const actualCount = Math.min(dto.questionCount, combinedPool.length);
+    const actualCount = Math.min(params.questionCount, combinedPool.length);
     let chosenQuestions = combinedPool.slice(0, actualCount);
 
-    // Nếu học sinh chọn cả 2 nguồn và số câu >= 2, đảm bảo cả hai nguồn đều có ít nhất 1 câu
+    // Nếu chọn cả 2 nguồn và số câu >= 2, đảm bảo cả hai nguồn đều có ít nhất 1 câu
     if (vocabQuestions.length > 0 && grammarQuestions.length > 0 && actualCount >= 2) {
       const hasVocab = chosenQuestions.some((q) => q.sourceType === 'vocabulary');
       const hasGrammar = chosenQuestions.some((q) => q.sourceType === 'grammar');
       if (!hasVocab) {
-        chosenQuestions[chosenQuestions.length - 1] = this.shuffleArray(vocabQuestions)[0];
+        chosenQuestions[chosenQuestions.length - 1] =
+          this.shuffleArray(vocabQuestions)[0];
       } else if (!hasGrammar) {
-        chosenQuestions[chosenQuestions.length - 1] = this.shuffleArray(grammarQuestions)[0];
+        chosenQuestions[chosenQuestions.length - 1] =
+          this.shuffleArray(grammarQuestions)[0];
       }
       chosenQuestions = this.shuffleArray(chosenQuestions);
     }
 
+    return {
+      chosenQuestions,
+      vocabMode,
+      selectedTopics,
+      selectedGrammars,
+      vocabCount: vocabQuestions.length,
+      grammarCount: grammarQuestions.length,
+    };
+  }
+
+  /**
+   * Tạo đề luyện thi ngẫu nhiên từ các bài Flashcard và/hoặc Ngữ pháp học sinh chọn
+   */
+  async generateCustomQuiz(userId: string, dto: GenerateCustomQuizDto): Promise<QuizDocument> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('ID học viên không hợp lệ');
+    }
+
+    const {
+      chosenQuestions,
+      vocabMode,
+      selectedTopics,
+      selectedGrammars,
+      vocabCount,
+      grammarCount,
+    } = await this.buildPracticeQuestionPool({
+      topicIds: dto.topicIds,
+      grammarLessonIds: dto.grammarLessonIds,
+      vocabQuestionMode: dto.vocabQuestionMode || 'mixed_abcd',
+      questionCount: dto.questionCount,
+      onlyMcq: false,
+      publishedGrammarOnly: false,
+    });
+
+    const actualCount = chosenQuestions.length;
+
     let quizType = QuizType.GENERAL;
-    if (vocabQuestions.length > 0 && grammarQuestions.length === 0) {
+    if (vocabCount > 0 && grammarCount === 0) {
       quizType = QuizType.VOCABULARY;
-    } else if (grammarQuestions.length > 0 && vocabQuestions.length === 0) {
+    } else if (grammarCount > 0 && vocabCount === 0) {
       quizType = QuizType.GRAMMAR;
     }
 

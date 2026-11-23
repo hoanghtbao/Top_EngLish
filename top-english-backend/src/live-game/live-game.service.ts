@@ -11,7 +11,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   CharacterInfo,
   LivePlayer,
@@ -21,6 +21,8 @@ import {
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Quiz, QuizDocument } from '../quizzes/schemas/quiz.schema';
 import { Question, QuestionDocument } from '../quizzes/schemas/question.schema';
+import { QuestionType } from '../quizzes/enums/question-type.enum';
+import { QuizzesService } from '../quizzes/quizzes.service';
 
 // Bộ 8 nhân vật leo núi mặc định
 export const CLIMBING_CHARACTERS: CharacterInfo[] = [
@@ -96,7 +98,150 @@ export class LiveGameService {
     private readonly quizModel: Model<QuizDocument>,
     @InjectModel(Question.name)
     private readonly questionModel: Model<QuestionDocument>,
+    private readonly quizzesService: QuizzesService,
   ) {}
+
+  private shuffleArray<T>(items: T[]): T[] {
+    const arr = [...items];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  /**
+   * Chuẩn hóa câu hỏi trắc nghiệm (2–4 phương án) sang LiveQuestion.
+   * Trả về null nếu là câu điền từ hoặc không khớp được đáp án đúng.
+   */
+  private mapDbQuestionToLive(
+    q: any,
+    idx: number,
+    timeLimit: number,
+    shuffleOptions: boolean,
+  ): LiveQuestion | null {
+    if (q.type && q.type !== QuestionType.MULTIPLE_CHOICE) {
+      return null;
+    }
+
+    const rawOptions = Array.isArray(q.options) ? q.options : [];
+    const normalizedTexts: string[] = [];
+    let legacyCorrectIdx = -1;
+
+    rawOptions.forEach((opt: any) => {
+      const text = String(typeof opt === 'string' ? opt : opt?.text || '').trim();
+      if (!text) return;
+      if (!normalizedTexts.includes(text)) {
+        if (typeof opt === 'object' && opt?.isCorrect === true && legacyCorrectIdx === -1) {
+          legacyCorrectIdx = normalizedTexts.length;
+        }
+        normalizedTexts.push(text);
+      }
+    });
+
+    if (normalizedTexts.length < 2 || normalizedTexts.length > 4) {
+      return null;
+    }
+
+    const correctAns = String(q.correctAnswer || '').trim();
+    let correctIdx = normalizedTexts.findIndex((o) => o === correctAns);
+    if (correctIdx === -1 && correctAns) {
+      const lower = correctAns.toLowerCase();
+      correctIdx = normalizedTexts.findIndex((o) => o.toLowerCase() === lower);
+    }
+    if (correctIdx === -1 && legacyCorrectIdx >= 0) {
+      correctIdx = legacyCorrectIdx;
+    }
+    if (correctIdx === -1) {
+      return null;
+    }
+
+    let finalOptions = normalizedTexts;
+    let finalCorrectIdx = correctIdx;
+
+    if (shuffleOptions) {
+      const tagged = this.shuffleArray(
+        normalizedTexts.map((text, i) => ({
+          text,
+          isCorrect: i === correctIdx,
+        })),
+      );
+      finalOptions = tagged.map((t) => t.text);
+      finalCorrectIdx = tagged.findIndex((t) => t.isCorrect);
+    }
+
+    return {
+      id: q._id?.toString() || `q_${idx}`,
+      question: String(q.questionText || q.question || '').trim() || 'Câu hỏi tiếng Anh',
+      options: finalOptions,
+      correctAnswerIndex: finalCorrectIdx >= 0 ? finalCorrectIdx : 0,
+      explanation:
+        String(q.explanation || '').trim() || 'Giải thích chi tiết ngữ pháp/từ vựng.',
+      timeLimit,
+    };
+  }
+
+  /**
+   * Lấy toàn bộ nguồn tạo đề Đấu trường cho Giáo viên & Admin:
+   * - Bộ Quiz chính thức (loại bỏ đề tự luyện cá nhân, kèm số câu MCQ hợp lệ)
+   * - Lớp & Lesson Từ vựng + Bài Ngữ pháp đã xuất bản (status: 'published', kèm số câu MCQ)
+   */
+  async getCreatorSources() {
+    const [quizzes, practiceSources] = await Promise.all([
+      this.quizModel
+        .find({ isCustomPractice: { $ne: true } })
+        .select('_id title level type totalQuestions durationMinutes')
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec(),
+      this.quizzesService.getPracticeSources({ publishedGrammarOnly: true }),
+    ]);
+
+    let formattedQuizzes: Array<{
+      _id: string;
+      title: string;
+      level: string;
+      type: string;
+      totalQuestions: number;
+      mcqCount: number;
+      durationMinutes: number;
+    }> = [];
+
+    if (quizzes.length > 0) {
+      const quizIds = quizzes.map((q) => q._id);
+      const questions = await this.questionModel
+        .find({ quizId: { $in: quizIds } })
+        .select('quizId type options correctAnswer questionText explanation')
+        .lean()
+        .exec();
+
+      const mcqCountByQuiz = new Map<string, number>();
+      questions.forEach((q: any, idx: number) => {
+        const valid = this.mapDbQuestionToLive(q, idx, 15, false);
+        if (valid) {
+          const key = q.quizId.toString();
+          mcqCountByQuiz.set(key, (mcqCountByQuiz.get(key) || 0) + 1);
+        }
+      });
+
+      formattedQuizzes = quizzes.map((quiz: any) => ({
+        _id: quiz._id.toString(),
+        title: quiz.title,
+        level: quiz.level,
+        type: quiz.type,
+        totalQuestions: quiz.totalQuestions || 0,
+        mcqCount: mcqCountByQuiz.get(quiz._id.toString()) || 0,
+        durationMinutes: quiz.durationMinutes || 10,
+      }));
+    }
+
+    return {
+      quizzes: formattedQuizzes,
+      vocabClasses: practiceSources.vocabClasses,
+      ungroupedTopics: practiceSources.ungroupedTopics,
+      grammarLessons: practiceSources.grammarLessons,
+    };
+  }
 
   /**
    * Sinh mã PIN 6 số duy nhất không trùng lặp (ví dụ: 849201)
@@ -112,7 +257,7 @@ export class LiveGameService {
   /**
    * Tạo bộ câu hỏi leo núi mặc định chất lượng cao
    */
-  getDefaultQuestions(): LiveQuestion[] {
+  getDefaultQuestions(timeLimit = 15): LiveQuestion[] {
     return [
       {
         id: 'q1',
@@ -120,7 +265,7 @@ export class LiveGameService {
         options: ['Fragile', 'Tough & Adaptable', 'Timid', 'Careless'],
         correctAnswerIndex: 1,
         explanation: '"Resilient" có nghĩa là kiên cường, dẻo dai, có khả năng thích nghi tốt (Tough & Adaptable).',
-        timeLimit: 15,
+        timeLimit,
       },
       {
         id: 'q2',
@@ -128,7 +273,7 @@ export class LiveGameService {
         options: ['for', 'since', 'in', 'at'],
         correctAnswerIndex: 1,
         explanation: 'Ta dùng "since" với một mốc thời gian cụ thể trong quá khứ (since 2020) cho thì Hiện tại hoàn thành.',
-        timeLimit: 15,
+        timeLimit,
       },
       {
         id: 'q3',
@@ -136,7 +281,7 @@ export class LiveGameService {
         options: ['rains', 'will rain', 'rained', 'is raining'],
         correctAnswerIndex: 0,
         explanation: 'Trong câu điều kiện loại 1 (Conditional Type 1), mệnh đề If sử dụng thì Hiện tại đơn (rains).',
-        timeLimit: 15,
+        timeLimit,
       },
       {
         id: 'q4',
@@ -144,7 +289,7 @@ export class LiveGameService {
         options: ['Be careful', 'Good luck!', 'Give up', 'Get injured'],
         correctAnswerIndex: 1,
         explanation: '"Break a leg" là thành ngữ chúc may mắn trong văn hóa Anh - Mỹ, đặc biệt trong biểu diễn và thi đấu.',
-        timeLimit: 15,
+        timeLimit,
       },
       {
         id: 'q5',
@@ -152,7 +297,7 @@ export class LiveGameService {
         options: ['hear', 'heard', 'hearing', 'hears'],
         correctAnswerIndex: 2,
         explanation: 'Cấu trúc "look forward to + V-ing" diễn tả sự háo hức mong chờ điều gì (hearing).',
-        timeLimit: 15,
+        timeLimit,
       },
       {
         id: 'q6',
@@ -160,58 +305,119 @@ export class LiveGameService {
         options: ['was', 'were', 'is', 'be'],
         correctAnswerIndex: 1,
         explanation: 'Với cấu trúc "Neither... nor...", động từ chia theo chủ ngữ gần nhất ("the students" số nhiều -> were).',
-        timeLimit: 15,
+        timeLimit,
       },
     ];
   }
 
   /**
-   * Khởi tạo phòng đấu trường leo núi mới
+   * Khởi tạo phòng đấu trường leo núi mới (tất cả bộ câu hỏi chỉ sống trong LiveRoom RAM, không tạo rác DB)
    */
   async createRoom(
     hostId: string,
-    title = 'Cuộc Đua Leo Núi Everest TopEnglish',
-    quizId?: string,
-    timePerQuestion = 15,
+    options?: {
+      title?: string;
+      sourceMode?: 'quiz' | 'custom';
+      quizId?: string;
+      topicIds?: string[];
+      grammarLessonIds?: string[];
+      vocabQuestionMode?: 'en_to_vi' | 'vi_to_en' | 'mixed_abcd';
+      questionCount?: number;
+      timePerQuestion?: number;
+      shuffleQuestions?: boolean;
+      shuffleOptions?: boolean;
+    },
   ): Promise<LiveRoom> {
     const pin = this.generatePin();
+    const timePerQuestion = [10, 15, 20, 30].includes(Number(options?.timePerQuestion))
+      ? Number(options?.timePerQuestion)
+      : 15;
+    const shuffleQuestions = options?.shuffleQuestions ?? true;
+    const shuffleOptions = options?.shuffleOptions ?? true;
+    const sourceMode = options?.sourceMode || 'quiz';
+    const title = options?.title?.trim() || 'Cuộc Đua Leo Núi Everest TopEnglish';
 
     let questions: LiveQuestion[] = [];
+    let resolvedQuizId: string | undefined;
 
-    // Nếu chọn Quiz từ CSDL
-    if (quizId) {
-      try {
-        const dbQuestions = await this.questionModel.find({ quizId }).lean();
-        if (dbQuestions && dbQuestions.length > 0) {
-          questions = dbQuestions.map((q: any, idx: number) => {
-            const opts = q.options.map((o: any) => o.text || o);
-            const correctIdx = q.options.findIndex(
-              (o: any) => o.isCorrect === true,
-            );
-            return {
-              id: q._id.toString() || `q_${idx}`,
-              question: q.questionText || q.question || 'Câu hỏi tiếng Anh',
-              options: opts,
-              correctAnswerIndex: correctIdx >= 0 ? correctIdx : 0,
-              explanation: q.explanation || 'Giải thích chi tiết ngữ pháp/từ vựng.',
-              timeLimit: timePerQuestion,
-            };
-          });
-        }
-      } catch (err) {
-        this.logger.warn(`Không thể nạp quizId ${quizId}, sử dụng câu hỏi mặc định`);
+    if (sourceMode === 'custom') {
+      const requestedCount = Math.max(
+        1,
+        Math.min(30, Number(options?.questionCount) || 10),
+      );
+      const { chosenQuestions } = await this.quizzesService.buildPracticeQuestionPool({
+        topicIds: options?.topicIds || [],
+        grammarLessonIds: options?.grammarLessonIds || [],
+        vocabQuestionMode: options?.vocabQuestionMode || 'mixed_abcd',
+        questionCount: requestedCount,
+        onlyMcq: true,
+        publishedGrammarOnly: true,
+      });
+
+      questions = chosenQuestions
+        .map((q, idx) => this.mapDbQuestionToLive(q, idx, timePerQuestion, shuffleOptions))
+        .filter((q): q is LiveQuestion => q !== null);
+
+      if (questions.length === 0) {
+        throw new BadRequestException(
+          'Các bài học đã chọn chưa có câu hỏi trắc nghiệm 2–4 đáp án hợp lệ để mở Đấu trường.',
+        );
       }
-    }
 
-    if (questions.length === 0) {
-      questions = this.getDefaultQuestions();
+      if (shuffleQuestions) {
+        questions = this.shuffleArray(questions);
+      }
+    } else if (options?.quizId && options.quizId !== 'default') {
+      if (!Types.ObjectId.isValid(options.quizId)) {
+        throw new BadRequestException('ID bộ đề Quiz không hợp lệ');
+      }
+
+      const quizObjId = new Types.ObjectId(options.quizId);
+      const quiz = await this.quizModel.findById(quizObjId).select('_id title').lean().exec();
+      if (!quiz) {
+        throw new NotFoundException('Không tìm thấy bộ đề Quiz đã chọn');
+      }
+
+      const dbQuestions = await this.questionModel
+        .find({ quizId: quizObjId })
+        .sort({ order: 1, createdAt: 1 })
+        .lean()
+        .exec();
+
+      questions = dbQuestions
+        .map((q: any, idx: number) =>
+          this.mapDbQuestionToLive(q, idx, timePerQuestion, shuffleOptions),
+        )
+        .filter((q): q is LiveQuestion => q !== null);
+
+      if (questions.length === 0) {
+        throw new BadRequestException(
+          `Bộ đề "${quiz.title}" hiện chưa có câu hỏi trắc nghiệm 2–4 đáp án hợp lệ để mở Đấu trường!`,
+        );
+      }
+
+      if (shuffleQuestions) {
+        questions = this.shuffleArray(questions);
+      }
+
+      const requestedCount = Number(options?.questionCount);
+      if (requestedCount > 0 && requestedCount < questions.length) {
+        questions = questions.slice(0, requestedCount);
+      }
+
+      resolvedQuizId = quizObjId.toString();
+    } else {
+      questions = this.getDefaultQuestions(timePerQuestion);
+      if (shuffleQuestions) {
+        questions = this.shuffleArray(questions);
+      }
     }
 
     const room: LiveRoom = {
       pin,
       hostId,
       title,
-      quizId,
+      quizId: resolvedQuizId,
       timePerQuestion,
       status: 'lobby',
       currentQuestionIndex: 0,
