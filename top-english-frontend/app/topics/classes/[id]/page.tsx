@@ -520,9 +520,9 @@ function VocabClassDetailInner() {
                         <Link
                           href={`/topics/${lesson.slug || lesson._id}?mode=typing`}
                           onClick={() => playClickSound()}
-                          className="h-10.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-rose-400 hover:bg-rose-50/40 dark:hover:bg-rose-950/30 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 transition shadow-2xs cursor-pointer"
+                          className="h-10.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 transition shadow-2xs cursor-pointer"
                         >
-                          <Keyboard className="size-3.5 text-rose-500" />
+                          <Keyboard className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                           <span>3. Gõ Từ</span>
                         </Link>
                       </div>

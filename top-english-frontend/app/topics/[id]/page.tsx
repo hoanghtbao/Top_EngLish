@@ -1266,7 +1266,7 @@ function TopicDetailInner() {
                 }}
                 className={`h-9 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   viewMode === "typing"
-                    ? "bg-rose-500 text-white shadow-xs"
+                    ? "bg-emerald-600 text-white shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
@@ -1879,7 +1879,7 @@ function TopicDetailInner() {
               </div>
             ) : typingFinished ? (
               <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center shadow-lg flex flex-col items-center gap-5">
-                <div className="size-20 rounded-3xl bg-rose-100 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center">
+                <div className="size-20 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <Trophy className="size-10" />
                 </div>
                 <div>
@@ -1895,7 +1895,7 @@ function TopicDetailInner() {
                 <button
                   type="button"
                   onClick={handleRestartTyping}
-                  className="h-11 px-6 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                  className="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
                 >
                   Luyện gõ lại từ đầu
                 </button>
@@ -1911,7 +1911,9 @@ function TopicDetailInner() {
 
                 <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-rose-500 h-full transition-all duration-300"
+                    className={`h-full transition-all duration-300 ${
+                      typingStatus === "wrong" ? "bg-rose-500" : "bg-emerald-500"
+                    }`}
                     style={{
                       width: `${Math.round(((typingIndex + 1) / vocabularies.length) * 100)}%`,
                     }}
@@ -1919,7 +1921,7 @@ function TopicDetailInner() {
                 </div>
 
                 <div className="py-3 text-center flex flex-col items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 text-[10px] font-bold uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase">
                     {currentTypingWord.partOfSpeech}
                   </span>
                   <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
@@ -1983,7 +1985,7 @@ function TopicDetailInner() {
                         ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-200"
                         : typingStatus === "wrong"
                         ? "bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300"
-                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500"
+                        : "bg-slate-50 dark:bg-slate-800 border-emerald-200 dark:border-emerald-800/70 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
                     }`}
                   />
 
@@ -2015,7 +2017,7 @@ function TopicDetailInner() {
                       <button
                         type="submit"
                         disabled={!typingInput.trim()}
-                        className="h-10.5 px-6 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white text-xs font-bold cursor-pointer transition"
+                        className="h-10.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-bold cursor-pointer transition"
                       >
                         Kiểm tra đáp án
                       </button>
