@@ -22,7 +22,7 @@ import {
 } from './schemas/quiz-submission.schema';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
-import { CreateQuestionDto } from './dto/create-question.dto';
+import { CreateQuestionDto, UpdateQuestionDto } from './dto/create-question.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
 import { GenerateCustomQuizDto } from './dto/generate-custom-quiz.dto';
 import { QuizType } from './enums/quiz-type.enum';
@@ -979,6 +979,25 @@ export class QuizzesService implements OnModuleInit {
   }
 
   /**
+   * Lấy toàn bộ câu hỏi kèm đáp án đúng & giải thích phục vụ Giáo viên / Admin quản lý đề thi
+   */
+  async getQuestionsForManagement(quizId: string): Promise<QuestionDocument[]> {
+    if (!Types.ObjectId.isValid(quizId)) {
+      throw new BadRequestException('ID đề thi không hợp lệ');
+    }
+
+    const quiz = await this.quizModel.findById(quizId).select('_id').lean().exec();
+    if (!quiz) {
+      throw new NotFoundException('Không tìm thấy đề thi');
+    }
+
+    return this.questionModel
+      .find({ quizId: new Types.ObjectId(quizId) })
+      .sort({ order: 1, createdAt: 1 })
+      .exec();
+  }
+
+  /**
    * Thêm câu hỏi vào đề thi (Admin / Teacher)
    */
   async addQuestion(quizId: string, createQuestionDto: CreateQuestionDto): Promise<QuestionDocument> {
@@ -986,22 +1005,117 @@ export class QuizzesService implements OnModuleInit {
       throw new BadRequestException('ID đề thi không hợp lệ');
     }
 
-    const quiz = await this.quizModel.findById(quizId);
+    const quizObjId = new Types.ObjectId(quizId);
+    const quiz = await this.quizModel.findById(quizObjId);
     if (!quiz) {
       throw new NotFoundException('Không tìm thấy đề thi');
     }
 
+    const normalizedOptions =
+      createQuestionDto.type === QuestionType.FILL_IN_THE_BLANK
+        ? []
+        : (createQuestionDto.options || [])
+            .map((o) => String(o || '').trim())
+            .filter(Boolean);
+
+    if (
+      createQuestionDto.type === QuestionType.MULTIPLE_CHOICE &&
+      normalizedOptions.length < 2
+    ) {
+      throw new BadRequestException('Câu hỏi trắc nghiệm cần ít nhất 2 phương án lựa chọn.');
+    }
+
+    const existingCount = await this.questionModel.countDocuments({ quizId: quizObjId });
     const question = new this.questionModel({
       ...createQuestionDto,
-      quizId: new Types.ObjectId(quizId),
+      options: normalizedOptions,
+      correctAnswer: String(createQuestionDto.correctAnswer || '').trim(),
+      order: createQuestionDto.order ?? existingCount + 1,
+      quizId: quizObjId,
     });
 
     const saved = await question.save();
 
-    // Tăng số lượng câu hỏi của đề thi
-    await this.quizModel.findByIdAndUpdate(quizId, { $inc: { totalQuestions: 1 } });
+    const totalQuestions = await this.questionModel.countDocuments({ quizId: quizObjId });
+    await this.quizModel.findByIdAndUpdate(quizObjId, { $set: { totalQuestions } });
 
     return saved;
+  }
+
+  /**
+   * Cập nhật một câu hỏi trong đề thi (Admin / Teacher)
+   */
+  async updateQuestion(
+    quizId: string,
+    questionId: string,
+    dto: UpdateQuestionDto,
+  ): Promise<QuestionDocument> {
+    if (!Types.ObjectId.isValid(quizId) || !Types.ObjectId.isValid(questionId)) {
+      throw new BadRequestException('ID đề thi hoặc câu hỏi không hợp lệ');
+    }
+
+    const existing = await this.questionModel
+      .findOne({ _id: new Types.ObjectId(questionId), quizId: new Types.ObjectId(quizId) })
+      .exec();
+    if (!existing) {
+      throw new NotFoundException('Không tìm thấy câu hỏi trong đề thi này');
+    }
+
+    const nextType = dto.type ?? existing.type;
+    const nextOptions =
+      nextType === QuestionType.FILL_IN_THE_BLANK
+        ? []
+        : dto.options !== undefined
+        ? dto.options.map((o) => String(o || '').trim()).filter(Boolean)
+        : existing.options;
+
+    if (nextType === QuestionType.MULTIPLE_CHOICE && nextOptions.length < 2) {
+      throw new BadRequestException('Câu hỏi trắc nghiệm cần ít nhất 2 phương án lựa chọn.');
+    }
+
+    const updatePayload: Record<string, any> = {
+      ...dto,
+      type: nextType,
+      options: nextOptions,
+    };
+    if (dto.correctAnswer !== undefined) {
+      updatePayload.correctAnswer = String(dto.correctAnswer || '').trim();
+    }
+
+    const updated = await this.questionModel
+      .findByIdAndUpdate(existing._id, { $set: updatePayload }, { new: true })
+      .exec();
+
+    return updated!;
+  }
+
+  /**
+   * Xóa một câu hỏi khỏi đề thi và cập nhật lại tổng số câu (Admin / Teacher)
+   */
+  async deleteQuestion(
+    quizId: string,
+    questionId: string,
+  ): Promise<{ deleted: boolean; totalQuestions: number }> {
+    if (!Types.ObjectId.isValid(quizId) || !Types.ObjectId.isValid(questionId)) {
+      throw new BadRequestException('ID đề thi hoặc câu hỏi không hợp lệ');
+    }
+
+    const quizObjId = new Types.ObjectId(quizId);
+    const deleted = await this.questionModel
+      .findOneAndDelete({
+        _id: new Types.ObjectId(questionId),
+        quizId: quizObjId,
+      })
+      .exec();
+
+    if (!deleted) {
+      throw new NotFoundException('Không tìm thấy câu hỏi trong đề thi này');
+    }
+
+    const totalQuestions = await this.questionModel.countDocuments({ quizId: quizObjId });
+    await this.quizModel.findByIdAndUpdate(quizObjId, { $set: { totalQuestions } });
+
+    return { deleted: true, totalQuestions };
   }
 
   /**
@@ -1024,7 +1138,7 @@ export class QuizzesService implements OnModuleInit {
   }
 
   /**
-   * Xóa đề thi và các câu hỏi liên quan (ADMIN xóa mọi đề; học viên xóa được đề tự luyện của mình)
+   * Xóa đề thi và các câu hỏi liên quan (ADMIN/TEACHER xóa đề chính thức; học viên xóa được đề tự luyện của mình)
    */
   async removeQuiz(
     id: string,
@@ -1041,12 +1155,14 @@ export class QuizzesService implements OnModuleInit {
     }
 
     const isAdmin = requesterRole === Role.ADMIN;
+    const isTeacherOfficial =
+      !existing.isCustomPractice && requesterRole === Role.TEACHER;
     const isOwnerCustom =
       existing.isCustomPractice &&
       requesterId &&
       existing.ownerId?.toString() === requesterId;
 
-    if (!isAdmin && !isOwnerCustom) {
+    if (!isAdmin && !isTeacherOfficial && !isOwnerCustom) {
       throw new ForbiddenException('Bạn không có quyền xóa đề thi này');
     }
 

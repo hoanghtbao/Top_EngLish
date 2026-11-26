@@ -21,7 +21,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 import { QuizzesService } from './quizzes.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
-import { CreateQuestionDto } from './dto/create-question.dto';
+import { CreateQuestionDto, UpdateQuestionDto } from './dto/create-question.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
 import { GenerateCustomQuizDto } from './dto/generate-custom-quiz.dto';
 import { QuizType } from './enums/quiz-type.enum';
@@ -152,6 +152,16 @@ export class QuizzesController {
     return this.quizzesService.createQuiz(createQuizDto, userId);
   }
 
+  @Get(':id/manage-questions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Lấy danh sách câu hỏi kèm đáp án đúng để Giáo viên / Admin quản lý' })
+  @ApiResponse({ status: 200, description: 'Danh sách câu hỏi đầy đủ đáp án & giải thích' })
+  async getQuestionsForManagement(@Param('id') id: string) {
+    return this.quizzesService.getQuestionsForManagement(id);
+  }
+
   @Post(':id/questions')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.TEACHER)
@@ -164,6 +174,33 @@ export class QuizzesController {
     @Body() createQuestionDto: CreateQuestionDto,
   ) {
     return this.quizzesService.addQuestion(id, createQuestionDto);
+  }
+
+  @Patch(':id/questions/:questionId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cập nhật nội dung/đáp án một câu hỏi trong đề thi (ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 200, description: 'Câu hỏi đã được cập nhật' })
+  async updateQuestion(
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+    @Body() updateQuestionDto: UpdateQuestionDto,
+  ) {
+    return this.quizzesService.updateQuestion(id, questionId, updateQuestionDto);
+  }
+
+  @Delete(':id/questions/:questionId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Xóa một câu hỏi khỏi đề thi (ADMIN hoặc TEACHER)' })
+  @ApiResponse({ status: 200, description: 'Đã xóa câu hỏi khỏi đề thi' })
+  async deleteQuestion(
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+  ) {
+    return this.quizzesService.deleteQuestion(id, questionId);
   }
 
   @Patch(':id')
@@ -182,7 +219,7 @@ export class QuizzesController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Xóa đề thi (ADMIN xóa mọi đề; học viên xóa được đề tự luyện của mình)' })
+  @ApiOperation({ summary: 'Xóa đề thi (ADMIN/TEACHER xóa đề chính thức; học viên xóa đề tự luyện của mình)' })
   @ApiResponse({ status: 200, description: 'Đã xóa đề thi thành công' })
   async remove(
     @Param('id') id: string,

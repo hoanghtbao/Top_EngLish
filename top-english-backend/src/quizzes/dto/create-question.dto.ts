@@ -4,7 +4,7 @@
  * @description DTO thêm câu hỏi mới vào đề kiểm tra
  */
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   IsArray,
   IsEnum,
@@ -52,3 +52,5 @@ export class CreateQuestionDto {
   @IsNumber()
   order?: number;
 }
+
+export class UpdateQuestionDto extends PartialType(CreateQuestionDto) {}

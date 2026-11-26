@@ -22,14 +22,18 @@ import {
   Globe2,
   GraduationCap,
   Layers,
+  ListChecks,
   Loader2,
   Lock,
+  Pencil,
+  Plus,
   Search,
   Shuffle,
   Sparkles,
   Trash2,
   Trophy,
   Wand2,
+  X,
 } from "lucide-react";
 import AppLayout from "../../components/AppLayout";
 import PageHeaderBanner from "../../components/PageHeaderBanner";
@@ -100,6 +104,17 @@ interface Submission {
 
 type VocabQuestionMode = "mixed_abcd" | "en_to_vi" | "vi_to_en" | "mixed_all";
 
+interface ManagedQuestion {
+  _id: string;
+  quizId: string;
+  questionText: string;
+  type: "multiple_choice" | "fill_in_the_blank";
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+  order?: number;
+}
+
 const CEFR_LEVELS = [
   { key: "ALL", label: "Tất cả" },
   { key: "A1", label: "A1" },
@@ -114,7 +129,10 @@ const QUESTION_PRESETS = [10, 15, 20, 30, 50];
 
 export default function QuizzesCatalogPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const isManager = Boolean(
+    isAuthenticated && (user?.role === "teacher" || user?.role === "admin")
+  );
 
   // Nguồn dữ liệu bài học (Flashcard + Ngữ pháp)
   const [sources, setSources] = useState<PracticeSourcesResponse>({
@@ -147,6 +165,31 @@ export default function QuizzesCatalogPage() {
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [selectedLevel, setSelectedLevel] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // --- QUẢN LÝ ĐỀ THI CHÍNH THỨC & CÂU HỎI (TEACHER / ADMIN) ---
+  const [quizModalOpen, setQuizModalOpen] = useState<boolean>(false);
+  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
+  const [quizTitleInput, setQuizTitleInput] = useState<string>("");
+  const [quizDescInput, setQuizDescInput] = useState<string>("");
+  const [quizTypeInput, setQuizTypeInput] = useState<"vocabulary" | "grammar" | "general">("general");
+  const [quizLevelInput, setQuizLevelInput] = useState<"A1" | "A2" | "B1" | "B2" | "C1" | "C2">("B1");
+  const [quizDurationInput, setQuizDurationInput] = useState<number>(15);
+  const [quizPassingInput, setQuizPassingInput] = useState<number>(70);
+  const [isSavingQuiz, setIsSavingQuiz] = useState<boolean>(false);
+  const [quizFormError, setQuizFormError] = useState<string>("");
+
+  const [managingQuiz, setManagingQuiz] = useState<Quiz | null>(null);
+  const [managedQuestions, setManagedQuestions] = useState<ManagedQuestion[]>([]);
+  const [loadingManagedQuestions, setLoadingManagedQuestions] = useState<boolean>(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [qText, setQText] = useState<string>("");
+  const [qType, setQType] = useState<"multiple_choice" | "fill_in_the_blank">("multiple_choice");
+  const [qOptions, setQOptions] = useState<string[]>(["", "", "", ""]);
+  const [qCorrectOptionIdx, setQCorrectOptionIdx] = useState<number>(0);
+  const [qFillAnswer, setQFillAnswer] = useState<string>("");
+  const [qExplanation, setQExplanation] = useState<string>("");
+  const [isSavingQuestion, setIsSavingQuestion] = useState<boolean>(false);
+  const [questionFormError, setQuestionFormError] = useState<string>("");
 
   // Tải nguồn bài học Flashcard & Ngữ pháp
   useEffect(() => {
@@ -206,32 +249,32 @@ export default function QuizzesCatalogPage() {
   }, [fetchPersonalData]);
 
   // Tải danh sách đề thi công khai theo bộ lọc
-  useEffect(() => {
-    const fetchQuizzes = async () => {
-      setLoadingQuizzes(true);
-      try {
-        const queryParams = new URLSearchParams();
-        if (selectedType !== "ALL") queryParams.append("type", selectedType);
-        if (selectedLevel !== "ALL") queryParams.append("level", selectedLevel);
-        if (searchQuery.trim()) queryParams.append("search", searchQuery.trim());
+  const fetchPublicQuizzes = useCallback(async () => {
+    setLoadingQuizzes(true);
+    try {
+      const queryParams = new URLSearchParams();
+      if (selectedType !== "ALL") queryParams.append("type", selectedType);
+      if (selectedLevel !== "ALL") queryParams.append("level", selectedLevel);
+      if (searchQuery.trim()) queryParams.append("search", searchQuery.trim());
 
-        const res = await fetchApi<Quiz[]>(`/quizzes?${queryParams.toString()}`);
-        if (res.success && Array.isArray(res.data)) {
-          setQuizzes(res.data);
-        } else {
-          setQuizzes([]);
-        }
-      } catch (err) {
-        console.error("Lỗi khi tải danh sách đề thi:", err);
+      const res = await fetchApi<Quiz[]>(`/quizzes?${queryParams.toString()}`);
+      if (res.success && Array.isArray(res.data)) {
+        setQuizzes(res.data);
+      } else {
         setQuizzes([]);
-      } finally {
-        setLoadingQuizzes(false);
       }
-    };
-
-    const timer = setTimeout(fetchQuizzes, 200);
-    return () => clearTimeout(timer);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách đề thi:", err);
+      setQuizzes([]);
+    } finally {
+      setLoadingQuizzes(false);
+    }
   }, [selectedType, selectedLevel, searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(fetchPublicQuizzes, 200);
+    return () => clearTimeout(timer);
+  }, [fetchPublicQuizzes]);
 
   // Tính tổng số câu khả dụng từ các bài học đã tick chọn
   const allTopicsMap = useMemo(() => {
@@ -382,6 +425,260 @@ export default function QuizzesCatalogPage() {
     }
   };
 
+  // --- HANDLERS QUẢN LÝ ĐỀ THI CHÍNH THỨC (TEACHER / ADMIN) ---
+  const resetQuestionForm = () => {
+    setEditingQuestionId(null);
+    setQText("");
+    setQType("multiple_choice");
+    setQOptions(["", "", "", ""]);
+    setQCorrectOptionIdx(0);
+    setQFillAnswer("");
+    setQExplanation("");
+    setQuestionFormError("");
+  };
+
+  const openCreateQuizModal = () => {
+    setEditingQuiz(null);
+    setQuizTitleInput("");
+    setQuizDescInput("");
+    setQuizTypeInput("general");
+    setQuizLevelInput("B1");
+    setQuizDurationInput(15);
+    setQuizPassingInput(70);
+    setQuizFormError("");
+    setQuizModalOpen(true);
+  };
+
+  const openEditQuizModal = (quiz: Quiz) => {
+    setEditingQuiz(quiz);
+    setQuizTitleInput(quiz.title);
+    setQuizDescInput(quiz.description || "");
+    setQuizTypeInput(quiz.type);
+    setQuizLevelInput(quiz.level);
+    setQuizDurationInput(quiz.durationMinutes || 15);
+    setQuizPassingInput(quiz.passingScore ?? 70);
+    setQuizFormError("");
+    setQuizModalOpen(true);
+  };
+
+  const openQuestionManager = async (quiz: Quiz) => {
+    setManagingQuiz(quiz);
+    resetQuestionForm();
+    setLoadingManagedQuestions(true);
+    try {
+      const res = await fetchApi<ManagedQuestion[]>(
+        `/quizzes/${quiz._id}/manage-questions`
+      );
+      if (res.success && Array.isArray(res.data)) {
+        setManagedQuestions(res.data);
+      } else {
+        setManagedQuestions([]);
+      }
+    } catch (err: any) {
+      setQuestionFormError(err?.message || "Không thể tải danh sách câu hỏi.");
+      setManagedQuestions([]);
+    } finally {
+      setLoadingManagedQuestions(false);
+    }
+  };
+
+  const handleSaveOfficialQuiz = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quizTitleInput.trim()) {
+      setQuizFormError("Vui lòng nhập tiêu đề đề thi.");
+      return;
+    }
+
+    setIsSavingQuiz(true);
+    setQuizFormError("");
+    try {
+      const payload = {
+        title: quizTitleInput.trim(),
+        description: quizDescInput.trim(),
+        type: quizTypeInput,
+        level: quizLevelInput,
+        durationMinutes: Math.max(1, Number(quizDurationInput) || 15),
+        passingScore: Math.max(0, Math.min(100, Number(quizPassingInput) || 70)),
+      };
+
+      if (editingQuiz) {
+        const res = await fetchApi<Quiz>(`/quizzes/${editingQuiz._id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+        if (!res.success) {
+          setQuizFormError(res.message || "Không thể cập nhật đề thi.");
+          return;
+        }
+        setQuizModalOpen(false);
+        await fetchPublicQuizzes();
+      } else {
+        const res = await fetchApi<Quiz>("/quizzes", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (!res.success || !res.data) {
+          setQuizFormError(res.message || "Không thể tạo đề thi mới.");
+          return;
+        }
+        setQuizModalOpen(false);
+        setListTab("public");
+        await fetchPublicQuizzes();
+        // Mở ngay modal thêm câu hỏi cho đề vừa tạo
+        await openQuestionManager(res.data);
+      }
+    } catch (err: any) {
+      setQuizFormError(err?.message || "Đã xảy ra lỗi khi lưu đề thi.");
+    } finally {
+      setIsSavingQuiz(false);
+    }
+  };
+
+  const handleDeleteOfficialQuiz = async (quiz: Quiz) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xóa vĩnh viễn đề thi "${quiz.title}" cùng toàn bộ ${quiz.totalQuestions} câu hỏi bên trong?`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetchApi(`/quizzes/${quiz._id}`, { method: "DELETE" });
+      if (res.success) {
+        setQuizzes((prev) => prev.filter((q) => q._id !== quiz._id));
+        if (managingQuiz?._id === quiz._id) {
+          setManagingQuiz(null);
+        }
+      }
+    } catch (err: any) {
+      alert(err?.message || "Không thể xóa đề thi lúc này.");
+    }
+  };
+
+  const startEditQuestion = (q: ManagedQuestion) => {
+    setEditingQuestionId(q._id);
+    setQText(q.questionText);
+    setQType(q.type);
+    setQExplanation(q.explanation || "");
+    setQuestionFormError("");
+    if (q.type === "multiple_choice") {
+      const padded = [0, 1, 2, 3].map((i) => q.options?.[i] || "");
+      setQOptions(padded);
+      const foundIdx = padded.findIndex(
+        (opt) => opt.trim().toLowerCase() === (q.correctAnswer || "").trim().toLowerCase()
+      );
+      setQCorrectOptionIdx(foundIdx >= 0 ? foundIdx : 0);
+      setQFillAnswer("");
+    } else {
+      setQOptions(["", "", "", ""]);
+      setQCorrectOptionIdx(0);
+      setQFillAnswer(q.correctAnswer || "");
+    }
+  };
+
+  const handleSaveQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!managingQuiz) return;
+
+    const cleanQuestion = qText.trim();
+    if (!cleanQuestion) {
+      setQuestionFormError("Vui lòng nhập nội dung câu hỏi.");
+      return;
+    }
+
+    let optionsPayload: string[] = [];
+    let correctAnswerPayload = "";
+
+    if (qType === "multiple_choice") {
+      const validPairs = qOptions
+        .map((text, idx) => ({ text: text.trim(), idx }))
+        .filter((item) => item.text.length > 0);
+      if (validPairs.length < 2) {
+        setQuestionFormError("Câu trắc nghiệm cần nhập ít nhất 2 phương án trả lời.");
+        return;
+      }
+      const chosenOption = qOptions[qCorrectOptionIdx]?.trim();
+      if (!chosenOption) {
+        setQuestionFormError("Đáp án đúng bạn chọn đang bị để trống.");
+        return;
+      }
+      optionsPayload = validPairs.map((p) => p.text);
+      correctAnswerPayload = chosenOption;
+    } else {
+      correctAnswerPayload = qFillAnswer.trim();
+      if (!correctAnswerPayload) {
+        setQuestionFormError("Vui lòng nhập đáp án chính xác cho câu điền từ.");
+        return;
+      }
+    }
+
+    setIsSavingQuestion(true);
+    setQuestionFormError("");
+    try {
+      const body = {
+        questionText: cleanQuestion,
+        type: qType,
+        options: optionsPayload,
+        correctAnswer: correctAnswerPayload,
+        explanation: qExplanation.trim(),
+      };
+
+      const url = editingQuestionId
+        ? `/quizzes/${managingQuiz._id}/questions/${editingQuestionId}`
+        : `/quizzes/${managingQuiz._id}/questions`;
+      const method = editingQuestionId ? "PATCH" : "POST";
+
+      const res = await fetchApi<ManagedQuestion>(url, {
+        method,
+        body: JSON.stringify(body),
+      });
+
+      if (!res.success || !res.data) {
+        setQuestionFormError(res.message || "Không thể lưu câu hỏi.");
+        return;
+      }
+
+      if (editingQuestionId) {
+        setManagedQuestions((prev) =>
+          prev.map((item) => (item._id === editingQuestionId ? res.data! : item))
+        );
+      } else {
+        setManagedQuestions((prev) => [...prev, res.data!]);
+        setManagingQuiz((prev) =>
+          prev ? { ...prev, totalQuestions: prev.totalQuestions + 1 } : prev
+        );
+      }
+
+      resetQuestionForm();
+      await fetchPublicQuizzes();
+    } catch (err: any) {
+      setQuestionFormError(err?.message || "Lỗi khi lưu câu hỏi.");
+    } finally {
+      setIsSavingQuestion(false);
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!managingQuiz) return;
+    try {
+      const res = await fetchApi<{ deleted: boolean; totalQuestions: number }>(
+        `/quizzes/${managingQuiz._id}/questions/${questionId}`,
+        { method: "DELETE" }
+      );
+      if (res.success) {
+        setManagedQuestions((prev) => prev.filter((q) => q._id !== questionId));
+        if (editingQuestionId === questionId) {
+          resetQuestionForm();
+        }
+        const nextTotal = res.data?.totalQuestions ?? Math.max(0, managedQuestions.length - 1);
+        setManagingQuiz((prev) =>
+          prev ? { ...prev, totalQuestions: nextTotal } : prev
+        );
+        await fetchPublicQuizzes();
+      }
+    } catch (err: any) {
+      setQuestionFormError(err?.message || "Không thể xóa câu hỏi.");
+    }
+  };
+
   const getBestScore = (quizId: string) => {
     const quizSubs = submissions.filter((s) => s.quizId && s.quizId._id === quizId);
     if (quizSubs.length === 0) return null;
@@ -516,6 +813,35 @@ export default function QuizzesCatalogPage() {
                 >
                   <Trash2 className="size-4" />
                 </button>
+              )}
+
+              {!isCustomOwnerCard && isManager && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openQuestionManager(quiz)}
+                    title="Quản lý & thêm câu hỏi"
+                    className="size-8 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center justify-center transition cursor-pointer"
+                  >
+                    <ListChecks className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditQuizModal(quiz)}
+                    title="Sửa thông tin đề thi"
+                    className="size-8 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 flex items-center justify-center transition cursor-pointer"
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteOfficialQuiz(quiz)}
+                    title="Xóa đề thi này"
+                    className="size-8 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-center transition cursor-pointer"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1122,38 +1448,51 @@ export default function QuizzesCatalogPage() {
         {/* SECTION 2: MY CUSTOM QUIZZES & PUBLIC QUIZZES */}
         <section className="flex flex-col gap-5">
           <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 self-start">
-              <button
-                type="button"
-                onClick={() => setListTab("custom")}
-                className={`h-10 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
-                  listTab === "custom"
-                    ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                }`}
-              >
-                <Lock className="size-3.5" />
-                <span>Đề Tự Luyện Của Tôi ({myCustomQuizzes.length})</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
-                  Riêng tư
-                </span>
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 self-start">
+                <button
+                  type="button"
+                  onClick={() => setListTab("custom")}
+                  className={`h-10 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                    listTab === "custom"
+                      ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <Lock className="size-3.5" />
+                  <span>Đề Tự Luyện Của Tôi ({myCustomQuizzes.length})</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300">
+                    Riêng tư
+                  </span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setListTab("public")}
-                className={`h-10 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
-                  listTab === "public"
-                    ? "bg-white dark:bg-slate-800 text-sky-700 dark:text-sky-400 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                }`}
-              >
-                <Globe2 className="size-3.5" />
-                <span>Đề Chuẩn Hệ Thống ({quizzes.length})</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300">
-                  Công khai
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setListTab("public")}
+                  className={`h-10 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                    listTab === "public"
+                      ? "bg-white dark:bg-slate-800 text-sky-700 dark:text-sky-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <Globe2 className="size-3.5" />
+                  <span>Đề Chuẩn Hệ Thống ({quizzes.length})</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300">
+                    Công khai
+                  </span>
+                </button>
+              </div>
+
+              {isManager && (
+                <button
+                  type="button"
+                  onClick={openCreateQuizModal}
+                  className="h-11 px-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold shadow-md shadow-sky-600/20 flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Plus className="size-4" />
+                  Tạo Đề Thi Chính Thức
+                </button>
+              )}
             </div>
 
             {listTab === "custom" ? (
@@ -1299,6 +1638,438 @@ export default function QuizzesCatalogPage() {
           )}
         </section>
       </main>
+
+      {/* MODAL 1: TẠO / SỬA ĐỀ THI CHÍNH THỨC (TEACHER / ADMIN) */}
+      {quizModalOpen && isManager && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setQuizModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  {editingQuiz ? "Chỉnh Sửa Đề Thi Chính Thức" : "Tạo Đề Thi Chính Thức Mới"}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Đề chuẩn công khai cho học viên luyện tập &amp; dùng trong Đấu Trường Leo Núi
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuizModalOpen(false)}
+                className="size-9 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOfficialQuiz} className="p-5 sm:p-6 flex flex-col gap-4">
+              {quizFormError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  ⚠️ {quizFormError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                  Tên đề thi <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={quizTitleInput}
+                  onChange={(e) => setQuizTitleInput(e.target.value)}
+                  placeholder="VD: Kiểm tra Giữa Kỳ B1 — Giao Tiếp Công Sở"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm outline-none focus:border-sky-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                  Mô tả ngắn
+                </label>
+                <textarea
+                  rows={2}
+                  value={quizDescInput}
+                  onChange={(e) => setQuizDescInput(e.target.value)}
+                  placeholder="Nội dung trọng tâm của bài kiểm tra..."
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs outline-none focus:border-sky-500 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                    Phân loại
+                  </label>
+                  <select
+                    value={quizTypeInput}
+                    onChange={(e) =>
+                      setQuizTypeInput(e.target.value as "vocabulary" | "grammar" | "general")
+                    }
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    <option value="vocabulary">Từ vựng</option>
+                    <option value="grammar">Ngữ pháp</option>
+                    <option value="general">Tổng hợp</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                    Cấp độ CEFR
+                  </label>
+                  <select
+                    value={quizLevelInput}
+                    onChange={(e) =>
+                      setQuizLevelInput(
+                        e.target.value as "A1" | "A2" | "B1" | "B2" | "C1" | "C2"
+                      )
+                    }
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    {["A1", "A2", "B1", "B2", "C1", "C2"].map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                    Thời gian làm (phút)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={180}
+                    value={quizDurationInput}
+                    onChange={(e) => setQuizDurationInput(Number(e.target.value))}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                    Điểm đạt (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={quizPassingInput}
+                    onChange={(e) => setQuizPassingInput(Number(e.target.value))}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold outline-none focus:border-sky-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setQuizModalOpen(false)}
+                  className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingQuiz}
+                  className="h-10 px-5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white text-xs font-extrabold flex items-center gap-2 cursor-pointer"
+                >
+                  {isSavingQuiz && <Loader2 className="size-3.5 animate-spin" />}
+                  {editingQuiz ? "Lưu thay đổi" : "Tạo đề & Thêm câu hỏi →"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: QUẢN LÝ CÂU HỎI TRONG ĐỀ THI (TEACHER / ADMIN) */}
+      {managingQuiz && isManager && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setManagingQuiz(null)}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[88vh] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ListChecks className="size-5 text-emerald-600" />
+                  Quản Lý Câu Hỏi: {managingQuiz.title}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Hiện có <strong>{managedQuestions.length} câu hỏi</strong> · Cấp độ{" "}
+                  {managingQuiz.level}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManagingQuiz(null)}
+                className="size-9 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* LEFT: FORM THÊM / SỬA CÂU HỎI */}
+              <form
+                onSubmit={handleSaveQuestion}
+                className="lg:col-span-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex flex-col gap-3.5 self-start"
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                    {editingQuestionId ? "Chỉnh sửa câu hỏi" : "Thêm câu hỏi mới"}
+                  </h4>
+                  {editingQuestionId && (
+                    <button
+                      type="button"
+                      onClick={resetQuestionForm}
+                      className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                    >
+                      + Tạo câu mới
+                    </button>
+                  )}
+                </div>
+
+                {questionFormError && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                    ⚠️ {questionFormError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Loại câu hỏi
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQType("multiple_choice")}
+                      className={`h-9 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                        qType === "multiple_choice"
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                      }`}
+                    >
+                      Trắc nghiệm A/B/C/D
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQType("fill_in_the_blank")}
+                      className={`h-9 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                        qType === "fill_in_the_blank"
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                      }`}
+                    >
+                      Điền từ còn thiếu
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Nội dung câu hỏi <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={qText}
+                    onChange={(e) => setQText(e.target.value)}
+                    placeholder="VD: She ____ to school every morning."
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:border-emerald-500 resize-none"
+                    required
+                  />
+                </div>
+
+                {qType === "multiple_choice" ? (
+                  <div className="flex flex-col gap-2">
+                    <label className="block text-[11px] font-bold text-slate-500">
+                      Các phương án (tick chọn đáp án đúng)
+                    </label>
+                    {["A", "B", "C", "D"].map((letter, idx) => (
+                      <div key={letter} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="correctOption"
+                          checked={qCorrectOptionIdx === idx}
+                          onChange={() => setQCorrectOptionIdx(idx)}
+                          title={`Đánh dấu ${letter} là đáp án đúng`}
+                          className="size-4 accent-emerald-600 cursor-pointer shrink-0"
+                        />
+                        <span className="text-[11px] font-extrabold text-slate-500 w-4">
+                          {letter}.
+                        </span>
+                        <input
+                          type="text"
+                          value={qOptions[idx] || ""}
+                          onChange={(e) => {
+                            const next = [...qOptions];
+                            next[idx] = e.target.value;
+                            setQOptions(next);
+                          }}
+                          placeholder={`Phương án ${letter}${idx < 2 ? " *" : " (tuỳ chọn)"}`}
+                          className={`flex-1 h-9 px-2.5 rounded-lg border text-xs outline-none ${
+                            qCorrectOptionIdx === idx
+                              ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30"
+                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          }`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                      Đáp án chính xác <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={qFillAnswer}
+                      onChange={(e) => setQFillAnswer(e.target.value)}
+                      placeholder="VD: goes"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
+                    Giải thích đáp án (hiển thị sau khi nộp bài)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={qExplanation}
+                    onChange={(e) => setQExplanation(e.target.value)}
+                    placeholder="Giải thích ngữ pháp hoặc nghĩa từ..."
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs outline-none focus:border-emerald-500 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSavingQuestion}
+                  className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isSavingQuestion && <Loader2 className="size-3.5 animate-spin" />}
+                  {editingQuestionId ? "Cập nhật câu hỏi" : "+ Thêm câu hỏi vào đề"}
+                </button>
+              </form>
+
+              {/* RIGHT: DANH SÁCH CÂU HỎI HIỆN CÓ */}
+              <div className="lg:col-span-7 flex flex-col gap-3">
+                {loadingManagedQuestions ? (
+                  <div className="py-16 flex flex-col items-center justify-center gap-2 text-xs text-slate-500">
+                    <Loader2 className="size-6 animate-spin text-emerald-500" />
+                    Đang tải danh sách câu hỏi...
+                  </div>
+                ) : managedQuestions.length === 0 ? (
+                  <div className="py-16 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-center px-4 flex flex-col items-center gap-2">
+                    <BookOpen className="size-7 text-slate-400" />
+                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                      Đề thi này chưa có câu hỏi nào
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Hãy nhập câu hỏi trắc nghiệm hoặc điền từ ở khung bên trái để thêm ngay!
+                    </p>
+                  </div>
+                ) : (
+                  managedQuestions.map((q, idx) => (
+                    <div
+                      key={q._id}
+                      className={`p-3.5 rounded-2xl border transition flex flex-col gap-2 ${
+                        editingQuestionId === q._id
+                          ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-extrabold text-slate-700 dark:text-slate-300">
+                            Câu {idx + 1}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-[10px] font-bold text-sky-700 dark:text-sky-300">
+                            {q.type === "multiple_choice" ? "Trắc nghiệm" : "Điền từ"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEditQuestion(q)}
+                            title="Sửa câu hỏi"
+                            className="size-7 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 flex items-center justify-center cursor-pointer"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuestion(q._id)}
+                            title="Xóa câu hỏi"
+                            className="size-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-center cursor-pointer"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs font-bold text-slate-900 dark:text-white leading-relaxed">
+                        {q.questionText}
+                      </p>
+
+                      {q.type === "multiple_choice" && q.options?.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {q.options.map((opt, optIdx) => {
+                            const isCorrect =
+                              opt.trim().toLowerCase() ===
+                              (q.correctAnswer || "").trim().toLowerCase();
+                            return (
+                              <div
+                                key={`${q._id}_${optIdx}`}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] border flex items-center gap-1.5 ${
+                                  isCorrect
+                                    ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-400 text-emerald-800 dark:text-emerald-200 font-bold"
+                                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                                }`}
+                              >
+                                <span className="font-extrabold">
+                                  {String.fromCharCode(65 + optIdx)}.
+                                </span>
+                                <span className="truncate">{opt}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg self-start">
+                          Đáp án: {q.correctAnswer}
+                        </div>
+                      )}
+
+                      {q.explanation && (
+                        <p className="text-[11px] text-slate-500 italic">
+                          Giải thích: {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
