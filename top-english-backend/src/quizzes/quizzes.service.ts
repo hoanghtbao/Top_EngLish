@@ -265,7 +265,7 @@ export class QuizzesService implements OnModuleInit {
         const key = topic.vocabClassId.toString();
         if (!topicsByClassId.has(key)) topicsByClassId.set(key, []);
         topicsByClassId.get(key)!.push(item);
-      } else {
+      } else if (realWordCount > 0) {
         ungroupedTopics.push(item);
       }
     });

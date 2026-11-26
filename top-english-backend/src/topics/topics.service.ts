@@ -58,52 +58,7 @@ export class TopicsService implements OnModuleInit {
     ];
     await this.topicModel.deleteMany({ slug: { $in: legacyTrackSlugs } }).exec();
 
-    // Đảm bảo 3 topic nền tảng vẫn tồn tại để quizzes.service.ts hoạt động ổn định
-    const baseTopics = [
-      {
-        title: 'Daily Life & Routine',
-        slug: 'daily-life-and-routine',
-        description: 'Từ vựng thông dụng về thói quen sinh hoạt hằng ngày, ăn uống và việc nhà.',
-        level: EnglishLevel.A1,
-        tag: 'Daily Routine',
-        lessonNumber: 1,
-        image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&auto=format&fit=crop&q=80',
-        wordCount: 0,
-        createdBy: admin._id,
-      },
-      {
-        title: 'Travel & Adventure',
-        slug: 'travel-and-adventure',
-        description: 'Hành trang từ vựng thiết yếu cho sân bay, khách sạn, khám phá văn hóa và du lịch.',
-        level: EnglishLevel.A2,
-        tag: 'Travel',
-        lessonNumber: 2,
-        image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop&q=80',
-        wordCount: 0,
-        createdBy: admin._id,
-      },
-      {
-        title: 'Technology & AI',
-        slug: 'technology-and-ai',
-        description: 'Từ vựng chuyên ngành công nghệ thông tin, trí tuệ nhân tạo và điện toán đám mây.',
-        level: EnglishLevel.B1,
-        tag: 'Technology',
-        lessonNumber: 3,
-        image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
-        wordCount: 0,
-        createdBy: admin._id,
-      },
-    ];
-
-    const existingSlugs = new Set(
-      (await this.topicModel.find({}, { slug: 1 }).lean().exec()).map((t) => t.slug),
-    );
-    const missingBase = baseTopics.filter((t) => !existingSlugs.has(t.slug));
-    if (missingBase.length > 0) {
-      await this.topicModel.insertMany(missingBase);
-    }
-
-    // Khởi tạo Lớp học mẫu nếu collection vocab_classes còn trống
+    // Khởi tạo Lớp học & Bài học mẫu chỉ khi collection vocab_classes còn trống (tránh tạo lại topic mồ côi)
     const classCount = await this.vocabClassModel.countDocuments();
     if (classCount === 0) {
       const toeicClass = await this.vocabClassModel.create({
@@ -120,7 +75,53 @@ export class TopicsService implements OnModuleInit {
         createdBy: admin._id,
       });
 
-      // Gán các bài học cơ bản vào lớp English Foundation
+      const baseTopics = [
+        {
+          vocabClassId: foundationClass._id,
+          title: 'Daily Life & Routine',
+          slug: 'daily-life-and-routine',
+          description: 'Từ vựng thông dụng về thói quen sinh hoạt hằng ngày, ăn uống và việc nhà.',
+          level: EnglishLevel.A1,
+          tag: 'Daily Routine',
+          lessonNumber: 1,
+          image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&auto=format&fit=crop&q=80',
+          wordCount: 0,
+          createdBy: admin._id,
+        },
+        {
+          vocabClassId: foundationClass._id,
+          title: 'Travel & Adventure',
+          slug: 'travel-and-adventure',
+          description: 'Hành trang từ vựng thiết yếu cho sân bay, khách sạn, khám phá văn hóa và du lịch.',
+          level: EnglishLevel.A2,
+          tag: 'Travel',
+          lessonNumber: 2,
+          image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop&q=80',
+          wordCount: 0,
+          createdBy: admin._id,
+        },
+        {
+          vocabClassId: foundationClass._id,
+          title: 'Technology & AI',
+          slug: 'technology-and-ai',
+          description: 'Từ vựng chuyên ngành công nghệ thông tin, trí tuệ nhân tạo và điện toán đám mây.',
+          level: EnglishLevel.B1,
+          tag: 'Technology',
+          lessonNumber: 3,
+          image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
+          wordCount: 0,
+          createdBy: admin._id,
+        },
+      ];
+
+      for (const base of baseTopics) {
+        const exists = await this.topicModel.findOne({ slug: base.slug }).exec();
+        if (!exists) {
+          await this.topicModel.create(base);
+        }
+      }
+
+      // Gán các bài học chưa có lớp (nếu có) vào lớp English Foundation
       await this.topicModel.updateMany(
         { vocabClassId: null },
         { $set: { vocabClassId: foundationClass._id } },
