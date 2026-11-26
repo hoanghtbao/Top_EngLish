@@ -21,6 +21,9 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
 
+  // Tin cậy proxy header (Render/Nginx) để nhận diện đúng IP client cho Logger & RateLimit
+  app.set('trust proxy', 1);
+
   // Phục vụ tệp tĩnh (Tải ảnh nền, avatar, media)
   const uploadsDir = resolve(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsDir)) {
