@@ -26,6 +26,7 @@ import {
   Layers,
   List,
   Plus,
+  RotateCcw,
   RotateCw,
   Search,
   Settings,
@@ -193,6 +194,10 @@ function TopicDetailInner() {
   const [knownWords, setKnownWords] = useState<string[]>([]);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [rewardClaimed, setRewardClaimed] = useState<boolean>(false);
+  const [flashcardRetryItems, setFlashcardRetryItems] = useState<
+    Array<{ vocab: Vocabulary; isRetry: boolean; retryRound: number }>
+  >([]);
+  const flashcardLengthRef = useRef<number>(0);
 
   // Quiz ABCD states (Chế độ 2. Quiz ABCD)
   const [quizIndex, setQuizIndex] = useState<number>(0);
@@ -201,6 +206,20 @@ function TopicDetailInner() {
   const quizTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [quizSeed, setQuizSeed] = useState<number>(0);
+  const [quizRetryItems, setQuizRetryItems] = useState<
+    Array<{
+      vocab: Vocabulary;
+      isEnToVi: boolean;
+      prompt: string;
+      phonetic: string;
+      partOfSpeech: string;
+      correct: string;
+      options: string[];
+      isRetry: boolean;
+      retryRound: number;
+    }>
+  >([]);
+  const quizLengthRef = useRef<number>(0);
 
   // Typing states (Chế độ 3. Gõ Từ)
   const [typingIndex, setTypingIndex] = useState<number>(0);
@@ -210,6 +229,16 @@ function TopicDetailInner() {
   const [typingFinished, setTypingFinished] = useState<boolean>(false);
   const [typingShowHint, setTypingShowHint] = useState<boolean>(false);
   const typingInputRef = useRef<HTMLInputElement | null>(null);
+  const [typingRetryItems, setTypingRetryItems] = useState<
+    Array<{ vocab: Vocabulary; isRetry: boolean; retryRound: number }>
+  >([]);
+  const typingLengthRef = useRef<number>(0);
+
+  useEffect(() => {
+    setFlashcardRetryItems([]);
+    setQuizRetryItems([]);
+    setTypingRetryItems([]);
+  }, [vocabularies]);
 
   // List mode state
   const [listSearch, setListSearch] = useState<string>("");
@@ -562,7 +591,20 @@ function TopicDetailInner() {
     }
   }, [isCompleted, quizFinished, typingFinished, fireSuccessConfetti]);
 
-  const currentWord = vocabularies[currentIndex];
+  const flashcardQueue = useMemo(
+    () => [
+      ...vocabularies.map((v) => ({ vocab: v, isRetry: false, retryRound: 0 })),
+      ...flashcardRetryItems,
+    ],
+    [vocabularies, flashcardRetryItems]
+  );
+
+  useEffect(() => {
+    flashcardLengthRef.current = flashcardQueue.length;
+  }, [flashcardQueue.length]);
+
+  const currentCardItem = flashcardQueue[currentIndex];
+  const currentWord = currentCardItem?.vocab;
 
   const handlePronounce = useCallback(
     async (text: string) => {
@@ -580,12 +622,12 @@ function TopicDetailInner() {
   const handleNextCard = useCallback(() => {
     setIsFlipped(false);
     playClickSound();
-    if (currentIndex < vocabularies.length - 1) {
+    if (currentIndex < flashcardLengthRef.current - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       setIsCompleted(true);
     }
-  }, [currentIndex, vocabularies.length, playClickSound]);
+  }, [currentIndex, playClickSound]);
 
   const handlePrevCard = useCallback(() => {
     setIsFlipped(false);
@@ -619,7 +661,7 @@ function TopicDetailInner() {
   }, [viewMode, isCompleted, studySettings.autoAudio, isFlashcardEnToVi, currentWord]);
 
   // --- CHẾ ĐỘ 2: QUIZ ABCD TỰ ĐỘNG TỪ DANH SÁCH TỪ VỰNG ---
-  const quizQuestions = useMemo(() => {
+  const baseQuizQuestions = useMemo(() => {
     if (vocabularies.length === 0) return [];
     // Xáo trộn có kiểm soát theo quizSeed
     const shuffled = [...vocabularies].sort((a, b) => {
@@ -668,18 +710,33 @@ function TopicDetailInner() {
         partOfSpeech: item.partOfSpeech,
         correct,
         options,
+        isRetry: false,
+        retryRound: 0,
       };
     });
   }, [vocabularies, studySettings.direction, quizSeed]);
+
+  const quizQuestions = useMemo(
+    () => [...baseQuizQuestions, ...quizRetryItems],
+    [baseQuizQuestions, quizRetryItems]
+  );
+
+  useEffect(() => {
+    quizLengthRef.current = quizQuestions.length;
+  }, [quizQuestions.length]);
 
   const currentQuiz = quizQuestions[quizIndex];
   const quizSelectedOption = quizAnswers[quizIndex] ?? null;
   const quizScore = useMemo(
     () =>
-      Object.entries(quizAnswers).filter(
-        ([idx, ans]) => quizQuestions[Number(idx)]?.correct === ans
-      ).length,
-    [quizAnswers, quizQuestions]
+      Object.entries(quizAnswers).filter(([idx, ans]) => {
+        const numIdx = Number(idx);
+        return (
+          numIdx < baseQuizQuestions.length &&
+          baseQuizQuestions[numIdx]?.correct === ans
+        );
+      }).length,
+    [quizAnswers, baseQuizQuestions]
   );
 
   const clearQuizTimer = useCallback(() => {
@@ -779,6 +836,18 @@ function TopicDetailInner() {
       fireSuccessConfetti("card");
     } else {
       playClickSound();
+      // Đưa câu làm sai vào cuối lượt để làm lại cho tới khi nhớ (tối đa 2 vòng ôn lại)
+      if (currentQuiz.retryRound < 2) {
+        quizLengthRef.current = quizQuestions.length + 1;
+        setQuizRetryItems((prev) => [
+          ...prev,
+          {
+            ...currentQuiz,
+            isRetry: true,
+            retryRound: currentQuiz.retryRound + 1,
+          },
+        ]);
+      }
     }
 
     if (currentQuiz.vocab?._id) {
@@ -790,7 +859,7 @@ function TopicDetailInner() {
     if (shouldAutoAdvance) {
       const delay = studySettings.instantAnswer ? 1200 : 280;
       quizTimerRef.current = setTimeout(() => {
-        if (quizIndex < quizQuestions.length - 1) {
+        if (quizIndex < quizLengthRef.current - 1) {
           setQuizIndex((prev) => prev + 1);
         } else {
           setQuizFinished(true);
@@ -809,7 +878,7 @@ function TopicDetailInner() {
   const handleNextQuiz = () => {
     clearQuizTimer();
     playClickSound();
-    if (quizIndex < quizQuestions.length - 1) {
+    if (quizIndex < quizLengthRef.current - 1) {
       setQuizIndex((prev) => prev + 1);
     } else {
       setQuizFinished(true);
@@ -821,12 +890,27 @@ function TopicDetailInner() {
     playClickSound();
     setQuizIndex(0);
     setQuizAnswers({});
+    setQuizRetryItems([]);
+    quizLengthRef.current = baseQuizQuestions.length;
     setQuizFinished(false);
     setQuizSeed((s) => s + 1);
   };
 
   // --- CHẾ ĐỘ 3: GÕ TỪ (TYPING PRACTICE) ---
-  const currentTypingWord = vocabularies[typingIndex];
+  const typingQueue = useMemo(
+    () => [
+      ...vocabularies.map((v) => ({ vocab: v, isRetry: false, retryRound: 0 })),
+      ...typingRetryItems,
+    ],
+    [vocabularies, typingRetryItems]
+  );
+
+  useEffect(() => {
+    typingLengthRef.current = typingQueue.length;
+  }, [typingQueue.length]);
+
+  const currentTypingItem = typingQueue[typingIndex];
+  const currentTypingWord = currentTypingItem?.vocab;
   const isTypingEnToVi = useMemo(() => {
     if (!currentTypingWord) return true;
     return isWordEnToVi(studySettings.direction, `type-${currentTypingWord._id}-${typingIndex}`);
@@ -850,18 +934,18 @@ function TopicDetailInner() {
       viewMode === "typing" &&
       !typingFinished &&
       typingStatus === "idle" &&
-      vocabularies.length > 0
+      typingQueue.length > 0
     ) {
       const frame = requestAnimationFrame(() => {
         typingInputRef.current?.focus();
       });
       return () => cancelAnimationFrame(frame);
     }
-  }, [viewMode, typingFinished, typingStatus, typingIndex, vocabularies.length]);
+  }, [viewMode, typingFinished, typingStatus, typingIndex, typingQueue.length]);
 
   const handleCheckTyping = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!currentTypingWord) return;
+    if (!currentTypingWord || !currentTypingItem) return;
     if (typingStatus !== "idle") {
       handleNextTyping();
       return;
@@ -879,13 +963,27 @@ function TopicDetailInner() {
       playSuccessSound();
       fireSuccessConfetti("card");
       setTypingStatus("correct");
-      setTypingScore((prev) => prev + 1);
+      if (!currentTypingItem.isRetry) {
+        setTypingScore((prev) => prev + 1);
+      }
       if (studySettings.autoAudio) {
         speakText(currentTypingWord.word).catch(() => {});
       }
     } else {
       playClickSound();
       setTypingStatus("wrong");
+      // Đưa từ gõ sai về cuối lượt để gõ lại cho nhớ (tối đa 2 vòng ôn lại)
+      if (currentTypingItem.retryRound < 2) {
+        typingLengthRef.current = typingQueue.length + 1;
+        setTypingRetryItems((prev) => [
+          ...prev,
+          {
+            vocab: currentTypingWord,
+            isRetry: true,
+            retryRound: currentTypingItem.retryRound + 1,
+          },
+        ]);
+      }
     }
 
     void syncWordWithSrs(currentTypingWord._id, isRight ? "good" : "again");
@@ -895,7 +993,7 @@ function TopicDetailInner() {
     if (shouldAutoAdvance) {
       const delay = studySettings.instantAnswer ? 1200 : 280;
       typingTimerRef.current = setTimeout(() => {
-        if (typingIndex < vocabularies.length - 1) {
+        if (typingIndex < typingLengthRef.current - 1) {
           setTypingIndex((prev) => prev + 1);
           setTypingInput("");
           setTypingStatus("idle");
@@ -910,7 +1008,7 @@ function TopicDetailInner() {
   const handleNextTyping = () => {
     clearTypingTimer();
     playClickSound();
-    if (typingIndex < vocabularies.length - 1) {
+    if (typingIndex < typingLengthRef.current - 1) {
       setTypingIndex((prev) => prev + 1);
       setTypingInput("");
       setTypingStatus("idle");
@@ -927,6 +1025,8 @@ function TopicDetailInner() {
     setTypingInput("");
     setTypingStatus("idle");
     setTypingScore(0);
+    setTypingRetryItems([]);
+    typingLengthRef.current = vocabularies.length;
     setTypingFinished(false);
     setTypingShowHint(false);
   };
@@ -939,6 +1039,31 @@ function TopicDetailInner() {
       handleNextCard();
     },
     [syncWordWithSrs, handleNextCard, playSuccessSound, fireSuccessConfetti]
+  );
+
+  const handleMarkNeedReview = useCallback(
+    async (item: { vocab: Vocabulary; isRetry: boolean; retryRound: number }) => {
+      playClickSound();
+      if (item.retryRound < 2) {
+        flashcardLengthRef.current = flashcardQueue.length + 1;
+        setFlashcardRetryItems((prev) => [
+          ...prev,
+          {
+            vocab: item.vocab,
+            isRetry: true,
+            retryRound: item.retryRound + 1,
+          },
+        ]);
+      }
+      await syncWordWithSrs(item.vocab._id, "again");
+      setIsFlipped(false);
+      if (currentIndex < flashcardLengthRef.current - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else {
+        setIsCompleted(true);
+      }
+    },
+    [flashcardQueue.length, currentIndex, playClickSound, syncWordWithSrs]
   );
 
   // Keyboard navigation shortcuts
@@ -1324,8 +1449,8 @@ function TopicDetailInner() {
   }
 
   const progressPercent =
-    vocabularies.length > 0
-      ? Math.round(((currentIndex + 1) / vocabularies.length) * 100)
+    flashcardQueue.length > 0
+      ? Math.round(((currentIndex + 1) / flashcardQueue.length) * 100)
       : 0;
 
   const parentClassId =
@@ -1555,6 +1680,7 @@ function TopicDetailInner() {
                     onClick={() => {
                       playClickSound();
                       setCurrentIndex(0);
+                      setFlashcardRetryItems([]);
                       setIsCompleted(false);
                       setIsFlipped(false);
                     }}
@@ -1577,9 +1703,16 @@ function TopicDetailInner() {
               <div className="w-full flex flex-col items-center gap-6">
                 {/* Progress Indicators */}
                 <div className="w-full flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
-                  <span>
-                    Thẻ {currentIndex + 1} / {vocabularies.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span>
+                      Thẻ {currentIndex + 1} / {flashcardQueue.length}
+                    </span>
+                    {currentCardItem?.isRetry && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/70 dark:border-amber-800 text-[10px] font-extrabold">
+                        Ôn lại thẻ chưa nhớ
+                      </span>
+                    )}
+                  </div>
                   <span className="text-emerald-600">{progressPercent}%</span>
                 </div>
 
@@ -1730,7 +1863,16 @@ function TopicDetailInner() {
                     </button>
 
                     <button
-                      onClick={() => handleMarkKnown(currentWord._id)}
+                      onClick={() => currentCardItem && handleMarkNeedReview(currentCardItem)}
+                      title="Đưa từ này xuống cuối lượt để ôn lại"
+                      className="h-11 px-3 sm:px-4 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <RotateCcw className="size-4 shrink-0" />
+                      <span>Chưa nhớ</span>
+                    </button>
+
+                    <button
+                      onClick={() => currentWord && handleMarkKnown(currentWord._id)}
                       className="h-11 px-3 sm:px-4 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                     >
                       <CheckCircle2 className="size-4 shrink-0" />
@@ -1744,7 +1886,7 @@ function TopicDetailInner() {
                     className="h-11 px-3 sm:px-4 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer shrink-0"
                   >
                     <span className="hidden sm:inline">
-                      {currentIndex === vocabularies.length - 1 ? "Hoàn thành" : "Từ kế tiếp"}
+                      {currentIndex === flashcardQueue.length - 1 ? "Hoàn thành" : "Từ kế tiếp"}
                     </span>
                     <ArrowRight className="size-4" />
                   </button>
@@ -1795,12 +1937,21 @@ function TopicDetailInner() {
                 <div>
                   <h2 className="text-2xl font-extrabold">Hoàn thành Quiz ABCD!</h2>
                   <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Bạn đã trả lời đúng{" "}
+                    Bạn đã trả lời đúng ngay lần đầu{" "}
                     <strong className="text-emerald-600">
-                      {quizScore}/{quizQuestions.length}
+                      {quizScore}/{baseQuizQuestions.length}
                     </strong>{" "}
-                    câu hỏi ({Math.round((quizScore / quizQuestions.length) * 100)}%).
+                    câu hỏi (
+                    {baseQuizQuestions.length > 0
+                      ? Math.round((quizScore / baseQuizQuestions.length) * 100)
+                      : 0}
+                    %).
                   </p>
+                  {quizRetryItems.length > 0 && (
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1">
+                      Đã cho làm lại {quizRetryItems.length} lượt câu sai ở cuối vòng để ghi nhớ!
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <button
@@ -1825,7 +1976,7 @@ function TopicDetailInner() {
             ) : currentQuiz ? (
               <div className="w-full flex flex-col gap-5 py-2">
                 {/* Quiz Progress Header */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 tabular-nums">
                       Câu {quizIndex + 1} / {quizQuestions.length}
@@ -1833,10 +1984,15 @@ function TopicDetailInner() {
                     <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border border-blue-200/70 dark:border-blue-800/60 text-xs font-extrabold tabular-nums">
                       {Math.round(((quizIndex + 1) / quizQuestions.length) * 100)}%
                     </span>
+                    {currentQuiz.isRetry && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 text-[11px] font-extrabold">
+                        Ôn lại câu làm sai
+                      </span>
+                    )}
                   </div>
 
                   <span className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 text-xs font-extrabold tabular-nums">
-                    Đúng: {quizScore} / {quizQuestions.length}
+                    Đúng lần đầu: {quizScore} / {baseQuizQuestions.length}
                   </span>
                 </div>
 
@@ -2010,12 +2166,17 @@ function TopicDetailInner() {
                 <div>
                   <h2 className="text-2xl font-extrabold">Hoàn thành Luyện Gõ Từ!</h2>
                   <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Bạn gõ chính xác{" "}
+                    Bạn gõ chính xác ngay lần đầu{" "}
                     <strong className="text-emerald-600">
                       {typingScore}/{vocabularies.length}
                     </strong>{" "}
                     từ vựng ({Math.round((typingScore / vocabularies.length) * 100)}%).
                   </p>
+                  {typingRetryItems.length > 0 && (
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1">
+                      Đã cho gõ lại {typingRetryItems.length} lượt từ sai ở cuối vòng để ghi nhớ!
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -2027,11 +2188,20 @@ function TopicDetailInner() {
               </div>
             ) : currentTypingWord ? (
               <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-md flex flex-col gap-5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                  <span>
-                    Từ {typingIndex + 1} / {vocabularies.length}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <span>
+                      Từ {typingIndex + 1} / {typingQueue.length}
+                    </span>
+                    {currentTypingItem?.isRetry && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 text-[10px] font-extrabold">
+                        Ôn lại từ gõ sai
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-emerald-600">
+                    Đúng lần đầu: {typingScore}/{vocabularies.length}
                   </span>
-                  <span className="text-emerald-600">Chính xác: {typingScore}</span>
                 </div>
 
                 <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -2040,7 +2210,7 @@ function TopicDetailInner() {
                       typingStatus === "wrong" ? "bg-rose-500" : "bg-emerald-500"
                     }`}
                     style={{
-                      width: `${Math.round(((typingIndex + 1) / vocabularies.length) * 100)}%`,
+                      width: `${Math.round(((typingIndex + 1) / typingQueue.length) * 100)}%`,
                     }}
                   />
                 </div>
@@ -2168,7 +2338,7 @@ function TopicDetailInner() {
                         className="h-10.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                       >
                         <span>
-                          {typingIndex < vocabularies.length - 1 ? "Từ tiếp theo" : "Xem kết quả"}
+                          {typingIndex < typingQueue.length - 1 ? "Từ tiếp theo" : "Xem kết quả"}
                         </span>
                         <ArrowRight className="size-4" />
                       </button>
