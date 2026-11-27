@@ -209,6 +209,7 @@ function TopicDetailInner() {
   const [typingScore, setTypingScore] = useState<number>(0);
   const [typingFinished, setTypingFinished] = useState<boolean>(false);
   const [typingShowHint, setTypingShowHint] = useState<boolean>(false);
+  const typingInputRef = useRef<HTMLInputElement | null>(null);
 
   // List mode state
   const [listSearch, setListSearch] = useState<string>("");
@@ -843,9 +844,28 @@ function TopicDetailInner() {
     }
   }, [viewMode, typingFinished, studySettings.autoAudio, isTypingEnToVi, typingIndex, currentTypingWord?.word]);
 
+  // Tự động đặt con trỏ vào ô gõ từ mỗi khi bắt đầu câu mới hoặc chuyển từ nút "Từ tiếp theo"
+  useEffect(() => {
+    if (
+      viewMode === "typing" &&
+      !typingFinished &&
+      typingStatus === "idle" &&
+      vocabularies.length > 0
+    ) {
+      const frame = requestAnimationFrame(() => {
+        typingInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [viewMode, typingFinished, typingStatus, typingIndex, vocabularies.length]);
+
   const handleCheckTyping = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!currentTypingWord || typingStatus !== "idle") return;
+    if (!currentTypingWord) return;
+    if (typingStatus !== "idle") {
+      handleNextTyping();
+      return;
+    }
     clearTypingTimer();
 
     const target = isTypingEnToVi
@@ -2043,7 +2063,12 @@ function TopicDetailInner() {
                   <div className="flex items-center gap-2 mt-1">
                     <button
                       type="button"
-                      onClick={() => handlePronounce(currentTypingWord.word)}
+                      onClick={() => {
+                        handlePronounce(currentTypingWord.word);
+                        if (typingStatus === "idle") {
+                          typingInputRef.current?.focus();
+                        }
+                      }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
                     >
                       <Volume2 className="size-3.5 text-emerald-600" /> Nghe phát âm
@@ -2054,6 +2079,9 @@ function TopicDetailInner() {
                       onClick={() => {
                         playClickSound();
                         setTypingShowHint(true);
+                        if (typingStatus === "idle") {
+                          typingInputRef.current?.focus();
+                        }
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-xs font-bold cursor-pointer"
                     >
@@ -2075,9 +2103,16 @@ function TopicDetailInner() {
 
                 <form onSubmit={handleCheckTyping} className="flex flex-col gap-3">
                   <input
+                    ref={typingInputRef}
                     type="text"
                     autoFocus
-                    disabled={typingStatus !== "idle"}
+                    readOnly={typingStatus !== "idle"}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && typingStatus !== "idle") {
+                        e.preventDefault();
+                        handleNextTyping();
+                      }
+                    }}
                     placeholder={
                       isTypingEnToVi
                         ? "Nhập từ tiếng Anh chính xác..."
@@ -2087,9 +2122,9 @@ function TopicDetailInner() {
                     onChange={(e) => setTypingInput(e.target.value)}
                     className={`h-12 px-4 rounded-2xl border text-sm font-bold focus:outline-none transition ${
                       typingStatus === "correct"
-                        ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-200"
+                        ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-800 dark:text-emerald-200 cursor-default"
                         : typingStatus === "wrong"
-                        ? "bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300"
+                        ? "bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300 cursor-default"
                         : "bg-slate-50 dark:bg-slate-800 border-emerald-200 dark:border-emerald-800/70 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
                     }`}
                   />
