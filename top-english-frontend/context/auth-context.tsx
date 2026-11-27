@@ -32,6 +32,7 @@ export interface StreakPayload {
   isNewStreakDay?: boolean;
   streakMessage?: string;
   weeklyActivity?: WeeklyActivityDay[];
+  silentToast?: boolean;
 }
 
 export interface ToastNotification {
@@ -242,8 +243,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     });
 
-    // Nếu có điểm thưởng xpEarned mà không có streakIncreased -> Báo toast cộng điểm XP
-    if (payload.xpEarned && !payload.streakIncreased && !payload.isNewStreakDay) {
+    // Nếu có điểm thưởng xpEarned mà không có streakIncreased -> Báo toast cộng điểm XP (trừ khi caller tắt bằng silentToast)
+    if (
+      !payload.silentToast &&
+      payload.xpEarned &&
+      !payload.streakIncreased &&
+      !payload.isNewStreakDay
+    ) {
       showToast({
         type: "success",
         title: `+${payload.xpEarned} XP!`,

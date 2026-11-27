@@ -10,6 +10,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import confetti from "canvas-confetti";
 import {
   ArrowLeft,
   ArrowRight,
@@ -507,12 +508,58 @@ function TopicDetailInner() {
             updateStreakInfo({
               ...res.data,
               xpEarned: 25,
+              silentToast: true,
             });
           }
         })
         .catch((err) => console.error("Lỗi thưởng điểm XP:", err));
     }
   }, [isCompleted, rewardClaimed, isAuthenticated, vocabularies.length, updateStreakInfo]);
+
+  const fireSuccessConfetti = useCallback(
+    (intensity: "card" | "celebration" = "card") => {
+      if (typeof window === "undefined") return;
+      const colors = ["#10b981", "#34d399", "#fbbf24", "#38bdf8", "#f472b6"];
+
+      if (intensity === "celebration") {
+        void confetti({
+          particleCount: 55,
+          angle: 60,
+          spread: 60,
+          origin: { x: 0.12, y: 0.7 },
+          colors,
+          disableForReducedMotion: true,
+        });
+        void confetti({
+          particleCount: 55,
+          angle: 120,
+          spread: 60,
+          origin: { x: 0.88, y: 0.7 },
+          colors,
+          disableForReducedMotion: true,
+        });
+        return;
+      }
+
+      void confetti({
+        particleCount: 36,
+        spread: 68,
+        startVelocity: 30,
+        scalar: 0.88,
+        origin: { x: 0.5, y: 0.65 },
+        colors,
+        disableForReducedMotion: true,
+      });
+    },
+    []
+  );
+
+  // Nổ pháo hoa chúc mừng khi hoàn tất bài học / lượt Quiz / lượt Gõ từ
+  useEffect(() => {
+    if (isCompleted || quizFinished || typingFinished) {
+      fireSuccessConfetti("celebration");
+    }
+  }, [isCompleted, quizFinished, typingFinished, fireSuccessConfetti]);
 
   const currentWord = vocabularies[currentIndex];
 
@@ -711,6 +758,7 @@ function TopicDetailInner() {
           updateStreakInfo({
             ...res.data,
             xpEarned: res.data.xpEarned || (rating === "good" ? 10 : 5),
+            silentToast: true,
           });
         }
       } catch (err) {
@@ -727,6 +775,7 @@ function TopicDetailInner() {
     const isRight = option === currentQuiz.correct;
     if (isRight) {
       playSuccessSound();
+      fireSuccessConfetti("card");
     } else {
       playClickSound();
     }
@@ -808,6 +857,7 @@ function TopicDetailInner() {
     const isRight = answer === target;
     if (isRight) {
       playSuccessSound();
+      fireSuccessConfetti("card");
       setTypingStatus("correct");
       setTypingScore((prev) => prev + 1);
       if (studySettings.autoAudio) {
@@ -863,11 +913,12 @@ function TopicDetailInner() {
 
   const handleMarkKnown = useCallback(
     async (id: string) => {
-      playClickSound();
+      playSuccessSound();
+      fireSuccessConfetti("card");
       await syncWordWithSrs(id, "good");
       handleNextCard();
     },
-    [syncWordWithSrs, handleNextCard, playClickSound]
+    [syncWordWithSrs, handleNextCard, playSuccessSound, fireSuccessConfetti]
   );
 
   // Keyboard navigation shortcuts

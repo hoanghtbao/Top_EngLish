@@ -378,7 +378,7 @@ function DashboardContent() {
         playClickSound();
       }
 
-      // Cập nhật XP & Streak tức thì lên Header và toàn hệ thống qua AuthContext
+      // Cập nhật XP & Streak tức thì lên Header và toàn hệ thống qua AuthContext (không hiện toast đè lên badge +XP trên thẻ)
       if (res.data && updateStreakInfo) {
         updateStreakInfo({
           streak: res.data.streak,
@@ -387,6 +387,7 @@ function DashboardContent() {
           streakIncreased: res.data.streakIncreased,
           isNewStreakDay: res.data.isNewStreakDay,
           streakMessage: res.data.streakMessage,
+          silentToast: true,
         });
       }
 
